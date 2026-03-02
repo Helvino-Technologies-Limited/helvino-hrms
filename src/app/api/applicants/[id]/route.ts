@@ -3,14 +3,14 @@ import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
 import { prisma } from '@/lib/prisma'
 
-export async function PATCH(req: NextRequest, { params }: { params: { id: string } }) {
+export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   try {
     const session = await getServerSession(authOptions)
     if (!session) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
-
+    const { id } = await params
     const body = await req.json()
     const applicant = await prisma.applicant.update({
-      where: { id: params.id },
+      where: { id },
       data: {
         status: body.status,
         score: body.score !== undefined ? parseInt(body.score) : undefined,
@@ -24,12 +24,12 @@ export async function PATCH(req: NextRequest, { params }: { params: { id: string
   }
 }
 
-export async function DELETE(req: NextRequest, { params }: { params: { id: string } }) {
+export async function DELETE(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   try {
     const session = await getServerSession(authOptions)
     if (!session) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
-
-    await prisma.applicant.delete({ where: { id: params.id } })
+    const { id } = await params
+    await prisma.applicant.delete({ where: { id } })
     return NextResponse.json({ message: 'Applicant deleted' })
   } catch (error) {
     return NextResponse.json({ error: 'Failed to delete' }, { status: 500 })

@@ -3,9 +3,7 @@ generator client {
 }
 
 datasource db {
-  provider  = "postgresql"
-  url       = env("DATABASE_URL")
-  directUrl = env("DIRECT_URL")
+  provider = "postgresql"
 }
 
 enum EmploymentType {
@@ -97,11 +95,11 @@ model Department {
 }
 
 model Employee {
-  id               String           @id @default(cuid())
-  employeeCode     String           @unique
+  id               String              @id @default(cuid())
+  employeeCode     String              @unique
   firstName        String
   lastName         String
-  email            String           @unique
+  email            String              @unique
   personalEmail    String?
   phone            String
   nationalId       String?
@@ -109,30 +107,30 @@ model Employee {
   gender           String?
   address          String?
   city             String?
-  country          String           @default("Kenya")
+  country          String              @default("Kenya")
   profilePhoto     String?
   departmentId     String?
-  department       Department?      @relation("DepartmentEmployees", fields: [departmentId], references: [id])
+  department       Department?         @relation("DepartmentEmployees", fields: [departmentId], references: [id])
   jobTitle         String
-  employmentType   EmploymentType   @default(FULL_TIME)
-  employmentStatus EmploymentStatus @default(ACTIVE)
+  employmentType   EmploymentType      @default(FULL_TIME)
+  employmentStatus EmploymentStatus    @default(ACTIVE)
   dateHired        DateTime
   probationEndDate DateTime?
   basicSalary      Float?
   bankName         String?
   bankAccount      String?
   managerId        String?
-  manager          Employee?        @relation("Reports", fields: [managerId], references: [id])
-  directReports    Employee[]       @relation("Reports")
+  manager          Employee?           @relation("Reports", fields: [managerId], references: [id])
+  directReports    Employee[]          @relation("Reports")
   contractUrl      String?
   ndaUrl           String?
   emergencyContact String?
   emergencyPhone   String?
   user             User?
-  departmentHead   Department[]     @relation("DepartmentHead")
+  departmentHead   Department[]        @relation("DepartmentHead")
   attendances      Attendance[]
   leaves           Leave[]
-  approvedLeaves   Leave[]          @relation("LeaveApprover")
+  approvedLeaves   Leave[]             @relation("LeaveApprover")
   payrolls         Payroll[]
   reviewsGiven     PerformanceReview[] @relation("Reviewer")
   reviewsReceived  PerformanceReview[] @relation("Reviewee")
@@ -140,8 +138,8 @@ model Employee {
   announcements    Announcement[]
   auditLogs        AuditLog[]
   leaveBalances    LeaveBalance[]
-  createdAt        DateTime         @default(now())
-  updatedAt        DateTime         @updatedAt
+  createdAt        DateTime            @default(now())
+  updatedAt        DateTime            @updatedAt
 }
 
 model Attendance {
@@ -288,19 +286,19 @@ model Goal {
 }
 
 model Announcement {
-  id           String   @id @default(cuid())
+  id           String    @id @default(cuid())
   title        String
   content      String
-  type         String   @default("GENERAL")
-  priority     String   @default("NORMAL")
+  type         String    @default("GENERAL")
+  priority     String    @default("NORMAL")
   departmentId String?
   authorId     String
-  author       Employee @relation(fields: [authorId], references: [id])
-  publishedAt  DateTime @default(now())
+  author       Employee  @relation(fields: [authorId], references: [id])
+  publishedAt  DateTime  @default(now())
   expiresAt    DateTime?
   readBy       String[]
-  createdAt    DateTime @default(now())
-  updatedAt    DateTime @updatedAt
+  createdAt    DateTime  @default(now())
+  updatedAt    DateTime  @updatedAt
 }
 
 model AuditLog {

@@ -3,13 +3,13 @@ import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
 import { prisma } from '@/lib/prisma'
 
-export async function GET(req: NextRequest, { params }: { params: { id: string } }) {
+export async function GET(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   try {
     const session = await getServerSession(authOptions)
     if (!session) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
-
+    const { id } = await params
     const employee = await prisma.employee.findUnique({
-      where: { id: params.id },
+      where: { id },
       include: {
         department: true,
         manager: { select: { id: true, firstName: true, lastName: true, profilePhoto: true, jobTitle: true } },
@@ -22,7 +22,6 @@ export async function GET(req: NextRequest, { params }: { params: { id: string }
         leaveBalances: { where: { year: new Date().getFullYear() } },
       },
     })
-
     if (!employee) return NextResponse.json({ error: 'Employee not found' }, { status: 404 })
     return NextResponse.json(employee)
   } catch (error) {
@@ -30,13 +29,12 @@ export async function GET(req: NextRequest, { params }: { params: { id: string }
   }
 }
 
-export async function PATCH(req: NextRequest, { params }: { params: { id: string } }) {
+export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   try {
     const session = await getServerSession(authOptions)
     if (!session) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
-
+    const { id } = await params
     const body = await req.json()
-
     const updateData: any = { ...body }
     if (body.dateOfBirth) updateData.dateOfBirth = new Date(body.dateOfBirth)
     if (body.dateHired) updateData.dateHired = new Date(body.dateHired)
@@ -44,22 +42,12 @@ export async function PATCH(req: NextRequest, { params }: { params: { id: string
     if (body.basicSalary) updateData.basicSalary = parseFloat(body.basicSalary)
     if (body.departmentId === '') updateData.departmentId = null
     if (body.managerId === '') updateData.managerId = null
-
     const employee = await prisma.employee.update({
-      where: { id: params.id },
+      where: { id },
       data: updateData,
       include: { department: true },
     })
-
-    await prisma.auditLog.create({
-      data: {
-        action: 'UPDATE',
-        entity: 'Employee',
-        entityId: employee.id,
-        newValues: body,
-      },
-    })
-
+    await prisma.auditLog.create({ data: { action: 'UPDATE', entity: 'Employee', entityId: id, newValues: body } })
     return NextResponse.json(employee)
   } catch (error: any) {
     if (error.code === 'P2002') return NextResponse.json({ error: 'Email already in use' }, { status: 400 })
@@ -67,16 +55,12 @@ export async function PATCH(req: NextRequest, { params }: { params: { id: string
   }
 }
 
-export async function DELETE(req: NextRequest, { params }: { params: { id: string } }) {
+export async function DELETE(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   try {
     const session = await getServerSession(authOptions)
     if (!session) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
-
-    await prisma.employee.update({
-      where: { id: params.id },
-      data: { employmentStatus: 'TERMINATED' },
-    })
-
+    const { id } = await params
+    await prisma.employee.update({ where: { id }, data: { employmentStatus: 'TERMINATED' } })
     return NextResponse.json({ message: 'Employee deactivated successfully' })
   } catch (error) {
     return NextResponse.json({ error: 'Failed to deactivate employee' }, { status: 500 })
