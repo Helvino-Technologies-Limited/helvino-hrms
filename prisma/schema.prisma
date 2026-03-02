@@ -1,0 +1,325 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider  = "postgresql"
+  url       = env("DATABASE_URL")
+  directUrl = env("DIRECT_URL")
+}
+
+enum EmploymentType {
+  FULL_TIME
+  CONTRACT
+  INTERN
+  CONSULTANT
+}
+
+enum EmploymentStatus {
+  ACTIVE
+  ON_LEAVE
+  SUSPENDED
+  RESIGNED
+  TERMINATED
+  PROBATION
+}
+
+enum LeaveType {
+  ANNUAL
+  SICK
+  MATERNITY
+  PATERNITY
+  COMPASSIONATE
+  UNPAID
+  STUDY
+}
+
+enum LeaveStatus {
+  PENDING
+  APPROVED
+  REJECTED
+  CANCELLED
+}
+
+enum JobStatus {
+  OPEN
+  CLOSED
+  DRAFT
+}
+
+enum ApplicantStatus {
+  NEW
+  SHORTLISTED
+  INTERVIEWED
+  OFFERED
+  REJECTED
+}
+
+enum UserRole {
+  SUPER_ADMIN
+  HR_MANAGER
+  DEPARTMENT_HEAD
+  FINANCE_OFFICER
+  EMPLOYEE
+}
+
+model User {
+  id         String    @id @default(cuid())
+  email      String    @unique
+  name       String?
+  password   String
+  role       UserRole  @default(EMPLOYEE)
+  employeeId String?   @unique
+  employee   Employee? @relation(fields: [employeeId], references: [id])
+  createdAt  DateTime  @default(now())
+  updatedAt  DateTime  @updatedAt
+  sessions   Session[]
+}
+
+model Session {
+  id           String   @id @default(cuid())
+  sessionToken String   @unique
+  userId       String
+  expires      DateTime
+  user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+model Department {
+  id          String     @id @default(cuid())
+  name        String     @unique
+  description String?
+  headId      String?
+  head        Employee?  @relation("DepartmentHead", fields: [headId], references: [id])
+  employees   Employee[] @relation("DepartmentEmployees")
+  jobs        Job[]
+  createdAt   DateTime   @default(now())
+  updatedAt   DateTime   @updatedAt
+}
+
+model Employee {
+  id               String           @id @default(cuid())
+  employeeCode     String           @unique
+  firstName        String
+  lastName         String
+  email            String           @unique
+  personalEmail    String?
+  phone            String
+  nationalId       String?
+  dateOfBirth      DateTime?
+  gender           String?
+  address          String?
+  city             String?
+  country          String           @default("Kenya")
+  profilePhoto     String?
+  departmentId     String?
+  department       Department?      @relation("DepartmentEmployees", fields: [departmentId], references: [id])
+  jobTitle         String
+  employmentType   EmploymentType   @default(FULL_TIME)
+  employmentStatus EmploymentStatus @default(ACTIVE)
+  dateHired        DateTime
+  probationEndDate DateTime?
+  basicSalary      Float?
+  bankName         String?
+  bankAccount      String?
+  managerId        String?
+  manager          Employee?        @relation("Reports", fields: [managerId], references: [id])
+  directReports    Employee[]       @relation("Reports")
+  contractUrl      String?
+  ndaUrl           String?
+  emergencyContact String?
+  emergencyPhone   String?
+  user             User?
+  departmentHead   Department[]     @relation("DepartmentHead")
+  attendances      Attendance[]
+  leaves           Leave[]
+  approvedLeaves   Leave[]          @relation("LeaveApprover")
+  payrolls         Payroll[]
+  reviewsGiven     PerformanceReview[] @relation("Reviewer")
+  reviewsReceived  PerformanceReview[] @relation("Reviewee")
+  goals            Goal[]
+  announcements    Announcement[]
+  auditLogs        AuditLog[]
+  leaveBalances    LeaveBalance[]
+  createdAt        DateTime         @default(now())
+  updatedAt        DateTime         @updatedAt
+}
+
+model Attendance {
+  id         String    @id @default(cuid())
+  employeeId String
+  employee   Employee  @relation(fields: [employeeId], references: [id])
+  clockIn    DateTime
+  clockOut   DateTime?
+  totalHours Float?
+  status     String    @default("PRESENT")
+  notes      String?
+  ipAddress  String?
+  location   String?
+  date       DateTime  @default(now())
+  createdAt  DateTime  @default(now())
+  updatedAt  DateTime  @updatedAt
+}
+
+model Leave {
+  id         String      @id @default(cuid())
+  employeeId String
+  employee   Employee    @relation(fields: [employeeId], references: [id])
+  leaveType  LeaveType
+  startDate  DateTime
+  endDate    DateTime
+  days       Int
+  reason     String?
+  status     LeaveStatus @default(PENDING)
+  approvedBy String?
+  approver   Employee?   @relation("LeaveApprover", fields: [approvedBy], references: [id])
+  approvedAt DateTime?
+  comments   String?
+  createdAt  DateTime    @default(now())
+  updatedAt  DateTime    @updatedAt
+}
+
+model LeaveBalance {
+  id         String    @id @default(cuid())
+  employeeId String
+  employee   Employee  @relation(fields: [employeeId], references: [id])
+  leaveType  LeaveType
+  year       Int
+  allocated  Int
+  used       Int       @default(0)
+  pending    Int       @default(0)
+  remaining  Int
+  createdAt  DateTime  @default(now())
+  updatedAt  DateTime  @updatedAt
+
+  @@unique([employeeId, leaveType, year])
+}
+
+model Payroll {
+  id              String    @id @default(cuid())
+  employeeId      String
+  employee        Employee  @relation(fields: [employeeId], references: [id])
+  month           Int
+  year            Int
+  basicSalary     Float
+  allowances      Float     @default(0)
+  overtime        Float     @default(0)
+  bonuses         Float     @default(0)
+  grossSalary     Float
+  paye            Float     @default(0)
+  nhif            Float     @default(0)
+  nssf            Float     @default(0)
+  otherDeductions Float     @default(0)
+  netSalary       Float
+  status          String    @default("DRAFT")
+  paymentDate     DateTime?
+  paymentRef      String?
+  generatedAt     DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
+
+  @@unique([employeeId, month, year])
+}
+
+model Job {
+  id               String      @id @default(cuid())
+  title            String
+  description      String
+  requirements     String?
+  responsibilities String?
+  departmentId     String?
+  department       Department? @relation(fields: [departmentId], references: [id])
+  type             String      @default("Full-time")
+  location         String?
+  salaryMin        Float?
+  salaryMax        Float?
+  status           JobStatus   @default(OPEN)
+  deadline         DateTime?
+  applicants       Applicant[]
+  createdAt        DateTime    @default(now())
+  updatedAt        DateTime    @updatedAt
+}
+
+model Applicant {
+  id            String          @id @default(cuid())
+  jobId         String
+  job           Job             @relation(fields: [jobId], references: [id])
+  firstName     String
+  lastName      String
+  email         String
+  phone         String?
+  resumeUrl     String?
+  coverLetter   String?
+  status        ApplicantStatus @default(NEW)
+  score         Int?
+  notes         String?
+  interviewDate DateTime?
+  createdAt     DateTime        @default(now())
+  updatedAt     DateTime        @updatedAt
+}
+
+model PerformanceReview {
+  id           String   @id @default(cuid())
+  employeeId   String
+  employee     Employee @relation("Reviewee", fields: [employeeId], references: [id])
+  reviewerId   String
+  reviewer     Employee @relation("Reviewer", fields: [reviewerId], references: [id])
+  period       String
+  rating       Int
+  comments     String?
+  goals        String?
+  strengths    String?
+  improvements String?
+  status       String   @default("DRAFT")
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+}
+
+model Goal {
+  id          String   @id @default(cuid())
+  employeeId  String
+  employee    Employee @relation(fields: [employeeId], references: [id])
+  title       String
+  description String?
+  targetDate  DateTime
+  progress    Int      @default(0)
+  status      String   @default("ACTIVE")
+  period      String?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+}
+
+model Announcement {
+  id           String   @id @default(cuid())
+  title        String
+  content      String
+  type         String   @default("GENERAL")
+  priority     String   @default("NORMAL")
+  departmentId String?
+  authorId     String
+  author       Employee @relation(fields: [authorId], references: [id])
+  publishedAt  DateTime @default(now())
+  expiresAt    DateTime?
+  readBy       String[]
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+}
+
+model AuditLog {
+  id         String    @id @default(cuid())
+  employeeId String?
+  employee   Employee? @relation(fields: [employeeId], references: [id])
+  action     String
+  entity     String
+  entityId   String?
+  oldValues  Json?
+  newValues  Json?
+  ipAddress  String?
+  userAgent  String?
+  createdAt  DateTime  @default(now())
+}
+
+model CompanySettings {
+  id        String   @id @default(cuid())
+  key       String   @unique
+  value     String
+  updatedAt DateTime @updatedAt
+}
