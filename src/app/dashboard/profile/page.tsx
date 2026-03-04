@@ -1,7 +1,7 @@
 'use client'
-import { useEffect, useState } from 'react'
+import { useEffect, useState, useRef } from 'react'
 import { useSession } from 'next-auth/react'
-import { User, Mail, Phone, Building2, Calendar, DollarSign, Lock, CheckCircle, Star } from 'lucide-react'
+import { User, Mail, Phone, Building2, Calendar, DollarSign, Lock, CheckCircle, Star, Camera } from 'lucide-react'
 import { formatDate, formatCurrency, getInitials } from '@/lib/utils'
 import toast from 'react-hot-toast'
 
@@ -13,6 +13,8 @@ export default function ProfilePage() {
   const [tab, setTab] = useState('overview')
   const [pwForm, setPwForm] = useState({ currentPassword: '', newPassword: '', confirmPassword: '' })
   const [pwLoading, setPwLoading] = useState(false)
+  const [uploading, setUploading] = useState(false)
+  const fileRef = useRef<HTMLInputElement>(null)
 
   const employeeId = (session?.user as any)?.employeeId
 
@@ -45,6 +47,49 @@ export default function ProfilePage() {
     setPwLoading(false)
   }
 
+  async function handlePhotoUpload(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0]
+    if (!file || !employeeId) return
+    if (file.size > 5 * 1024 * 1024) { toast.error('Image must be under 5MB'); return }
+    setUploading(true)
+    try {
+      const base64 = await new Promise<string>((resolve, reject) => {
+        const reader = new FileReader()
+        reader.onerror = reject
+        reader.onload = (ev) => {
+          const img = new Image()
+          img.onerror = reject
+          img.onload = () => {
+            const MAX = 400
+            let w = img.width, h = img.height
+            if (w > h) { h = Math.round(h * MAX / w); w = MAX }
+            else { w = Math.round(w * MAX / h); h = MAX }
+            const canvas = document.createElement('canvas')
+            canvas.width = w; canvas.height = h
+            canvas.getContext('2d')!.drawImage(img, 0, 0, w, h)
+            resolve(canvas.toDataURL('image/jpeg', 0.85))
+          }
+          img.src = ev.target!.result as string
+        }
+        reader.readAsDataURL(file)
+      })
+      const res = await fetch(`/api/employees/${employeeId}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ profilePhoto: base64 }),
+      })
+      if (!res.ok) throw new Error()
+      const updated = await res.json()
+      setEmployee((prev: any) => ({ ...prev, profilePhoto: updated.profilePhoto }))
+      toast.success('Profile photo updated!')
+    } catch {
+      toast.error('Failed to upload photo')
+    } finally {
+      setUploading(false)
+      if (fileRef.current) fileRef.current.value = ''
+    }
+  }
+
   if (loading) return <div className="flex items-center justify-center h-64"><div className="w-8 h-8 border-4 border-blue-600 border-t-transparent rounded-full animate-spin" /></div>
 
   const tabs = ['overview','leaves','attendance','payroll','security']
@@ -56,10 +101,23 @@ export default function ProfilePage() {
       {employee && (
         <div className="bg-gradient-to-r from-blue-600 to-blue-800 rounded-2xl p-6 text-white">
           <div className="flex items-center gap-5">
-            <div className="w-20 h-20 rounded-2xl bg-white/20 flex items-center justify-center text-2xl font-black border-2 border-white/30 overflow-hidden flex-shrink-0">
-              {employee.profilePhoto
-                ? <img src={employee.profilePhoto} alt="" className="w-full h-full object-cover" />
-                : getInitials(employee.firstName, employee.lastName)}
+            <div className="relative flex-shrink-0">
+              <div className="w-20 h-20 rounded-2xl bg-white/20 flex items-center justify-center text-2xl font-black border-2 border-white/30 overflow-hidden">
+                {employee.profilePhoto
+                  ? <img src={employee.profilePhoto} alt="" className="w-full h-full object-cover" />
+                  : getInitials(employee.firstName, employee.lastName)}
+              </div>
+              <button
+                onClick={() => fileRef.current?.click()}
+                disabled={uploading}
+                title="Change photo"
+                className="absolute -bottom-1.5 -right-1.5 w-7 h-7 bg-white rounded-full flex items-center justify-center shadow-lg hover:bg-slate-50 transition-colors border border-slate-200 disabled:opacity-60"
+              >
+                {uploading
+                  ? <div className="w-3 h-3 border-2 border-blue-600 border-t-transparent rounded-full animate-spin" />
+                  : <Camera className="w-3.5 h-3.5 text-slate-600" />}
+              </button>
+              <input ref={fileRef} type="file" accept="image/*" className="hidden" onChange={handlePhotoUpload} />
             </div>
             <div>
               <h2 className="text-2xl font-black">{employee.firstName} {employee.lastName}</h2>
