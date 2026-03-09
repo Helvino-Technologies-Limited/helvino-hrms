@@ -50,6 +50,8 @@ const salesNavItems = [
     roles: ['SUPER_ADMIN', 'HR_MANAGER', 'SALES_MANAGER', 'FINANCE_OFFICER'] },
   { href: '/dashboard/sales/tasks', icon: ListTodo, label: 'Sales Tasks',
     roles: ['SUPER_ADMIN', 'HR_MANAGER', 'SALES_MANAGER', 'SALES_AGENT'] },
+  { href: '/dashboard/sales/services', icon: Package, label: 'Service Catalog',
+    roles: ['SUPER_ADMIN', 'HR_MANAGER', 'SALES_MANAGER', 'SALES_AGENT', 'FINANCE_OFFICER'] },
   { href: '/dashboard/sales/portfolio', icon: FolderOpen, label: 'Portfolio',
     roles: ['SUPER_ADMIN', 'HR_MANAGER', 'SALES_MANAGER', 'SALES_AGENT', 'FINANCE_OFFICER', 'EMPLOYEE'] },
   { href: '/dashboard/sales/reports', icon: BarChart3, label: 'Sales Reports',

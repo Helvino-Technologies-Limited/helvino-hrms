@@ -467,7 +467,7 @@ export default function LeadDetailPage() {
             <div className="flex items-center justify-between px-6 py-4 border-b border-slate-100">
               <h3 className="font-bold text-slate-900">Quotations</h3>
               <Link
-                href={`/dashboard/sales/quotations/new?leadId=${id}`}
+                href={`/dashboard/sales/quotations?newForLead=${id}&leadName=${encodeURIComponent((lead.companyName || lead.contactPerson) ?? '')}`}
                 className="flex items-center gap-1.5 px-3 py-1.5 bg-green-600 hover:bg-green-700 text-white rounded-xl text-sm font-semibold transition-colors"
               >
                 <Plus className="w-4 h-4" />

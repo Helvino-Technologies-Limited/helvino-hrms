@@ -1,6 +1,7 @@
 'use client'
 import { useEffect, useState, useCallback } from 'react'
 import Link from 'next/link'
+import { useSearchParams } from 'next/navigation'
 import { useSession } from 'next-auth/react'
 import {
   Plus, Search, Eye, Edit, Trash2, FileText, X, ChevronDown, Send
@@ -35,6 +36,7 @@ function getDisplayStatus(q: any) {
 export default function QuotationsPage() {
   const { data: session } = useSession()
   const role = (session?.user as any)?.role || ''
+  const searchParams = useSearchParams()
 
   const [quotations, setQuotations] = useState<any[]>([])
   const [loading, setLoading] = useState(true)
@@ -42,6 +44,18 @@ export default function QuotationsPage() {
   const [statusFilter, setStatusFilter] = useState('All')
   const [showModal, setShowModal] = useState(false)
   const [editingQuotation, setEditingQuotation] = useState<any>(null)
+  const [prefillLead, setPrefillLead] = useState<{ leadId: string; clientName: string } | null>(null)
+
+  // Auto-open new quotation modal when coming from lead page
+  useEffect(() => {
+    const leadId = searchParams.get('newForLead')
+    const leadName = searchParams.get('leadName')
+    if (leadId) {
+      setPrefillLead({ leadId, clientName: leadName || '' })
+      setEditingQuotation(null)
+      setShowModal(true)
+    }
+  }, [searchParams])
 
   const loadQuotations = useCallback(async () => {
     setLoading(true)
@@ -245,9 +259,11 @@ export default function QuotationsPage() {
       {showModal && (
         <QuotationModal
           quotation={editingQuotation}
-          onClose={() => setShowModal(false)}
+          prefillLead={prefillLead}
+          onClose={() => { setShowModal(false); setPrefillLead(null) }}
           onSave={() => {
             setShowModal(false)
+            setPrefillLead(null)
             loadQuotations()
             toast.success(editingQuotation ? 'Quotation updated!' : 'Quotation created!')
           }}
@@ -257,7 +273,7 @@ export default function QuotationsPage() {
   )
 }
 
-function QuotationModal({ quotation, onClose, onSave }: { quotation: any; onClose: () => void; onSave: () => void }) {
+function QuotationModal({ quotation, prefillLead, onClose, onSave }: { quotation: any; prefillLead?: { leadId: string; clientName: string } | null; onClose: () => void; onSave: () => void }) {
   const [loading, setLoading] = useState(false)
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState('')
@@ -266,9 +282,9 @@ function QuotationModal({ quotation, onClose, onSave }: { quotation: any; onClos
   const [services, setServices] = useState<any[]>([])
 
   const [form, setForm] = useState({
-    clientName: quotation?.clientName || '',
+    clientName: quotation?.clientName || prefillLead?.clientName || '',
     clientEmail: quotation?.clientEmail || '',
-    leadId: quotation?.leadId || '',
+    leadId: quotation?.leadId || prefillLead?.leadId || '',
     clientId: quotation?.clientId || '',
     validUntil: quotation?.validUntil ? new Date(quotation.validUntil).toISOString().split('T')[0] : '',
     deliveryTimeline: quotation?.deliveryTimeline || '',
