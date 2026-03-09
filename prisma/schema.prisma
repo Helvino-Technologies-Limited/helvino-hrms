@@ -59,6 +59,95 @@ enum UserRole {
   DEPARTMENT_HEAD
   FINANCE_OFFICER
   EMPLOYEE
+  SALES_MANAGER
+  SALES_AGENT
+}
+
+// ─── Sales Module Enums ───────────────────────────────────────────────────────
+
+enum LeadSource {
+  WEBSITE
+  REFERRAL
+  EMPLOYEE
+  SOCIAL_MEDIA
+  COLD_CALL
+  EMAIL
+  WALK_IN
+  OTHER
+}
+
+enum LeadStatus {
+  NEW
+  CONTACTED
+  NEEDS_QUOTATION
+  QUOTATION_SENT
+  NEGOTIATION
+  WON
+  LOST
+  FUTURE_PROSPECT
+}
+
+enum LeadPriority {
+  LOW
+  MEDIUM
+  HIGH
+}
+
+enum ActivityType {
+  CALL
+  EMAIL
+  WHATSAPP
+  MEETING
+  NOTE
+}
+
+enum QuotationStatus {
+  DRAFT
+  SENT
+  VIEWED
+  APPROVED
+  REJECTED
+  EXPIRED
+}
+
+enum ClientCategory {
+  CORPORATE
+  SME
+  INDIVIDUAL
+}
+
+enum ServiceStatus {
+  PENDING
+  IN_PROGRESS
+  COMPLETED
+  CANCELLED
+}
+
+enum BillingCycle {
+  MONTHLY
+  QUARTERLY
+  YEARLY
+}
+
+enum SubscriptionStatus {
+  ACTIVE
+  EXPIRED
+  CANCELLED
+  SUSPENDED
+}
+
+enum SalesTaskStatus {
+  TODO
+  IN_PROGRESS
+  DONE
+  CANCELLED
+}
+
+enum SalesTaskPriority {
+  LOW
+  MEDIUM
+  HIGH
+  URGENT
 }
 
 model User {
@@ -138,6 +227,15 @@ model Employee {
   announcements    Announcement[]
   auditLogs        AuditLog[]
   leaveBalances    LeaveBalance[]
+  // Sales relations
+  leadsAssigned    Lead[]              @relation("LeadAssignee")
+  leadsCreated     Lead[]              @relation("LeadCreator")
+  leadActivities   LeadActivity[]
+  quotationsCreated Quotation[]
+  clientsCreated   Client[]            @relation("ClientCreator")
+  clientsAssigned  Client[]            @relation("ClientAssignee")
+  salesTasksAssigned SalesTask[]       @relation("SalesTaskAssignee")
+  salesTasksCreated  SalesTask[]       @relation("SalesTaskCreator")
   createdAt        DateTime            @default(now())
   updatedAt        DateTime            @updatedAt
 }
@@ -320,4 +418,207 @@ model CompanySettings {
   key       String   @unique
   value     String
   updatedAt DateTime @updatedAt
+}
+
+// ─── Sales Module Models ──────────────────────────────────────────────────────
+
+model Lead {
+  id                  String         @id @default(cuid())
+  leadNumber          String         @unique
+  companyName         String?
+  contactPerson       String
+  phone               String?
+  whatsapp            String?
+  email               String?
+  location            String?
+  industry            String?
+  source              LeadSource     @default(WEBSITE)
+  services            String[]
+  priority            LeadPriority   @default(MEDIUM)
+  status              LeadStatus     @default(NEW)
+  notes               String?
+  expectedValue       Float?
+  expectedCloseDate   DateTime?
+  lostReason          String?
+  assignedToId        String?
+  assignedTo          Employee?      @relation("LeadAssignee", fields: [assignedToId], references: [id])
+  createdById         String?
+  createdBy           Employee?      @relation("LeadCreator", fields: [createdById], references: [id])
+  convertedToClientId String?
+  convertedToClient   Client?        @relation("LeadConversion", fields: [convertedToClientId], references: [id])
+  activities          LeadActivity[]
+  quotations          Quotation[]
+  createdAt           DateTime       @default(now())
+  updatedAt           DateTime       @updatedAt
+}
+
+model LeadActivity {
+  id            String       @id @default(cuid())
+  leadId        String
+  lead          Lead         @relation(fields: [leadId], references: [id], onDelete: Cascade)
+  type          ActivityType
+  subject       String
+  notes         String?
+  performedById String?
+  performedBy   Employee?    @relation(fields: [performedById], references: [id])
+  activityDate  DateTime     @default(now())
+  createdAt     DateTime     @default(now())
+}
+
+model ServiceCatalog {
+  id             String          @id @default(cuid())
+  name           String
+  description    String?
+  category       String
+  basePrice      Float?
+  packages       Json?
+  isActive       Boolean         @default(true)
+  quotationItems QuotationItem[]
+  createdAt      DateTime        @default(now())
+  updatedAt      DateTime        @updatedAt
+}
+
+model Quotation {
+  id               String          @id @default(cuid())
+  quotationNumber  String          @unique
+  leadId           String?
+  lead             Lead?           @relation(fields: [leadId], references: [id])
+  clientId         String?
+  client           Client?         @relation(fields: [clientId], references: [id])
+  clientName       String
+  clientEmail      String?
+  status           QuotationStatus @default(DRAFT)
+  subtotal         Float           @default(0)
+  taxRate          Float           @default(16)
+  taxAmount        Float           @default(0)
+  discountAmount   Float           @default(0)
+  totalAmount      Float           @default(0)
+  validUntil       DateTime?
+  deliveryTimeline String?
+  projectScope     String?
+  terms            String?
+  notes            String?
+  sentAt           DateTime?
+  viewedAt         DateTime?
+  approvedAt       DateTime?
+  rejectedAt       DateTime?
+  rejectionReason  String?
+  createdById      String?
+  createdBy        Employee?       @relation(fields: [createdById], references: [id])
+  items            QuotationItem[]
+  createdAt        DateTime        @default(now())
+  updatedAt        DateTime        @updatedAt
+}
+
+model QuotationItem {
+  id          String          @id @default(cuid())
+  quotationId String
+  quotation   Quotation       @relation(fields: [quotationId], references: [id], onDelete: Cascade)
+  serviceId   String?
+  service     ServiceCatalog? @relation(fields: [serviceId], references: [id])
+  name        String
+  description String?
+  quantity    Int             @default(1)
+  unitPrice   Float
+  totalPrice  Float
+  createdAt   DateTime        @default(now())
+}
+
+model Client {
+  id            String          @id @default(cuid())
+  clientNumber  String          @unique
+  companyName   String
+  contactPerson String
+  phone         String?
+  whatsapp      String?
+  email         String?
+  address       String?
+  city          String?
+  country       String          @default("Kenya")
+  industry      String?
+  category      ClientCategory  @default(CORPORATE)
+  tags          String[]
+  website       String?
+  notes         String?
+  isActive      Boolean         @default(true)
+  createdById   String?
+  createdBy     Employee?       @relation("ClientCreator", fields: [createdById], references: [id])
+  assignedToId  String?
+  assignedTo    Employee?       @relation("ClientAssignee", fields: [assignedToId], references: [id])
+  leads         Lead[]          @relation("LeadConversion")
+  quotations    Quotation[]
+  services      ClientService[]
+  subscriptions Subscription[]
+  tasks         SalesTask[]
+  createdAt     DateTime        @default(now())
+  updatedAt     DateTime        @updatedAt
+}
+
+model ClientService {
+  id             String        @id @default(cuid())
+  clientId       String
+  client         Client        @relation(fields: [clientId], references: [id])
+  serviceName    String
+  description    String?
+  assignedTeam   String?
+  startDate      DateTime?
+  completionDate DateTime?
+  status         ServiceStatus @default(PENDING)
+  attachments    String[]
+  notes          String?
+  tasks          SalesTask[]
+  createdAt      DateTime      @default(now())
+  updatedAt      DateTime      @updatedAt
+}
+
+model Subscription {
+  id            String             @id @default(cuid())
+  clientId      String
+  client        Client             @relation(fields: [clientId], references: [id])
+  serviceName   String
+  description   String?
+  startDate     DateTime
+  expiryDate    DateTime
+  renewalPrice  Float
+  billingCycle  BillingCycle       @default(YEARLY)
+  status        SubscriptionStatus @default(ACTIVE)
+  autoRenew     Boolean            @default(false)
+  notes         String?
+  createdAt     DateTime           @default(now())
+  updatedAt     DateTime           @updatedAt
+}
+
+model SalesTask {
+  id              String            @id @default(cuid())
+  title           String
+  description     String?
+  clientId        String?
+  client          Client?           @relation(fields: [clientId], references: [id])
+  clientServiceId String?
+  clientService   ClientService?    @relation(fields: [clientServiceId], references: [id])
+  assignedToId    String?
+  assignedTo      Employee?         @relation("SalesTaskAssignee", fields: [assignedToId], references: [id])
+  createdById     String?
+  createdBy       Employee?         @relation("SalesTaskCreator", fields: [createdById], references: [id])
+  deadline        DateTime?
+  priority        SalesTaskPriority @default(MEDIUM)
+  status          SalesTaskStatus   @default(TODO)
+  notes           String?
+  createdAt       DateTime          @default(now())
+  updatedAt       DateTime          @updatedAt
+}
+
+model Portfolio {
+  id           String    @id @default(cuid())
+  clientName   String
+  industry     String?
+  serviceType  String
+  description  String?
+  projectImages String[]
+  completedAt  DateTime?
+  testimonial  String?
+  caseStudy    String?
+  isPublished  Boolean   @default(false)
+  createdAt    DateTime  @default(now())
+  updatedAt    DateTime  @updatedAt
 }

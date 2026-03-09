@@ -7,11 +7,12 @@ import {
   LayoutDashboard, Users, Building2, Clock, Calendar,
   DollarSign, Briefcase, BarChart3, Megaphone, Star,
   Bell, Search, Menu, X, LogOut, Settings, UserCircle,
-  Shield, ChevronDown, Building, CheckCircle
+  Shield, ChevronDown, Building, CheckCircle,
+  TrendingUp, Target, FileText, Users2, RotateCcw, FolderOpen, Package, ListTodo
 } from 'lucide-react'
 import { getInitials } from '@/lib/utils'
 
-const navItems = [
+const hrNavItems = [
   { href: '/dashboard', icon: LayoutDashboard, label: 'Dashboard', exact: true,
     roles: ['SUPER_ADMIN', 'HR_MANAGER', 'DEPARTMENT_HEAD', 'FINANCE_OFFICER', 'EMPLOYEE'] },
   { href: '/dashboard/employees', icon: Users, label: 'Employees',
@@ -36,6 +37,25 @@ const navItems = [
     roles: ['SUPER_ADMIN', 'HR_MANAGER', 'DEPARTMENT_HEAD', 'FINANCE_OFFICER', 'EMPLOYEE'] },
 ]
 
+const salesNavItems = [
+  { href: '/dashboard/sales', icon: TrendingUp, label: 'Sales Overview', exact: true,
+    roles: ['SUPER_ADMIN', 'HR_MANAGER', 'SALES_MANAGER', 'SALES_AGENT', 'FINANCE_OFFICER'] },
+  { href: '/dashboard/sales/leads', icon: Target, label: 'Leads',
+    roles: ['SUPER_ADMIN', 'HR_MANAGER', 'SALES_MANAGER', 'SALES_AGENT'] },
+  { href: '/dashboard/sales/quotations', icon: FileText, label: 'Quotations',
+    roles: ['SUPER_ADMIN', 'HR_MANAGER', 'SALES_MANAGER', 'SALES_AGENT', 'FINANCE_OFFICER'] },
+  { href: '/dashboard/sales/clients', icon: Users2, label: 'Clients',
+    roles: ['SUPER_ADMIN', 'HR_MANAGER', 'SALES_MANAGER', 'SALES_AGENT'] },
+  { href: '/dashboard/sales/subscriptions', icon: RotateCcw, label: 'Subscriptions',
+    roles: ['SUPER_ADMIN', 'HR_MANAGER', 'SALES_MANAGER', 'FINANCE_OFFICER'] },
+  { href: '/dashboard/sales/tasks', icon: ListTodo, label: 'Sales Tasks',
+    roles: ['SUPER_ADMIN', 'HR_MANAGER', 'SALES_MANAGER', 'SALES_AGENT'] },
+  { href: '/dashboard/sales/portfolio', icon: FolderOpen, label: 'Portfolio',
+    roles: ['SUPER_ADMIN', 'HR_MANAGER', 'SALES_MANAGER', 'SALES_AGENT', 'FINANCE_OFFICER', 'EMPLOYEE'] },
+  { href: '/dashboard/sales/reports', icon: BarChart3, label: 'Sales Reports',
+    roles: ['SUPER_ADMIN', 'HR_MANAGER', 'SALES_MANAGER', 'FINANCE_OFFICER'] },
+]
+
 export default function DashboardLayout({ children }: { children: React.ReactNode }) {
   const { data: session } = useSession()
   const pathname = usePathname()
@@ -49,7 +69,9 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
 
   const role = session?.user?.role || 'EMPLOYEE'
   const employee = session?.user?.employee
-  const filteredNav = navItems.filter(item => item.roles.includes(role))
+  const filteredHrNav = hrNavItems.filter(item => item.roles.includes(role))
+  const filteredSalesNav = salesNavItems.filter(item => item.roles.includes(role))
+  const allNavItems = [...hrNavItems, ...salesNavItems]
 
   const [notifOpen, setNotifOpen] = useState(false)
   const [notifications, setNotifications] = useState<any[]>([])
@@ -93,7 +115,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
     }
   }
 
-  function isActive(item: typeof navItems[0]) {
+  function isActive(item: typeof hrNavItems[0]) {
     if (item.exact) return pathname === item.href
     return pathname.startsWith(item.href)
   }
@@ -150,21 +172,49 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
         </div>
 
         {/* Nav */}
-        <nav className="flex-1 overflow-y-auto px-3 py-4 space-y-0.5">
-          {filteredNav.map(item => (
-            <Link key={item.href} href={item.href} onClick={() => setSidebarOpen(false)}
-              className={`
-                flex items-center gap-3 px-3.5 py-2.5 rounded-xl transition-all duration-150 group
-                ${isActive(item)
-                  ? 'bg-blue-600 text-white shadow-lg shadow-blue-600/30'
-                  : 'text-slate-400 hover:text-white hover:bg-slate-800'
-                }
-              `}>
-              <item.icon className={`w-4.5 h-4.5 flex-shrink-0 ${isActive(item) ? 'text-white' : 'text-slate-500 group-hover:text-slate-300'}`} style={{ width: '18px', height: '18px' }} />
-              <span className="font-medium text-sm">{item.label}</span>
-              {isActive(item) && <div className="ml-auto w-1.5 h-1.5 bg-white rounded-full" />}
-            </Link>
-          ))}
+        <nav className="flex-1 overflow-y-auto px-3 py-4">
+          {/* HR Section */}
+          <div className="space-y-0.5">
+            {filteredHrNav.map(item => (
+              <Link key={item.href} href={item.href} onClick={() => setSidebarOpen(false)}
+                className={`
+                  flex items-center gap-3 px-3.5 py-2.5 rounded-xl transition-all duration-150 group
+                  ${isActive(item)
+                    ? 'bg-blue-600 text-white shadow-lg shadow-blue-600/30'
+                    : 'text-slate-400 hover:text-white hover:bg-slate-800'
+                  }
+                `}>
+                <item.icon className={`w-4.5 h-4.5 flex-shrink-0 ${isActive(item) ? 'text-white' : 'text-slate-500 group-hover:text-slate-300'}`} style={{ width: '18px', height: '18px' }} />
+                <span className="font-medium text-sm">{item.label}</span>
+                {isActive(item) && <div className="ml-auto w-1.5 h-1.5 bg-white rounded-full" />}
+              </Link>
+            ))}
+          </div>
+
+          {/* Sales Section - only show if user has access to any sales item */}
+          {filteredSalesNav.length > 0 && (
+            <div className="mt-4">
+              <div className="px-3 mb-1">
+                <span className="text-xs font-bold text-slate-500 uppercase tracking-wider">Sales & CRM</span>
+              </div>
+              <div className="space-y-0.5">
+                {filteredSalesNav.map(item => (
+                  <Link key={item.href} href={item.href} onClick={() => setSidebarOpen(false)}
+                    className={`
+                      flex items-center gap-3 px-3.5 py-2.5 rounded-xl transition-all duration-150 group
+                      ${isActive(item)
+                        ? 'bg-blue-600 text-white shadow-lg shadow-blue-600/30'
+                        : 'text-slate-400 hover:text-white hover:bg-slate-800'
+                      }
+                    `}>
+                    <item.icon className={`w-4.5 h-4.5 flex-shrink-0 ${isActive(item) ? 'text-white' : 'text-slate-500 group-hover:text-slate-300'}`} style={{ width: '18px', height: '18px' }} />
+                    <span className="font-medium text-sm">{item.label}</span>
+                    {isActive(item) && <div className="ml-auto w-1.5 h-1.5 bg-white rounded-full" />}
+                  </Link>
+                ))}
+              </div>
+            </div>
+          )}
         </nav>
 
         {/* Footer */}
@@ -187,7 +237,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
             </button>
             <div>
               <div className="text-sm font-bold text-slate-900">
-                {filteredNav.find(n => isActive(n))?.label || 'Dashboard'}
+                {allNavItems.filter(item => item.roles.includes(role)).find(n => isActive(n))?.label || 'Dashboard'}
               </div>
               <div className="text-xs text-slate-400 hidden sm:block">
                 {currentTime.toLocaleDateString('en-KE', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' })}
