@@ -29,6 +29,7 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
     const employee = await prisma.employee.findUnique({
       where: { id },
       include: { department: { select: { name: true } } },
+      // personalEmail needed to target personal inbox for contract
     })
     if (!employee) return NextResponse.json({ error: 'Employee not found' }, { status: 404 })
 
@@ -52,8 +53,9 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
     })
 
     const signingUrl = `${process.env.NEXT_PUBLIC_APP_URL}/contract/sign/${contract.token}`
+    const contractRecipient = employee.personalEmail || employee.email
     await sendEmail({
-      to: employee.email,
+      to: contractRecipient,
       subject: 'Your Employment Contract — Please Sign',
       html: contractEmailHtml(`${employee.firstName} ${employee.lastName}`, signingUrl),
     })

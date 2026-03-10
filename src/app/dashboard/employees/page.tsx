@@ -182,6 +182,26 @@ export default function EmployeesPage() {
   )
 }
 
+function FormField({ label, name, type = 'text', required = false, opts, form, set }: any) {
+  return (
+    <div>
+      <label className="block text-xs font-semibold text-slate-500 mb-1.5">
+        {label}{required && <span className="text-red-500 ml-0.5">*</span>}
+      </label>
+      {opts ? (
+        <select value={form[name]} onChange={e => set(name, e.target.value)} required={required}
+          className="w-full px-3 py-2.5 text-sm border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white text-slate-900">
+          <option value="">Select...</option>
+          {opts.map((o: any) => <option key={o.value ?? o} value={o.value ?? o}>{o.label ?? o.replace(/_/g, ' ')}</option>)}
+        </select>
+      ) : (
+        <input type={type} value={form[name]} onChange={e => set(name, e.target.value)} required={required}
+          className="w-full px-3 py-2.5 text-sm border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white text-slate-900" />
+      )}
+    </div>
+  )
+}
+
 function EmployeeFormModal({ employee, departments, employees, onClose, onSave }: any) {
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
@@ -206,7 +226,11 @@ function EmployeeFormModal({ employee, departments, employees, onClose, onSave }
     basicSalary: employee?.basicSalary || '',
     managerId: employee?.managerId || '',
     bankName: employee?.bankName || '',
+    bankBranch: employee?.bankBranch || '',
+    bankCode: employee?.bankCode || '',
     bankAccount: employee?.bankAccount || '',
+    mpesaPhone: employee?.mpesaPhone || '',
+    kraPin: employee?.kraPin || '',
     emergencyContact: employee?.emergencyContact || '',
     emergencyPhone: employee?.emergencyPhone || '',
     role: 'EMPLOYEE',
@@ -220,14 +244,10 @@ function EmployeeFormModal({ employee, departments, employees, onClose, onSave }
 
   const set = (k: string, v: string) => setForm(p => ({ ...p, [k]: v }))
 
-  async function handleFileUpload(field: string, file: File) {
-    const MAX = 4 * 1024 * 1024
-    if (file.size > MAX) { setError(`${file.name} is too large. Maximum 4 MB per document.`); return }
-    setError('')
-    const reader = new FileReader()
-    reader.onload = e => set(field, e.target?.result as string)
-    reader.readAsDataURL(file)
-  }
+  // For new employees: store locally in form state
+  function setDocLocal(field: string, dataUrl: string) { set(field, dataUrl) }
+  // For existing employees: DocUpload uploads directly; update local preview too
+  function onDocSaved(field: string, dataUrl: string) { set(field, dataUrl) }
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault()
@@ -236,10 +256,15 @@ function EmployeeFormModal({ employee, departments, employees, onClose, onSave }
     try {
       const url = employee ? `/api/employees/${employee.id}` : '/api/employees'
       const method = employee ? 'PATCH' : 'POST'
+      // For existing employees, documents are already uploaded individually — exclude from payload
+      const docFields = ['idFrontUrl','idBackUrl','passportPhotoUrl','kraPinUrl','nhifCardUrl','nssfCardUrl']
+      const payload = employee
+        ? Object.fromEntries(Object.entries(form).filter(([k]) => !docFields.includes(k)))
+        : form
       const res = await fetch(url, {
         method,
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(form),
+        body: JSON.stringify(payload),
       })
       const data = await res.json()
       if (!res.ok) throw new Error(data.error)
@@ -258,22 +283,6 @@ function EmployeeFormModal({ employee, departments, employees, onClose, onSave }
     { id: 'documents', label: 'Documents' },
   ]
   const tabOrder = ['personal', 'employment', 'financial', 'documents']
-
-  const F = ({ label, name, type = 'text', required = false, opts }: any) => (
-    <div>
-      <label className="block text-xs font-semibold text-slate-500 mb-1.5">{label}{required && <span className="text-red-500 ml-0.5">*</span>}</label>
-      {opts ? (
-        <select value={(form as any)[name]} onChange={e => set(name, e.target.value)} required={required}
-          className="w-full px-3 py-2.5 text-sm border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white text-slate-900">
-          <option value="">Select...</option>
-          {opts.map((o: any) => <option key={o.value || o} value={o.value || o}>{o.label || o.replace('_', ' ')}</option>)}
-        </select>
-      ) : (
-        <input type={type} value={(form as any)[name]} onChange={e => set(name, e.target.value)} required={required}
-          className="w-full px-3 py-2.5 text-sm border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white text-slate-900" />
-      )}
-    </div>
-  )
 
   // send contract resend action for existing employee
   async function resendContract() {
@@ -323,47 +332,62 @@ function EmployeeFormModal({ employee, departments, employees, onClose, onSave }
 
             {activeTab === 'personal' && (
               <div className="grid grid-cols-2 gap-4">
-                <F label="First Name" name="firstName" required />
-                <F label="Last Name" name="lastName" required />
-                <F label="Work Email" name="email" type="email" required />
-                <F label="Personal Email" name="personalEmail" type="email" />
-                <F label="Phone Number" name="phone" required />
-                <F label="National ID / Passport" name="nationalId" />
-                <F label="Date of Birth" name="dateOfBirth" type="date" />
-                <F label="Gender" name="gender" opts={[{value:'Male',label:'Male'},{value:'Female',label:'Female'},{value:'Other',label:'Other / Prefer not to say'}]} />
-                <F label="City" name="city" />
-                <F label="Address" name="address" />
-                <F label="Emergency Contact Name" name="emergencyContact" />
-                <F label="Emergency Contact Phone" name="emergencyPhone" />
+                <FormField label="First Name" name="firstName" required form={form} set={set} />
+                <FormField label="Last Name" name="lastName" required form={form} set={set} />
+                <FormField label="Work Email" name="email" type="email" required form={form} set={set} />
+                <FormField label="Personal Email" name="personalEmail" type="email" form={form} set={set} />
+                <FormField label="Phone Number" name="phone" required form={form} set={set} />
+                <FormField label="National ID / Passport" name="nationalId" form={form} set={set} />
+                <FormField label="Date of Birth" name="dateOfBirth" type="date" form={form} set={set} />
+                <FormField label="Gender" name="gender" opts={[{value:'Male',label:'Male'},{value:'Female',label:'Female'},{value:'Other',label:'Other / Prefer not to say'}]} form={form} set={set} />
+                <FormField label="City" name="city" form={form} set={set} />
+                <FormField label="Address" name="address" form={form} set={set} />
+                <FormField label="Emergency Contact Name" name="emergencyContact" form={form} set={set} />
+                <FormField label="Emergency Contact Phone" name="emergencyPhone" form={form} set={set} />
               </div>
             )}
 
             {activeTab === 'employment' && (
               <div className="grid grid-cols-2 gap-4">
-                <F label="Job Title" name="jobTitle" required />
-                <F label="Department" name="departmentId" opts={departments.map((d: any) => ({ value: d.id, label: d.name }))} />
-                <F label="Employment Type" name="employmentType" opts={['FULL_TIME','CONTRACT','INTERN','CONSULTANT'].map(v => ({ value: v, label: v.replace('_', ' ') }))} />
-                <F label="Employment Status" name="employmentStatus" opts={['ACTIVE','PROBATION','ON_LEAVE','SUSPENDED','RESIGNED','TERMINATED'].map(v => ({ value: v, label: v.replace('_', ' ') }))} />
-                <F label="Date Hired" name="dateHired" type="date" required />
-                <F label="Probation End Date" name="probationEndDate" type="date" />
-                <F label="Reporting Manager" name="managerId"
-                  opts={employees.filter((e: any) => e.id !== employee?.id).map((e: any) => ({ value: e.id, label: `${e.firstName} ${e.lastName} — ${e.jobTitle}` }))} />
-                <F label="System Role" name="role" opts={[
+                <FormField label="Job Title" name="jobTitle" required form={form} set={set} />
+                <FormField label="Department" name="departmentId" opts={departments.map((d: any) => ({ value: d.id, label: d.name }))} form={form} set={set} />
+                <FormField label="Employment Type" name="employmentType" opts={['FULL_TIME','CONTRACT','INTERN','CONSULTANT'].map(v => ({ value: v, label: v.replace('_', ' ') }))} form={form} set={set} />
+                <FormField label="Employment Status" name="employmentStatus" opts={['ACTIVE','PROBATION','ON_LEAVE','SUSPENDED','RESIGNED','TERMINATED'].map(v => ({ value: v, label: v.replace('_', ' ') }))} form={form} set={set} />
+                <FormField label="Date Hired" name="dateHired" type="date" required form={form} set={set} />
+                <FormField label="Probation End Date" name="probationEndDate" type="date" form={form} set={set} />
+                <FormField label="Reporting Manager" name="managerId"
+                  opts={employees.filter((e: any) => e.id !== employee?.id).map((e: any) => ({ value: e.id, label: `${e.firstName} ${e.lastName} — ${e.jobTitle}` }))}
+                  form={form} set={set} />
+                <FormField label="System Role" name="role" opts={[
                   {value:'EMPLOYEE',label:'Employee (Self-Service)'},
                   {value:'DEPARTMENT_HEAD',label:'Department Head'},
                   {value:'HR_MANAGER',label:'HR Manager'},
                   {value:'FINANCE_OFFICER',label:'Finance Officer'},
                   {value:'SUPER_ADMIN',label:'Super Admin'},
-                ]} />
+                ]} form={form} set={set} />
               </div>
             )}
 
             {activeTab === 'financial' && (
               <div className="grid grid-cols-2 gap-4">
-                <F label="Basic Salary (KES)" name="basicSalary" type="number" />
-                <div />
-                <F label="Bank Name" name="bankName" />
-                <F label="Bank Account Number" name="bankAccount" />
+                <FormField label="Basic Salary (KES)" name="basicSalary" type="number" form={form} set={set} />
+                <FormField label="KRA PIN" name="kraPin" form={form} set={set} />
+                <div className="col-span-2 pt-1 pb-0.5">
+                  <p className="text-xs font-bold text-slate-400 uppercase tracking-wider">Bank Details</p>
+                </div>
+                <FormField label="Bank Name" name="bankName" opts={[
+                  'KCB Bank','Equity Bank','Co-operative Bank','NCBA Bank','Absa Bank',
+                  'Standard Chartered','DTB Bank','Family Bank','I&M Bank','Stanbic Bank',
+                  'Prime Bank','NIC Bank','Sidian Bank','Guaranty Trust Bank','HFC Bank',
+                  'Bank of Africa','UBA Kenya','Gulf African Bank','First Community Bank','Consolidated Bank',
+                ].map(b => ({ value: b, label: b }))} form={form} set={set} />
+                <FormField label="Bank Branch" name="bankBranch" form={form} set={set} />
+                <FormField label="Bank Code (Branch Code)" name="bankCode" form={form} set={set} />
+                <FormField label="Account Number" name="bankAccount" form={form} set={set} />
+                <div className="col-span-2 pt-1 pb-0.5">
+                  <p className="text-xs font-bold text-slate-400 uppercase tracking-wider">Mobile Money</p>
+                </div>
+                <FormField label="M-Pesa Phone Number" name="mpesaPhone" form={form} set={set} />
               </div>
             )}
 
@@ -374,12 +398,26 @@ function EmployeeFormModal({ employee, departments, employees, onClose, onSave }
                   {!employee && <span className="font-semibold text-blue-700"> An employment contract will be auto-generated and emailed for digital signing when you save.</span>}
                 </p>
                 <div className="grid grid-cols-2 gap-4">
-                  <DocUpload label="National ID — Front" field="idFrontUrl" value={form.idFrontUrl} onUpload={handleFileUpload} onClear={() => set('idFrontUrl', '')} />
-                  <DocUpload label="National ID — Back" field="idBackUrl" value={form.idBackUrl} onUpload={handleFileUpload} onClear={() => set('idBackUrl', '')} />
-                  <DocUpload label="Passport Photo" field="passportPhotoUrl" value={form.passportPhotoUrl} onUpload={handleFileUpload} onClear={() => set('passportPhotoUrl', '')} />
-                  <DocUpload label="KRA PIN Certificate" field="kraPinUrl" value={form.kraPinUrl} onUpload={handleFileUpload} onClear={() => set('kraPinUrl', '')} />
-                  <DocUpload label="NHIF Card" field="nhifCardUrl" value={form.nhifCardUrl} onUpload={handleFileUpload} onClear={() => set('nhifCardUrl', '')} />
-                  <DocUpload label="NSSF Card" field="nssfCardUrl" value={form.nssfCardUrl} onUpload={handleFileUpload} onClear={() => set('nssfCardUrl', '')} />
+                  {(['idFrontUrl','idBackUrl','passportPhotoUrl','kraPinUrl','nhifCardUrl','nssfCardUrl'] as const).map((field, i) => (
+                    <DocUpload key={field}
+                      label={['National ID — Front','National ID — Back','Passport Photo','KRA PIN Certificate','NHIF Card','NSSF Card'][i]}
+                      field={field}
+                      value={form[field]}
+                      employeeId={employee?.id}
+                      onSaved={onDocSaved}
+                      onSetLocal={setDocLocal}
+                      onClear={() => {
+                        set(field, '')
+                        if (employee?.id) {
+                          fetch(`/api/employees/${employee.id}/documents`, {
+                            method: 'PATCH',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify({ field, value: null }),
+                          }).catch(console.error)
+                        }
+                      }}
+                    />
+                  ))}
                 </div>
               </div>
             )}
@@ -417,16 +455,47 @@ function EmployeeFormModal({ employee, departments, employees, onClose, onSave }
   )
 }
 
-function DocUpload({ label, field, value, onUpload, onClear }: {
+function DocUpload({ label, field, value, employeeId, onSaved, onSetLocal, onClear }: {
   label: string
   field: string
   value: string
-  onUpload: (field: string, file: File) => void
+  employeeId?: string   // if set → upload immediately; otherwise store locally for new employee
+  onSaved?: (field: string, dataUrl: string) => void
+  onSetLocal?: (field: string, dataUrl: string) => void
   onClear: () => void
 }) {
   const inputRef = useRef<HTMLInputElement>(null)
+  const [uploading, setUploading] = useState(false)
+  const [err, setErr] = useState('')
   const isImage = value.startsWith('data:image')
-  const isPdf = value.startsWith('data:application/pdf')
+
+  async function handleFile(file: File) {
+    const MAX = 4 * 1024 * 1024
+    if (file.size > MAX) { setErr('Max 4 MB per file'); return }
+    setErr('')
+    const reader = new FileReader()
+    reader.onload = async e => {
+      const dataUrl = e.target?.result as string
+      if (employeeId) {
+        // Existing employee — upload immediately
+        setUploading(true)
+        try {
+          const res = await fetch(`/api/employees/${employeeId}/documents`, {
+            method: 'PATCH',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ field, value: dataUrl }),
+          })
+          if (!res.ok) { setErr('Upload failed'); return }
+          onSaved?.(field, dataUrl)
+        } catch { setErr('Upload failed') }
+        finally { setUploading(false) }
+      } else {
+        // New employee — store locally, send with form POST
+        onSetLocal?.(field, dataUrl)
+      }
+    }
+    reader.readAsDataURL(file)
+  }
 
   return (
     <div className="space-y-1.5">
@@ -445,17 +514,22 @@ function DocUpload({ label, field, value, onUpload, onClear }: {
             className="absolute top-2 right-2 w-6 h-6 bg-red-500 text-white rounded-full flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity shadow">
             <X className="w-3 h-3" />
           </button>
+          {employeeId && (
+            <div className="absolute bottom-2 left-2 bg-green-500 text-white text-xs px-2 py-0.5 rounded-full font-semibold">Saved</div>
+          )}
         </div>
       ) : (
-        <button type="button" onClick={() => inputRef.current?.click()}
-          className="w-full h-28 border-2 border-dashed border-slate-200 rounded-xl flex flex-col items-center justify-center gap-2 text-slate-400 hover:border-blue-400 hover:text-blue-500 hover:bg-blue-50 transition-colors">
-          <Upload className="w-5 h-5" />
-          <span className="text-xs font-medium">Click to upload</span>
-          <span className="text-xs text-slate-300">JPG, PNG or PDF</span>
+        <button type="button" onClick={() => inputRef.current?.click()} disabled={uploading}
+          className="w-full h-28 border-2 border-dashed border-slate-200 rounded-xl flex flex-col items-center justify-center gap-2 text-slate-400 hover:border-blue-400 hover:text-blue-500 hover:bg-blue-50 transition-colors disabled:opacity-60">
+          {uploading
+            ? <><div className="w-5 h-5 border-2 border-blue-400 border-t-transparent rounded-full animate-spin" /><span className="text-xs">Uploading...</span></>
+            : <><Upload className="w-5 h-5" /><span className="text-xs font-medium">Click to upload</span><span className="text-xs text-slate-300">JPG, PNG or PDF · max 4 MB</span></>
+          }
         </button>
       )}
+      {err && <p className="text-xs text-red-500">{err}</p>}
       <input ref={inputRef} type="file" accept="image/*,.pdf" className="hidden"
-        onChange={e => { const f = e.target.files?.[0]; if (f) onUpload(field, f); e.target.value = '' }} />
+        onChange={e => { const f = e.target.files?.[0]; if (f) handleFile(f); e.target.value = '' }} />
     </div>
   )
 }

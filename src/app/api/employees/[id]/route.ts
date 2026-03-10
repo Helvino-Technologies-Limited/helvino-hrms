@@ -35,18 +35,21 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
     if (!session) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     const { id } = await params
     const body = await req.json()
-    const updateData: any = { ...body }
-    if (body.dateOfBirth) updateData.dateOfBirth = new Date(body.dateOfBirth)
-    else if (body.dateOfBirth === '') updateData.dateOfBirth = null
-    if (body.dateHired) updateData.dateHired = new Date(body.dateHired)
-    if (body.probationEndDate) updateData.probationEndDate = new Date(body.probationEndDate)
-    else if (body.probationEndDate === '') updateData.probationEndDate = null
-    if (body.basicSalary) updateData.basicSalary = parseFloat(body.basicSalary)
+
+    // Strip document fields and non-Employee fields — these go through /documents endpoint
+    const docFields = ['idFrontUrl','idBackUrl','passportPhotoUrl','kraPinUrl','nhifCardUrl','nssfCardUrl']
+    const { role: newRole, ...rest } = body
+    const updateData: any = Object.fromEntries(
+      Object.entries(rest).filter(([k]) => !docFields.includes(k))
+    )
+
+    // Coerce types — never let an empty string reach a typed Prisma field
+    updateData.dateOfBirth = body.dateOfBirth ? new Date(body.dateOfBirth) : null
+    updateData.dateHired = body.dateHired ? new Date(body.dateHired) : undefined
+    updateData.probationEndDate = body.probationEndDate ? new Date(body.probationEndDate) : null
+    updateData.basicSalary = body.basicSalary !== '' && body.basicSalary != null ? parseFloat(body.basicSalary) : null
     if (body.departmentId === '') updateData.departmentId = null
     if (body.managerId === '') updateData.managerId = null
-    // Role lives on User, not Employee — update separately
-    const newRole = updateData.role
-    delete updateData.role
     const employee = await prisma.employee.update({
       where: { id },
       data: updateData,
@@ -57,13 +60,14 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
       await prisma.user.updateMany({ where: { employeeId: id }, data: { role: newRole } })
     }
     // Exclude large base64 doc fields from audit log
-    const docFields = ['idFrontUrl','idBackUrl','passportPhotoUrl','kraPinUrl','nhifCardUrl','nssfCardUrl','profilePhoto']
-    const auditValues = Object.fromEntries(Object.entries(body).filter(([k]) => !docFields.includes(k))) as any
+    const auditExcludes = [...docFields, 'profilePhoto']
+    const auditValues = Object.fromEntries(Object.entries(body).filter(([k]) => !auditExcludes.includes(k))) as any
     await prisma.auditLog.create({ data: { action: 'UPDATE', entity: 'Employee', entityId: id, newValues: auditValues } })
     return NextResponse.json(employee)
   } catch (error: any) {
+    console.error('PATCH /api/employees/[id] error:', error)
     if (error.code === 'P2002') return NextResponse.json({ error: 'Email already in use' }, { status: 400 })
-    return NextResponse.json({ error: 'Failed to update employee' }, { status: 500 })
+    return NextResponse.json({ error: error.message || 'Failed to update employee' }, { status: 500 })
   }
 }
 

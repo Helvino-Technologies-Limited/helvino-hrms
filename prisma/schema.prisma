@@ -232,7 +232,11 @@ model Employee {
   probationEndDate DateTime?
   basicSalary      Float?
   bankName         String?
+  bankBranch       String?
+  bankCode         String?
   bankAccount      String?
+  mpesaPhone       String?
+  kraPin           String?
   managerId        String?
   manager          Employee?           @relation("Reports", fields: [managerId], references: [id])
   directReports    Employee[]          @relation("Reports")

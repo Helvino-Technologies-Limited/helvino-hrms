@@ -78,7 +78,11 @@ export async function POST(req: NextRequest) {
         basicSalary: body.basicSalary ? parseFloat(body.basicSalary) : null,
         managerId: body.managerId || null,
         bankName: body.bankName || null,
+        bankBranch: body.bankBranch || null,
+        bankCode: body.bankCode || null,
         bankAccount: body.bankAccount || null,
+        mpesaPhone: body.mpesaPhone || null,
+        kraPin: body.kraPin || null,
         emergencyContact: body.emergencyContact || null,
         emergencyPhone: body.emergencyPhone || null,
         idFrontUrl: body.idFrontUrl || null,
@@ -150,8 +154,9 @@ export async function POST(req: NextRequest) {
       },
     })
     const signingUrl = `${process.env.NEXT_PUBLIC_APP_URL}/contract/sign/${contract.token}`
+    const contractRecipient = body.personalEmail || body.email
     sendEmail({
-      to: body.email,
+      to: contractRecipient,
       subject: 'Your Employment Contract — Please Sign',
       html: contractEmailHtml(`${body.firstName} ${body.lastName}`, signingUrl),
     }).catch(console.error)
