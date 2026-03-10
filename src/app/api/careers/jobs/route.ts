@@ -49,7 +49,11 @@ export async function GET(request: NextRequest) {
       orderBy: { postedAt: 'desc' },
     })
 
-    return NextResponse.json(jobs)
+    const flat = jobs.map(j => ({
+      ...j,
+      department: j.department?.name ?? '',
+    }))
+    return NextResponse.json(flat)
   } catch (error) {
     console.error('GET /api/careers/jobs error:', error)
     return NextResponse.json({ error: 'Failed to fetch jobs' }, { status: 500 })
