@@ -37,17 +37,29 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
     const body = await req.json()
     const updateData: any = { ...body }
     if (body.dateOfBirth) updateData.dateOfBirth = new Date(body.dateOfBirth)
+    else if (body.dateOfBirth === '') updateData.dateOfBirth = null
     if (body.dateHired) updateData.dateHired = new Date(body.dateHired)
     if (body.probationEndDate) updateData.probationEndDate = new Date(body.probationEndDate)
+    else if (body.probationEndDate === '') updateData.probationEndDate = null
     if (body.basicSalary) updateData.basicSalary = parseFloat(body.basicSalary)
     if (body.departmentId === '') updateData.departmentId = null
     if (body.managerId === '') updateData.managerId = null
+    // Role lives on User, not Employee — update separately
+    const newRole = updateData.role
+    delete updateData.role
     const employee = await prisma.employee.update({
       where: { id },
       data: updateData,
       include: { department: true },
     })
-    await prisma.auditLog.create({ data: { action: 'UPDATE', entity: 'Employee', entityId: id, newValues: body } })
+    // Update user role if changed
+    if (newRole) {
+      await prisma.user.updateMany({ where: { employeeId: id }, data: { role: newRole } })
+    }
+    // Exclude large base64 doc fields from audit log
+    const docFields = ['idFrontUrl','idBackUrl','passportPhotoUrl','kraPinUrl','nhifCardUrl','nssfCardUrl','profilePhoto']
+    const auditValues = Object.fromEntries(Object.entries(body).filter(([k]) => !docFields.includes(k))) as any
+    await prisma.auditLog.create({ data: { action: 'UPDATE', entity: 'Employee', entityId: id, newValues: auditValues } })
     return NextResponse.json(employee)
   } catch (error: any) {
     if (error.code === 'P2002') return NextResponse.json({ error: 'Email already in use' }, { status: 400 })

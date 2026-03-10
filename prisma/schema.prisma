@@ -238,6 +238,13 @@ model Employee {
   directReports    Employee[]          @relation("Reports")
   contractUrl      String?
   ndaUrl           String?
+  idFrontUrl       String?
+  idBackUrl        String?
+  passportPhotoUrl String?
+  kraPinUrl        String?
+  nhifCardUrl      String?
+  nssfCardUrl      String?
+  employmentContract EmploymentContract?
   emergencyContact String?
   emergencyPhone   String?
   user             User?
@@ -736,4 +743,18 @@ model Portfolio {
   isPublished   Boolean   @default(false)
   createdAt     DateTime  @default(now())
   updatedAt     DateTime  @updatedAt
+}
+
+model EmploymentContract {
+  id           String    @id @default(cuid())
+  employeeId   String    @unique
+  employee     Employee  @relation(fields: [employeeId], references: [id], onDelete: Cascade)
+  token        String    @unique @default(cuid())
+  contractHtml String    @db.Text
+  sentAt       DateTime?
+  signedAt     DateTime?
+  signedByName String?
+  signedByIp   String?
+  createdAt    DateTime  @default(now())
+  updatedAt    DateTime  @updatedAt
 }

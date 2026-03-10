@@ -1,7 +1,7 @@
 'use client'
-import { useEffect, useState, useCallback } from 'react'
+import { useEffect, useState, useCallback, useRef } from 'react'
 import Link from 'next/link'
-import { Plus, Search, Eye, Edit, Mail, Phone, UserX, Download } from 'lucide-react'
+import { Plus, Search, Eye, Edit, Mail, Phone, UserX, Upload, X, FileText, Image, Send } from 'lucide-react'
 import { formatDate } from '@/lib/utils'
 import toast from 'react-hot-toast'
 
@@ -210,9 +210,24 @@ function EmployeeFormModal({ employee, departments, employees, onClose, onSave }
     emergencyContact: employee?.emergencyContact || '',
     emergencyPhone: employee?.emergencyPhone || '',
     role: 'EMPLOYEE',
+    idFrontUrl: employee?.idFrontUrl || '',
+    idBackUrl: employee?.idBackUrl || '',
+    passportPhotoUrl: employee?.passportPhotoUrl || '',
+    kraPinUrl: employee?.kraPinUrl || '',
+    nhifCardUrl: employee?.nhifCardUrl || '',
+    nssfCardUrl: employee?.nssfCardUrl || '',
   })
 
   const set = (k: string, v: string) => setForm(p => ({ ...p, [k]: v }))
+
+  async function handleFileUpload(field: string, file: File) {
+    const MAX = 4 * 1024 * 1024
+    if (file.size > MAX) { setError(`${file.name} is too large. Maximum 4 MB per document.`); return }
+    setError('')
+    const reader = new FileReader()
+    reader.onload = e => set(field, e.target?.result as string)
+    reader.readAsDataURL(file)
+  }
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault()
@@ -240,7 +255,9 @@ function EmployeeFormModal({ employee, departments, employees, onClose, onSave }
     { id: 'personal', label: 'Personal' },
     { id: 'employment', label: 'Employment' },
     { id: 'financial', label: 'Financial' },
+    { id: 'documents', label: 'Documents' },
   ]
+  const tabOrder = ['personal', 'employment', 'financial', 'documents']
 
   const F = ({ label, name, type = 'text', required = false, opts }: any) => (
     <div>
@@ -258,6 +275,19 @@ function EmployeeFormModal({ employee, departments, employees, onClose, onSave }
     </div>
   )
 
+  // send contract resend action for existing employee
+  async function resendContract() {
+    if (!employee) return
+    try {
+      const res = await fetch(`/api/employees/${employee.id}/contract`, { method: 'POST' })
+      const data = await res.json()
+      if (!res.ok) { toast.error(data.error); return }
+      toast.success('Contract sent to employee\'s email!')
+    } catch {
+      toast.error('Failed to send contract')
+    }
+  }
+
   return (
     <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center bg-black/60 backdrop-blur-sm p-0 sm:p-4">
       <div className="bg-white rounded-t-3xl sm:rounded-3xl w-full sm:max-w-3xl max-h-[95vh] overflow-hidden flex flex-col">
@@ -266,7 +296,15 @@ function EmployeeFormModal({ employee, departments, employees, onClose, onSave }
             <h2 className="text-lg font-bold text-slate-900">{employee ? 'Edit Employee' : 'Add New Employee'}</h2>
             <p className="text-slate-500 text-xs mt-0.5">{employee ? `Editing ${employee.firstName} ${employee.lastName}` : 'Fill in the employee details below'}</p>
           </div>
-          <button onClick={onClose} className="text-slate-400 hover:text-slate-600 w-8 h-8 flex items-center justify-center rounded-lg hover:bg-slate-100">✕</button>
+          <div className="flex items-center gap-2">
+            {employee && (
+              <button type="button" onClick={resendContract}
+                className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold bg-blue-50 text-blue-700 hover:bg-blue-100 rounded-lg transition-colors border border-blue-200">
+                <Send className="w-3 h-3" />Resend Contract
+              </button>
+            )}
+            <button onClick={onClose} className="text-slate-400 hover:text-slate-600 w-8 h-8 flex items-center justify-center rounded-lg hover:bg-slate-100">✕</button>
+          </div>
         </div>
 
         {/* Tabs */}
@@ -323,33 +361,101 @@ function EmployeeFormModal({ employee, departments, employees, onClose, onSave }
             {activeTab === 'financial' && (
               <div className="grid grid-cols-2 gap-4">
                 <F label="Basic Salary (KES)" name="basicSalary" type="number" />
-                <div /> {/* spacer */}
+                <div />
                 <F label="Bank Name" name="bankName" />
                 <F label="Bank Account Number" name="bankAccount" />
+              </div>
+            )}
+
+            {activeTab === 'documents' && (
+              <div className="space-y-4">
+                <p className="text-xs text-slate-500 bg-blue-50 border border-blue-100 rounded-xl p-3">
+                  Upload supporting documents. Accepted: images (JPG, PNG) and PDFs. Max 4 MB each.
+                  {!employee && <span className="font-semibold text-blue-700"> An employment contract will be auto-generated and emailed for digital signing when you save.</span>}
+                </p>
+                <div className="grid grid-cols-2 gap-4">
+                  <DocUpload label="National ID — Front" field="idFrontUrl" value={form.idFrontUrl} onUpload={handleFileUpload} onClear={() => set('idFrontUrl', '')} />
+                  <DocUpload label="National ID — Back" field="idBackUrl" value={form.idBackUrl} onUpload={handleFileUpload} onClear={() => set('idBackUrl', '')} />
+                  <DocUpload label="Passport Photo" field="passportPhotoUrl" value={form.passportPhotoUrl} onUpload={handleFileUpload} onClear={() => set('passportPhotoUrl', '')} />
+                  <DocUpload label="KRA PIN Certificate" field="kraPinUrl" value={form.kraPinUrl} onUpload={handleFileUpload} onClear={() => set('kraPinUrl', '')} />
+                  <DocUpload label="NHIF Card" field="nhifCardUrl" value={form.nhifCardUrl} onUpload={handleFileUpload} onClear={() => set('nhifCardUrl', '')} />
+                  <DocUpload label="NSSF Card" field="nssfCardUrl" value={form.nssfCardUrl} onUpload={handleFileUpload} onClear={() => set('nssfCardUrl', '')} />
+                </div>
               </div>
             )}
           </div>
 
           <div className="flex gap-3 px-6 py-4 border-t border-slate-200 bg-slate-50 flex-shrink-0">
             {activeTab !== 'personal' && (
-              <button type="button" onClick={() => setActiveTab(activeTab === 'financial' ? 'employment' : 'personal')}
-                className="px-4 py-2.5 border border-slate-200 bg-white text-slate-700 rounded-xl font-semibold hover:bg-slate-50 text-sm">← Back</button>
+              <button type="button"
+                onClick={() => setActiveTab(tabOrder[tabOrder.indexOf(activeTab) - 1])}
+                className="px-4 py-2.5 border border-slate-200 bg-white text-slate-700 rounded-xl font-semibold hover:bg-slate-50 text-sm">
+                ← Back
+              </button>
             )}
-            {activeTab !== 'financial' ? (
-              <button type="button" onClick={() => setActiveTab(activeTab === 'personal' ? 'employment' : 'financial')}
-                className="flex-1 bg-slate-900 text-white py-2.5 rounded-xl font-semibold text-sm">Next →</button>
+            {activeTab !== 'documents' ? (
+              <button type="button"
+                onClick={() => setActiveTab(tabOrder[tabOrder.indexOf(activeTab) + 1])}
+                className="flex-1 bg-slate-900 text-white py-2.5 rounded-xl font-semibold text-sm">
+                Next →
+              </button>
             ) : (
               <>
                 <button type="button" onClick={onClose} className="px-4 py-2.5 border border-slate-200 bg-white text-slate-700 rounded-xl font-semibold text-sm">Cancel</button>
                 <button type="submit" disabled={loading}
                   className="flex-1 bg-blue-600 hover:bg-blue-700 text-white py-2.5 rounded-xl font-bold text-sm flex items-center justify-center gap-2">
-                  {loading ? <><div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />Saving...</> : (employee ? '💾 Update Employee' : '✅ Add Employee')}
+                  {loading
+                    ? <><div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />Saving...</>
+                    : employee ? '💾 Update Employee' : '✅ Add Employee & Send Contract'}
                 </button>
               </>
             )}
           </div>
         </form>
       </div>
+    </div>
+  )
+}
+
+function DocUpload({ label, field, value, onUpload, onClear }: {
+  label: string
+  field: string
+  value: string
+  onUpload: (field: string, file: File) => void
+  onClear: () => void
+}) {
+  const inputRef = useRef<HTMLInputElement>(null)
+  const isImage = value.startsWith('data:image')
+  const isPdf = value.startsWith('data:application/pdf')
+
+  return (
+    <div className="space-y-1.5">
+      <label className="block text-xs font-semibold text-slate-500">{label}</label>
+      {value ? (
+        <div className="relative border border-slate-200 rounded-xl overflow-hidden bg-slate-50 group">
+          {isImage ? (
+            <img src={value} alt={label} className="w-full h-28 object-cover" />
+          ) : (
+            <div className="h-28 flex flex-col items-center justify-center gap-2">
+              <FileText className="w-8 h-8 text-slate-400" />
+              <span className="text-xs text-slate-500 font-medium">PDF Uploaded</span>
+            </div>
+          )}
+          <button type="button" onClick={onClear}
+            className="absolute top-2 right-2 w-6 h-6 bg-red-500 text-white rounded-full flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity shadow">
+            <X className="w-3 h-3" />
+          </button>
+        </div>
+      ) : (
+        <button type="button" onClick={() => inputRef.current?.click()}
+          className="w-full h-28 border-2 border-dashed border-slate-200 rounded-xl flex flex-col items-center justify-center gap-2 text-slate-400 hover:border-blue-400 hover:text-blue-500 hover:bg-blue-50 transition-colors">
+          <Upload className="w-5 h-5" />
+          <span className="text-xs font-medium">Click to upload</span>
+          <span className="text-xs text-slate-300">JPG, PNG or PDF</span>
+        </button>
+      )}
+      <input ref={inputRef} type="file" accept="image/*,.pdf" className="hidden"
+        onChange={e => { const f = e.target.files?.[0]; if (f) onUpload(field, f); e.target.value = '' }} />
     </div>
   )
 }

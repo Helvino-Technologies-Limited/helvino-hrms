@@ -24,7 +24,8 @@ export async function GET(request: NextRequest) {
     }
 
     if (status) {
-      where.status = status as ApplicantStatus
+      const statuses = status.split(',').map(s => s.trim()).filter(Boolean)
+      where.status = statuses.length > 1 ? { in: statuses as ApplicantStatus[] } : (statuses[0] as ApplicantStatus)
     }
 
     if (talentPool !== null) {

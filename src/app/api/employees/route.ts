@@ -4,7 +4,8 @@ import { authOptions } from '@/lib/auth'
 import { prisma } from '@/lib/prisma'
 import bcrypt from 'bcryptjs'
 import { generateEmployeeCode } from '@/lib/utils'
-import { sendEmail, welcomeEmailHtml } from '@/lib/email'
+import { sendEmail, welcomeEmailHtml, contractEmailHtml } from '@/lib/email'
+import { generateContractHtml } from '@/lib/contract'
 
 export async function GET(req: NextRequest) {
   try {
@@ -80,7 +81,14 @@ export async function POST(req: NextRequest) {
         bankAccount: body.bankAccount || null,
         emergencyContact: body.emergencyContact || null,
         emergencyPhone: body.emergencyPhone || null,
+        idFrontUrl: body.idFrontUrl || null,
+        idBackUrl: body.idBackUrl || null,
+        passportPhotoUrl: body.passportPhotoUrl || null,
+        kraPinUrl: body.kraPinUrl || null,
+        nhifCardUrl: body.nhifCardUrl || null,
+        nssfCardUrl: body.nssfCardUrl || null,
       },
+      include: { department: { select: { name: true } } },
     })
 
     // Create user account with temp password
@@ -120,6 +128,32 @@ export async function POST(req: NextRequest) {
       to: body.email,
       subject: 'Welcome to Helvino Technologies Limited — Your Account Details',
       html: welcomeEmailHtml(`${body.firstName} ${body.lastName}`, body.email, tempPassword),
+    }).catch(console.error)
+
+    // Generate and send employment contract
+    const contractHtml = generateContractHtml({
+      employeeCode,
+      firstName: body.firstName,
+      lastName: body.lastName,
+      jobTitle: body.jobTitle,
+      departmentName: (employee as any).department?.name || body.departmentId || 'General',
+      employmentType: body.employmentType || 'FULL_TIME',
+      dateHired: body.dateHired,
+      basicSalary: body.basicSalary ? parseFloat(body.basicSalary) : null,
+      probationEndDate: body.probationEndDate || null,
+    })
+    const contract = await prisma.employmentContract.create({
+      data: {
+        employeeId: employee.id,
+        contractHtml,
+        sentAt: new Date(),
+      },
+    })
+    const signingUrl = `${process.env.NEXT_PUBLIC_APP_URL}/contract/sign/${contract.token}`
+    sendEmail({
+      to: body.email,
+      subject: 'Your Employment Contract — Please Sign',
+      html: contractEmailHtml(`${body.firstName} ${body.lastName}`, signingUrl),
     }).catch(console.error)
 
     // Audit log

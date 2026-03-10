@@ -1,7 +1,7 @@
 'use client'
 import { useState, useEffect, useRef } from 'react'
 import Link from 'next/link'
-import { usePathname } from 'next/navigation'
+import { usePathname, useRouter } from 'next/navigation'
 import { signOut, useSession } from 'next-auth/react'
 import {
   LayoutDashboard, Users, Building2, Clock, Calendar,
@@ -73,8 +73,9 @@ const salesNavItems = [
 ]
 
 export default function DashboardLayout({ children }: { children: React.ReactNode }) {
-  const { data: session } = useSession()
+  const { data: session, status } = useSession()
   const pathname = usePathname()
+  const router = useRouter()
   const [sidebarOpen, setSidebarOpen] = useState(false)
   const [currentTime, setCurrentTime] = useState(new Date())
 
@@ -84,6 +85,19 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
   }, [])
 
   const role = session?.user?.role || 'EMPLOYEE'
+
+  // Enforce page-level access control: redirect if the current path is not in the user's allowed routes
+  useEffect(() => {
+    if (status !== 'authenticated') return
+    const allItems = [...hrNavItems, ...recruitmentNavItems, ...salesNavItems]
+    // Find the most specific nav item matching the current path
+    const match = allItems
+      .filter(item => item.exact ? pathname === item.href : pathname.startsWith(item.href))
+      .sort((a, b) => b.href.length - a.href.length)[0]
+    if (match && !match.roles.includes(role)) {
+      router.replace('/dashboard')
+    }
+  }, [pathname, role, status, router])
   const employee = session?.user?.employee
   const filteredHrNav = hrNavItems.filter(item => item.roles.includes(role))
   const filteredRecruitmentNav = recruitmentNavItems.filter(item => item.roles.includes(role))

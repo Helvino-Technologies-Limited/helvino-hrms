@@ -54,7 +54,7 @@ export async function POST(req: NextRequest) {
 
     const existing = await prisma.payroll.findFirst({ where: { month, year } })
     if (existing) {
-      return NextResponse.json({ error: `Payroll for this period already exists. Delete existing records to regenerate.` }, { status: 400 })
+      return NextResponse.json({ error: `Payroll for this period already exists. Delete existing records to regenerate.` }, { status: 409 })
     }
 
     const employees = await prisma.employee.findMany({

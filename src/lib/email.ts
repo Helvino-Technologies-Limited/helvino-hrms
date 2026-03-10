@@ -97,6 +97,40 @@ export function leaveRequestEmailHtml(
   )
 }
 
+export function contractEmailHtml(name: string, signingUrl: string): string {
+  return emailTemplate(
+    'Your Employment Contract — Action Required',
+    `
+    <p>Dear <strong>${name}</strong>,</p>
+    <p>Welcome to <strong>Helvino Technologies Limited</strong>! Your employment contract is ready for review and digital signature.</p>
+    <p>Please click the button below to read the full contract and sign digitally. This is a legally binding agreement under Kenyan law.</p>
+    <div style="text-align:center;margin:28px 0;">
+      <a href="${signingUrl}" style="background:#2563eb;color:white;padding:14px 32px;border-radius:10px;text-decoration:none;display:inline-block;font-weight:bold;font-size:15px;">
+        Review &amp; Sign Contract →
+      </a>
+    </div>
+    <p style="color:#64748b;font-size:13px;">If the button doesn't work, paste this link into your browser:<br>
+    <a href="${signingUrl}" style="color:#2563eb;word-break:break-all;">${signingUrl}</a></p>
+    <p style="color:#ef4444;font-size:13px;"><strong>⚠ Please sign your contract within 7 days of receiving this email.</strong></p>
+    `
+  )
+}
+
+export function contractSignedEmailHtml(employeeName: string, signedByName: string, signedAt: string): string {
+  return emailTemplate(
+    `Employment Contract Signed — ${employeeName}`,
+    `
+    <p>Great news! The employment contract for <strong>${employeeName}</strong> has been signed digitally.</p>
+    <table style="width:100%;border-collapse:collapse;margin:16px 0;">
+      <tr><td style="padding:8px;border:1px solid #e2e8f0;background:#f8fafc;font-weight:bold;">Employee</td><td style="padding:8px;border:1px solid #e2e8f0;">${employeeName}</td></tr>
+      <tr><td style="padding:8px;border:1px solid #e2e8f0;background:#f8fafc;font-weight:bold;">Signed As</td><td style="padding:8px;border:1px solid #e2e8f0;">${signedByName}</td></tr>
+      <tr><td style="padding:8px;border:1px solid #e2e8f0;background:#f8fafc;font-weight:bold;">Date &amp; Time</td><td style="padding:8px;border:1px solid #e2e8f0;">${signedAt}</td></tr>
+    </table>
+    <a href="${process.env.NEXT_PUBLIC_APP_URL}/dashboard/employees" style="background:#16a34a;color:white;padding:12px 24px;border-radius:8px;text-decoration:none;display:inline-block;font-weight:bold;">View Employees →</a>
+    `
+  )
+}
+
 export function leaveStatusEmailHtml(employeeName: string, status: string, leaveType: string, comments?: string): string {
   const color = status === 'APPROVED' ? '#16a34a' : '#dc2626'
   const emoji = status === 'APPROVED' ? '✅' : '❌'
