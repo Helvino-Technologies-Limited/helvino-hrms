@@ -133,12 +133,17 @@ export async function GET(request: NextRequest) {
       timeToHire = Math.round(avgMs / (1000 * 60 * 60 * 24))
     }
 
+    // Convert appsByStatus object to array for frontend
+    const applicationsByStatusArray = Object.entries(appsByStatus).map(([status, count]) => ({ status, count }))
+    // Convert appsBySource object to array for frontend
+    const applicationsBySourceArray = Object.entries(appsBySource).map(([source, count]) => ({ source, count }))
+
     return NextResponse.json({
       totalJobs,
       totalApplications,
-      applicationsByStatus: appsByStatus,
-      applicationsByJob,
-      applicationsBySource: appsBySource,
+      applicationsByStatus: applicationsByStatusArray,
+      topJobsByApplications: applicationsByJob.map(j => ({ title: j.jobTitle, count: j.count })),
+      applicationsBySource: applicationsBySourceArray,
       recentApplications,
       timeToHire,
       interviewsScheduled,
