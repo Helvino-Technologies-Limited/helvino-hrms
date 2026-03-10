@@ -8,7 +8,8 @@ import {
   DollarSign, Briefcase, BarChart3, Megaphone, Star,
   Bell, Search, Menu, X, LogOut, Settings, UserCircle,
   Shield, ChevronDown, Building, CheckCircle,
-  TrendingUp, Target, FileText, Users2, RotateCcw, FolderOpen, Package, ListTodo
+  TrendingUp, Target, FileText, Users2, RotateCcw, FolderOpen, Package, ListTodo,
+  Video, Database
 } from 'lucide-react'
 import { getInitials } from '@/lib/utils'
 
@@ -25,8 +26,6 @@ const hrNavItems = [
     roles: ['SUPER_ADMIN', 'HR_MANAGER', 'DEPARTMENT_HEAD', 'EMPLOYEE'] },
   { href: '/dashboard/payroll', icon: DollarSign, label: 'Payroll',
     roles: ['SUPER_ADMIN', 'HR_MANAGER', 'FINANCE_OFFICER'] },
-  { href: '/dashboard/recruitment', icon: Briefcase, label: 'Recruitment',
-    roles: ['SUPER_ADMIN', 'HR_MANAGER'] },
   { href: '/dashboard/performance', icon: Star, label: 'Performance',
     roles: ['SUPER_ADMIN', 'HR_MANAGER', 'DEPARTMENT_HEAD', 'EMPLOYEE'] },
   { href: '/dashboard/announcements', icon: Megaphone, label: 'Announcements',
@@ -35,6 +34,21 @@ const hrNavItems = [
     roles: ['SUPER_ADMIN', 'HR_MANAGER', 'FINANCE_OFFICER'] },
   { href: '/dashboard/profile', icon: UserCircle, label: 'My Profile',
     roles: ['SUPER_ADMIN', 'HR_MANAGER', 'DEPARTMENT_HEAD', 'FINANCE_OFFICER', 'EMPLOYEE'] },
+]
+
+const recruitmentNavItems = [
+  { href: '/dashboard/recruitment', icon: LayoutDashboard, label: 'Overview', exact: true,
+    roles: ['SUPER_ADMIN', 'HR_MANAGER', 'DEPARTMENT_HEAD'] },
+  { href: '/dashboard/recruitment/jobs', icon: Briefcase, label: 'Job Postings',
+    roles: ['SUPER_ADMIN', 'HR_MANAGER', 'DEPARTMENT_HEAD'] },
+  { href: '/dashboard/recruitment/applications', icon: Users, label: 'Applications',
+    roles: ['SUPER_ADMIN', 'HR_MANAGER', 'DEPARTMENT_HEAD'] },
+  { href: '/dashboard/recruitment/interviews', icon: Video, label: 'Interviews',
+    roles: ['SUPER_ADMIN', 'HR_MANAGER', 'DEPARTMENT_HEAD'] },
+  { href: '/dashboard/recruitment/candidates', icon: Database, label: 'Talent Pool',
+    roles: ['SUPER_ADMIN', 'HR_MANAGER'] },
+  { href: '/dashboard/recruitment/analytics', icon: BarChart3, label: 'ATS Analytics',
+    roles: ['SUPER_ADMIN', 'HR_MANAGER'] },
 ]
 
 const salesNavItems = [
@@ -72,8 +86,9 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
   const role = session?.user?.role || 'EMPLOYEE'
   const employee = session?.user?.employee
   const filteredHrNav = hrNavItems.filter(item => item.roles.includes(role))
+  const filteredRecruitmentNav = recruitmentNavItems.filter(item => item.roles.includes(role))
   const filteredSalesNav = salesNavItems.filter(item => item.roles.includes(role))
-  const allNavItems = [...hrNavItems, ...salesNavItems]
+  const allNavItems = [...hrNavItems, ...recruitmentNavItems, ...salesNavItems]
 
   const [notifOpen, setNotifOpen] = useState(false)
   const [notifications, setNotifications] = useState<any[]>([])
@@ -192,6 +207,31 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
               </Link>
             ))}
           </div>
+
+          {/* Recruitment Section */}
+          {filteredRecruitmentNav.length > 0 && (
+            <div className="mt-4">
+              <div className="px-3 mb-1">
+                <span className="text-xs font-bold text-slate-500 uppercase tracking-wider">Recruitment & ATS</span>
+              </div>
+              <div className="space-y-0.5">
+                {filteredRecruitmentNav.map(item => (
+                  <Link key={item.href} href={item.href} onClick={() => setSidebarOpen(false)}
+                    className={`
+                      flex items-center gap-3 px-3.5 py-2.5 rounded-xl transition-all duration-150 group
+                      ${isActive(item)
+                        ? 'bg-blue-600 text-white shadow-lg shadow-blue-600/30'
+                        : 'text-slate-400 hover:text-white hover:bg-slate-800'
+                      }
+                    `}>
+                    <item.icon className={`w-4.5 h-4.5 flex-shrink-0 ${isActive(item) ? 'text-white' : 'text-slate-500 group-hover:text-slate-300'}`} style={{ width: '18px', height: '18px' }} />
+                    <span className="font-medium text-sm">{item.label}</span>
+                    {isActive(item) && <div className="ml-auto w-1.5 h-1.5 bg-white rounded-full" />}
+                  </Link>
+                ))}
+              </div>
+            </div>
+          )}
 
           {/* Sales Section - only show if user has access to any sales item */}
           {filteredSalesNav.length > 0 && (

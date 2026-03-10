@@ -43,14 +43,39 @@ enum JobStatus {
   OPEN
   CLOSED
   DRAFT
+  ARCHIVED
 }
 
 enum ApplicantStatus {
   NEW
+  UNDER_REVIEW
   SHORTLISTED
+  INTERVIEW_SCHEDULED
   INTERVIEWED
   OFFERED
+  HIRED
   REJECTED
+}
+
+enum InterviewType {
+  PHONE
+  VIRTUAL
+  PHYSICAL
+  TECHNICAL
+}
+
+enum InterviewStatus {
+  SCHEDULED
+  COMPLETED
+  CANCELLED
+  NO_SHOW
+}
+
+enum OfferStatus {
+  PENDING
+  ACCEPTED
+  REJECTED
+  WITHDRAWN
 }
 
 enum UserRole {
@@ -236,6 +261,12 @@ model Employee {
   clientsAssigned  Client[]            @relation("ClientAssignee")
   salesTasksAssigned SalesTask[]       @relation("SalesTaskAssignee")
   salesTasksCreated  SalesTask[]       @relation("SalesTaskCreator")
+  // Recruitment relations
+  jobsManaged            Job[]                 @relation("JobHiringManager")
+  interviewsConducted    Interview[]           @relation("InterviewConductor")
+  interviewEvaluations   InterviewEvaluation[]
+  jobOffersCreated       JobOffer[]            @relation("OfferCreatedBy")
+  recruitmentNotes       RecruitmentNote[]
   createdAt        DateTime            @default(now())
   updatedAt        DateTime            @updatedAt
 }
@@ -318,6 +349,7 @@ model Payroll {
 model Job {
   id               String      @id @default(cuid())
   title            String
+  slug             String?     @unique
   description      String
   requirements     String?
   responsibilities String?
@@ -327,7 +359,15 @@ model Job {
   location         String?
   salaryMin        Float?
   salaryMax        Float?
+  positions        Int         @default(1)
+  skills           String[]
+  experienceLevel  String?
+  educationReq     String?
+  benefits         String?
+  hiringManagerId  String?
+  hiringManager    Employee?   @relation("JobHiringManager", fields: [hiringManagerId], references: [id])
   status           JobStatus   @default(OPEN)
+  postedAt         DateTime?
   deadline         DateTime?
   applicants       Applicant[]
   createdAt        DateTime    @default(now())
@@ -335,21 +375,96 @@ model Job {
 }
 
 model Applicant {
+  id              String          @id @default(cuid())
+  jobId           String
+  job             Job             @relation(fields: [jobId], references: [id])
+  firstName       String
+  lastName        String
+  email           String
+  phone           String?
+  resumeUrl       String?
+  coverLetter     String?
+  linkedIn        String?
+  portfolio       String?
+  expectedSalary  Float?
+  availableFrom   DateTime?
+  experienceYears Int?
+  currentCompany  String?
+  educationLevel  String?
+  skills          String[]
+  source          String?         @default("DIRECT")
+  talentPool      String?
+  status          ApplicantStatus @default(NEW)
+  score           Int?
+  notes           String?
+  interviewDate   DateTime?
+  interviews      Interview[]
+  offer           JobOffer?
+  notesList       RecruitmentNote[]
+  createdAt       DateTime        @default(now())
+  updatedAt       DateTime        @updatedAt
+}
+
+model Interview {
   id            String          @id @default(cuid())
-  jobId         String
-  job           Job             @relation(fields: [jobId], references: [id])
-  firstName     String
-  lastName      String
-  email         String
-  phone         String?
-  resumeUrl     String?
-  coverLetter   String?
-  status        ApplicantStatus @default(NEW)
-  score         Int?
+  applicantId   String
+  applicant     Applicant       @relation(fields: [applicantId], references: [id], onDelete: Cascade)
+  type          InterviewType   @default(PHYSICAL)
+  scheduledAt   DateTime
+  location      String?
+  meetingLink   String?
+  interviewerId String?
+  interviewer   Employee?       @relation("InterviewConductor", fields: [interviewerId], references: [id])
+  status        InterviewStatus @default(SCHEDULED)
   notes         String?
-  interviewDate DateTime?
+  evaluation    InterviewEvaluation?
   createdAt     DateTime        @default(now())
   updatedAt     DateTime        @updatedAt
+}
+
+model InterviewEvaluation {
+  id             String    @id @default(cuid())
+  interviewId    String    @unique
+  interview      Interview @relation(fields: [interviewId], references: [id], onDelete: Cascade)
+  technical      Int?
+  communication  Int?
+  problemSolving Int?
+  culturalFit    Int?
+  overallScore   Int?
+  recommendation String?
+  notes          String?
+  evaluatedById  String?
+  evaluatedBy    Employee? @relation(fields: [evaluatedById], references: [id])
+  createdAt      DateTime  @default(now())
+  updatedAt      DateTime  @updatedAt
+}
+
+model JobOffer {
+  id              String      @id @default(cuid())
+  applicantId     String      @unique
+  applicant       Applicant   @relation(fields: [applicantId], references: [id], onDelete: Cascade)
+  salary          Float
+  startDate       DateTime?
+  probationPeriod Int?
+  terms           String?
+  status          OfferStatus @default(PENDING)
+  sentAt          DateTime?
+  respondedAt     DateTime?
+  notes           String?
+  createdById     String?
+  createdBy       Employee?   @relation("OfferCreatedBy", fields: [createdById], references: [id])
+  createdAt       DateTime    @default(now())
+  updatedAt       DateTime    @updatedAt
+}
+
+model RecruitmentNote {
+  id          String    @id @default(cuid())
+  applicantId String
+  applicant   Applicant @relation(fields: [applicantId], references: [id], onDelete: Cascade)
+  content     String
+  authorId    String?
+  author      Employee? @relation(fields: [authorId], references: [id])
+  createdAt   DateTime  @default(now())
 }
 
 model PerformanceReview {
@@ -609,16 +724,16 @@ model SalesTask {
 }
 
 model Portfolio {
-  id           String    @id @default(cuid())
-  clientName   String
-  industry     String?
-  serviceType  String
-  description  String?
+  id            String    @id @default(cuid())
+  clientName    String
+  industry      String?
+  serviceType   String
+  description   String?
   projectImages String[]
-  completedAt  DateTime?
-  testimonial  String?
-  caseStudy    String?
-  isPublished  Boolean   @default(false)
-  createdAt    DateTime  @default(now())
-  updatedAt    DateTime  @updatedAt
+  completedAt   DateTime?
+  testimonial   String?
+  caseStudy     String?
+  isPublished   Boolean   @default(false)
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
 }

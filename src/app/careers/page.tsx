@@ -1,243 +1,335 @@
 'use client'
-import { useEffect, useState } from 'react'
+import { useState, useEffect, Suspense } from 'react'
 import Link from 'next/link'
-import { Building2, MapPin, Clock, DollarSign, ChevronLeft, Send, AlertCircle, CheckCircle, Briefcase } from 'lucide-react'
-import { formatDate, formatCurrency } from '@/lib/utils'
+import { useSearchParams } from 'next/navigation'
+import {
+  Briefcase, MapPin, Clock, DollarSign, Users, Search,
+  Copy, ExternalLink, Share2
+} from 'lucide-react'
+import toast from 'react-hot-toast'
 
-export default function CareersPage() {
-  const [jobs, setJobs] = useState<any[]>([])
+interface Job {
+  id: string
+  slug: string
+  title: string
+  department: string
+  type: string
+  location: string
+  salaryMin?: number
+  salaryMax?: number
+  description: string
+  responsibilities?: string
+  requirements?: string
+  skills: string[]
+  benefits?: string
+  deadline?: string
+  positions: number
+  postedAt: string
+  status: string
+}
+
+function CareersContent() {
+  const searchParams = useSearchParams()
+  const [jobs, setJobs] = useState<Job[]>([])
   const [loading, setLoading] = useState(true)
-  const [selectedJob, setSelectedJob] = useState<any>(null)
-  const [showForm, setShowForm] = useState(false)
-  const [submitted, setSubmitted] = useState(false)
+  const [search, setSearch] = useState(searchParams.get('search') || '')
+  const [deptFilter, setDeptFilter] = useState(searchParams.get('department') || '')
+  const [typeFilter, setTypeFilter] = useState(searchParams.get('type') || '')
 
   useEffect(() => {
-    fetch('/api/jobs?status=OPEN').then(r => r.json()).then(d => {
-      setJobs(Array.isArray(d) ? d : [])
-      setLoading(false)
-    })
+    fetch('/api/careers/jobs')
+      .then(r => r.json())
+      .then(d => setJobs(Array.isArray(d) ? d : d.jobs || []))
+      .catch(() => setJobs([]))
+      .finally(() => setLoading(false))
   }, [])
+
+  const departments = Array.from(new Set(jobs.map(j => j.department))).sort()
+  const jobTypes = ['Full-time', 'Part-time', 'Contract', 'Internship']
+
+  const filtered = jobs.filter(j => {
+    const matchSearch = !search ||
+      j.title.toLowerCase().includes(search.toLowerCase()) ||
+      j.department.toLowerCase().includes(search.toLowerCase()) ||
+      j.description.toLowerCase().includes(search.toLowerCase())
+    const matchDept = !deptFilter || j.department === deptFilter
+    const matchType = !typeFilter || j.type === typeFilter
+    return matchSearch && matchDept && matchType
+  })
+
+  function isDeadlineSoon(deadline?: string) {
+    if (!deadline) return false
+    const days = (new Date(deadline).getTime() - Date.now()) / (1000 * 60 * 60 * 24)
+    return days >= 0 && days < 7
+  }
+
+  function formatDeadline(deadline: string) {
+    return new Date(deadline).toLocaleDateString('en-KE', { day: 'numeric', month: 'short', year: 'numeric' })
+  }
+
+  function formatSalary(min?: number, max?: number) {
+    if (!min && !max) return null
+    const fmt = (v: number) => `KES ${v.toLocaleString()}`
+    if (min && max) return `${fmt(min)} – ${fmt(max)}`
+    if (min) return `From ${fmt(min)}`
+    if (max) return `Up to ${fmt(max)}`
+    return null
+  }
+
+  function copyLink(slug: string) {
+    const url = `${window.location.origin}/careers/${slug}`
+    navigator.clipboard.writeText(url).then(() => toast.success('Link copied!'))
+  }
+
+  function shareWhatsApp(slug: string, title: string) {
+    const url = `${window.location.origin}/careers/${slug}`
+    const text = `Check out this job at Helvino: ${title} — ${url}`
+    window.open(`https://wa.me/?text=${encodeURIComponent(text)}`, '_blank')
+  }
+
+  function shareLinkedIn(slug: string) {
+    const url = `${window.location.origin}/careers/${slug}`
+    window.open(`https://www.linkedin.com/sharing/share-offsite/?url=${encodeURIComponent(url)}`, '_blank')
+  }
 
   return (
     <div className="min-h-screen bg-slate-50">
-      <nav className="bg-white border-b border-slate-200 sticky top-0 z-10 shadow-sm">
-        <div className="max-w-6xl mx-auto px-4 py-4 flex items-center justify-between">
-          <div className="flex items-center gap-3">
-            <div className="w-9 h-9 bg-blue-600 rounded-xl flex items-center justify-center">
-              <Building2 className="w-5 h-5 text-white" />
-            </div>
-            <div>
-              <span className="font-black text-slate-900">Helvino Technologies</span>
-              <span className="text-slate-400 text-sm ml-2">Careers</span>
-            </div>
-          </div>
-          <div className="flex items-center gap-3">
-            <Link href="/" className="text-slate-600 hover:text-blue-600 text-sm font-medium transition-colors">← Back to Website</Link>
-            <Link href="/login" className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-xl text-sm font-semibold transition-colors">Employee Portal</Link>
-          </div>
-        </div>
-      </nav>
-
-      <div className="max-w-6xl mx-auto px-4 py-12">
-        <div className="text-center mb-12">
-          <h1 className="text-4xl font-black text-slate-900 mb-3">Join Helvino Technologies</h1>
-          <p className="text-slate-500 text-xl max-w-2xl mx-auto">Build the future of IT in Kenya. We're looking for talented people to join our growing team.</p>
-          <div className="flex flex-wrap justify-center gap-3 mt-6">
-            {['Competitive Salary','Health Benefits','Learning & Growth','Remote Flexibility','Great Team'].map(b => (
-              <span key={b} className="flex items-center gap-1.5 bg-white border border-slate-200 text-slate-600 text-sm px-3 py-1.5 rounded-full font-medium">
-                <CheckCircle className="w-3.5 h-3.5 text-green-500" />{b}
-              </span>
-            ))}
-          </div>
-        </div>
-
-        {loading ? (
-          <div className="flex items-center justify-center h-48"><div className="w-8 h-8 border-4 border-blue-600 border-t-transparent rounded-full animate-spin" /></div>
-        ) : jobs.length === 0 ? (
-          <div className="text-center py-20 bg-white rounded-2xl border border-slate-200">
-            <Briefcase className="w-12 h-12 mx-auto mb-3 text-slate-200" />
-            <p className="text-slate-500 font-medium text-lg">No open positions right now</p>
-            <p className="text-slate-400 text-sm mt-1">Send your CV to <a href="mailto:careers@helvino.org" className="text-blue-600 hover:underline">careers@helvino.org</a></p>
-          </div>
-        ) : (
-          <div className="grid md:grid-cols-2 gap-5">
-            {jobs.map((job: any) => (
-              <div key={job.id} className="bg-white rounded-2xl p-6 shadow-sm border border-slate-200 hover:shadow-lg hover:border-blue-200 transition-all group">
-                <div className="flex items-start justify-between mb-3">
-                  <div className="w-12 h-12 bg-blue-100 rounded-xl flex items-center justify-center flex-shrink-0">
-                    <Briefcase className="w-6 h-6 text-blue-600" />
-                  </div>
-                  <span className="bg-green-100 text-green-700 text-xs font-bold px-2.5 py-1 rounded-full border border-green-200">OPEN</span>
-                </div>
-                <h3 className="text-lg font-black text-slate-900 mb-1">{job.title}</h3>
-                <div className="flex flex-wrap gap-2 mb-3">
-                  {job.department && <span className="text-xs bg-blue-50 text-blue-700 px-2.5 py-1 rounded-lg font-medium">{job.department.name}</span>}
-                  <span className="text-xs bg-slate-100 text-slate-600 px-2.5 py-1 rounded-lg font-medium flex items-center gap-1"><MapPin className="w-3 h-3" />{job.location}</span>
-                  <span className="text-xs bg-slate-100 text-slate-600 px-2.5 py-1 rounded-lg font-medium flex items-center gap-1"><Clock className="w-3 h-3" />{job.type}</span>
-                </div>
-                <p className="text-slate-600 text-sm line-clamp-3 mb-4">{job.description}</p>
-                {job.salaryMin && (
-                  <p className="text-sm font-semibold text-green-600 flex items-center gap-1 mb-3">
-                    <DollarSign className="w-4 h-4" />
-                    {formatCurrency(job.salaryMin)} – {formatCurrency(job.salaryMax || 0)} / month
-                  </p>
-                )}
-                {job.deadline && <p className="text-xs text-slate-400 mb-4">Deadline: {formatDate(job.deadline)}</p>}
-                <div className="flex gap-2 pt-3 border-t border-slate-100">
-                  <button onClick={() => setSelectedJob(job)}
-                    className="flex-1 border border-slate-200 text-slate-700 hover:border-blue-300 hover:text-blue-600 py-2.5 rounded-xl text-sm font-semibold transition-colors">
-                    View Details
-                  </button>
-                  <button onClick={() => { setSelectedJob(job); setShowForm(true) }}
-                    className="flex-1 bg-blue-600 hover:bg-blue-700 text-white py-2.5 rounded-xl text-sm font-bold transition-colors flex items-center justify-center gap-2">
-                    <Send className="w-4 h-4" />Apply Now
-                  </button>
-                </div>
-              </div>
-            ))}
-          </div>
-        )}
-      </div>
-
-      {selectedJob && !showForm && (
-        <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center bg-black/60 backdrop-blur-sm p-0 sm:p-4">
-          <div className="bg-white rounded-t-3xl sm:rounded-3xl w-full sm:max-w-2xl max-h-[95vh] overflow-hidden flex flex-col">
-            <div className="flex items-center justify-between px-6 py-4 border-b border-slate-200 flex-shrink-0">
-              <h2 className="text-lg font-bold text-slate-900">{selectedJob.title}</h2>
-              <button onClick={() => setSelectedJob(null)} className="text-slate-400 hover:text-slate-600 w-8 h-8 flex items-center justify-center rounded-lg hover:bg-slate-100">✕</button>
-            </div>
-            <div className="flex-1 overflow-y-auto p-6 space-y-4">
-              <div className="flex flex-wrap gap-2">
-                {selectedJob.department && <span className="bg-blue-100 text-blue-700 text-xs px-2.5 py-1 rounded-lg font-semibold">{selectedJob.department.name}</span>}
-                <span className="bg-slate-100 text-slate-600 text-xs px-2.5 py-1 rounded-lg font-semibold">{selectedJob.type}</span>
-                <span className="bg-slate-100 text-slate-600 text-xs px-2.5 py-1 rounded-lg font-semibold">{selectedJob.location}</span>
+      {/* Header */}
+      <header className="bg-white shadow-sm sticky top-0 z-10">
+        <div className="h-1 bg-blue-600" />
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+          <div className="flex items-center justify-between h-16">
+            <div className="flex items-center gap-3">
+              <div className="w-9 h-9 bg-blue-600 rounded-lg flex items-center justify-center">
+                <Briefcase className="w-5 h-5 text-white" />
               </div>
               <div>
-                <h4 className="font-bold text-slate-900 mb-2">About this Role</h4>
-                <p className="text-slate-600 text-sm leading-relaxed whitespace-pre-line">{selectedJob.description}</p>
+                <div className="font-bold text-slate-900 text-sm leading-none">Helvino Technologies</div>
+                <div className="text-xs text-slate-500">Careers Portal</div>
               </div>
-              {selectedJob.requirements && (
-                <div>
-                  <h4 className="font-bold text-slate-900 mb-2">Requirements</h4>
-                  <p className="text-slate-600 text-sm leading-relaxed whitespace-pre-line">{selectedJob.requirements}</p>
-                </div>
-              )}
-              {selectedJob.responsibilities && (
-                <div>
-                  <h4 className="font-bold text-slate-900 mb-2">Responsibilities</h4>
-                  <p className="text-slate-600 text-sm leading-relaxed whitespace-pre-line">{selectedJob.responsibilities}</p>
-                </div>
-              )}
-              {selectedJob.salaryMin && (
-                <div className="bg-green-50 border border-green-200 rounded-xl p-4">
-                  <p className="text-green-700 font-semibold">Salary Range: {formatCurrency(selectedJob.salaryMin)} – {formatCurrency(selectedJob.salaryMax || 0)} / month</p>
-                </div>
-              )}
             </div>
-            <div className="flex gap-3 px-6 py-4 border-t border-slate-200 bg-slate-50 flex-shrink-0">
-              <button onClick={() => setSelectedJob(null)} className="flex-1 border border-slate-200 bg-white text-slate-700 py-2.5 rounded-xl font-semibold text-sm">Close</button>
-              <button onClick={() => setShowForm(true)} className="flex-1 bg-blue-600 hover:bg-blue-700 text-white py-2.5 rounded-xl font-bold text-sm flex items-center justify-center gap-2">
-                <Send className="w-4 h-4" />Apply Now
-              </button>
-            </div>
+            <Link href="/dashboard" className="text-sm text-blue-600 hover:text-blue-700 font-medium hidden sm:block">
+              Employee Login →
+            </Link>
           </div>
         </div>
-      )}
+      </header>
 
-      {showForm && selectedJob && (
-        <ApplyModal
-          job={selectedJob}
-          onClose={() => { setShowForm(false); setSelectedJob(null); setSubmitted(false) }}
-          onSuccess={() => setSubmitted(true)}
-          submitted={submitted}
-        />
-      )}
+      {/* Hero */}
+      <section className="bg-gradient-to-br from-blue-700 via-blue-600 to-blue-500 text-white py-16 px-4">
+        <div className="max-w-3xl mx-auto text-center">
+          <div className="inline-flex items-center gap-2 bg-white/20 rounded-full px-4 py-1.5 text-sm font-medium mb-6">
+            <span className="w-2 h-2 bg-green-300 rounded-full animate-pulse" />
+            We&apos;re hiring!
+          </div>
+          <h1 className="text-4xl sm:text-5xl font-extrabold mb-4 tracking-tight">Join Our Team</h1>
+          <p className="text-blue-100 text-lg sm:text-xl mb-8 leading-relaxed">
+            Explore exciting career opportunities at Helvino Technologies Limited
+          </p>
+          {/* Search */}
+          <div className="relative max-w-xl mx-auto">
+            <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-400" />
+            <input
+              type="text"
+              placeholder="Search jobs by title, department, keyword..."
+              value={search}
+              onChange={e => setSearch(e.target.value)}
+              className="w-full pl-12 pr-4 py-4 rounded-xl text-slate-900 text-sm shadow-lg focus:outline-none focus:ring-2 focus:ring-white/50"
+            />
+          </div>
+        </div>
+      </section>
+
+      {/* Filters */}
+      <div className="bg-white border-b border-slate-200 shadow-sm">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4 flex flex-wrap items-center gap-3">
+          <select
+            value={deptFilter}
+            onChange={e => setDeptFilter(e.target.value)}
+            className="border border-slate-200 rounded-lg px-3 py-2 text-sm text-slate-700 bg-white focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+          >
+            <option value="">All Departments</option>
+            {departments.map(d => <option key={d} value={d}>{d}</option>)}
+          </select>
+          <select
+            value={typeFilter}
+            onChange={e => setTypeFilter(e.target.value)}
+            className="border border-slate-200 rounded-lg px-3 py-2 text-sm text-slate-700 bg-white focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+          >
+            <option value="">All Types</option>
+            {jobTypes.map(t => <option key={t} value={t}>{t}</option>)}
+          </select>
+          {(deptFilter || typeFilter || search) && (
+            <button
+              onClick={() => { setDeptFilter(''); setTypeFilter(''); setSearch('') }}
+              className="text-sm text-red-600 hover:text-red-700 font-medium px-3 py-2 border border-red-200 rounded-lg hover:bg-red-50 transition-colors"
+            >
+              Clear filters
+            </button>
+          )}
+          <div className="ml-auto text-sm text-slate-500 font-medium">
+            <span className="text-blue-600 font-bold">{filtered.length}</span> open position{filtered.length !== 1 ? 's' : ''}
+          </div>
+        </div>
+      </div>
+
+      {/* Jobs Grid */}
+      <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-10">
+        {loading ? (
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+            {[...Array(6)].map((_, i) => (
+              <div key={i} className="bg-white rounded-2xl shadow-sm border border-slate-200 p-6 animate-pulse">
+                <div className="h-5 bg-slate-200 rounded w-3/4 mb-3" />
+                <div className="h-4 bg-slate-100 rounded w-1/2 mb-4" />
+                <div className="h-3 bg-slate-100 rounded w-full mb-2" />
+                <div className="h-3 bg-slate-100 rounded w-5/6" />
+              </div>
+            ))}
+          </div>
+        ) : filtered.length === 0 ? (
+          <div className="text-center py-20">
+            <div className="w-20 h-20 bg-slate-100 rounded-full flex items-center justify-center mx-auto mb-5">
+              <Briefcase className="w-10 h-10 text-slate-300" />
+            </div>
+            <h3 className="text-xl font-bold text-slate-700 mb-2">No open positions at this time</h3>
+            <p className="text-slate-500">Check back soon! New opportunities are added regularly.</p>
+            {(search || deptFilter || typeFilter) && (
+              <button
+                onClick={() => { setSearch(''); setDeptFilter(''); setTypeFilter('') }}
+                className="mt-4 text-blue-600 hover:text-blue-700 font-medium text-sm"
+              >
+                Clear filters to see all jobs
+              </button>
+            )}
+          </div>
+        ) : (
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+            {filtered.map(job => {
+              const salary = formatSalary(job.salaryMin, job.salaryMax)
+              const deadlineSoon = isDeadlineSoon(job.deadline)
+              const skills = Array.isArray(job.skills) ? job.skills : []
+
+              return (
+                <div key={job.id} className="bg-white rounded-2xl shadow-sm border border-slate-200 hover:shadow-md hover:border-blue-200 transition-all duration-200 flex flex-col">
+                  <div className="p-6 flex-1 flex flex-col">
+                    {/* Title */}
+                    <h2 className="text-lg font-bold text-slate-900 mb-3 leading-snug">{job.title}</h2>
+
+                    {/* Badges */}
+                    <div className="flex flex-wrap gap-2 mb-3">
+                      <span className="inline-flex items-center gap-1 bg-blue-50 text-blue-700 text-xs font-semibold px-2.5 py-1 rounded-full">
+                        <Briefcase className="w-3 h-3" />{job.department}
+                      </span>
+                      <span className="inline-flex items-center gap-1 bg-slate-100 text-slate-600 text-xs font-medium px-2.5 py-1 rounded-full">
+                        <Clock className="w-3 h-3" />{job.type}
+                      </span>
+                    </div>
+
+                    {/* Location */}
+                    <div className="flex items-center gap-1.5 text-slate-500 text-sm mb-3">
+                      <MapPin className="w-3.5 h-3.5 flex-shrink-0" />
+                      <span>{job.location}</span>
+                    </div>
+
+                    {/* Salary */}
+                    {salary && (
+                      <div className="flex items-center gap-1.5 text-green-700 text-sm font-medium mb-3">
+                        <DollarSign className="w-3.5 h-3.5 flex-shrink-0" />
+                        <span>{salary}</span>
+                      </div>
+                    )}
+
+                    {/* Description */}
+                    <p className="text-slate-500 text-sm leading-relaxed mb-4 line-clamp-3 flex-1">{job.description}</p>
+
+                    {/* Skills */}
+                    {skills.length > 0 && (
+                      <div className="flex flex-wrap gap-1.5 mb-4">
+                        {skills.slice(0, 4).map(skill => (
+                          <span key={skill} className="bg-slate-100 text-slate-600 text-xs px-2 py-0.5 rounded-md font-medium">{skill}</span>
+                        ))}
+                        {skills.length > 4 && (
+                          <span className="text-slate-400 text-xs px-1 py-0.5">+{skills.length - 4} more</span>
+                        )}
+                      </div>
+                    )}
+
+                    {/* Meta row */}
+                    <div className="flex items-center justify-between text-xs text-slate-500 mb-4 pt-2 border-t border-slate-100">
+                      <div className="flex items-center gap-1">
+                        <Users className="w-3.5 h-3.5" />
+                        <span>{job.positions} position{job.positions !== 1 ? 's' : ''}</span>
+                      </div>
+                      {job.deadline && (
+                        <span className={`font-medium ${deadlineSoon ? 'text-amber-600' : 'text-slate-500'}`}>
+                          {deadlineSoon && '⚠ '}Closes {formatDeadline(job.deadline)}
+                        </span>
+                      )}
+                    </div>
+
+                    {/* Apply button */}
+                    <Link href={`/careers/${job.slug}`}
+                      className="w-full bg-blue-600 hover:bg-blue-700 text-white text-sm font-semibold py-2.5 rounded-xl text-center transition-colors mb-3 block">
+                      Apply Now
+                    </Link>
+
+                    {/* Share row */}
+                    <div className="flex items-center gap-2 justify-center">
+                      <span className="text-xs text-slate-400">Share:</span>
+                      <button
+                        onClick={() => copyLink(job.slug)}
+                        title="Copy link"
+                        className="p-1.5 text-slate-400 hover:text-slate-600 hover:bg-slate-100 rounded-lg transition-colors"
+                      >
+                        <Copy className="w-3.5 h-3.5" />
+                      </button>
+                      <button
+                        onClick={() => shareWhatsApp(job.slug, job.title)}
+                        title="Share on WhatsApp"
+                        className="p-1.5 text-slate-400 hover:text-green-600 hover:bg-green-50 rounded-lg transition-colors"
+                      >
+                        <Share2 className="w-3.5 h-3.5" />
+                      </button>
+                      <button
+                        onClick={() => shareLinkedIn(job.slug)}
+                        title="Share on LinkedIn"
+                        className="p-1.5 text-slate-400 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-colors"
+                      >
+                        <ExternalLink className="w-3.5 h-3.5" />
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              )
+            })}
+          </div>
+        )}
+      </main>
+
+      {/* Footer */}
+      <footer className="bg-white border-t border-slate-200 mt-10">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6 flex flex-col sm:flex-row items-center justify-between gap-3">
+          <div className="flex items-center gap-2 text-slate-600 text-sm">
+            <div className="w-6 h-6 bg-blue-600 rounded flex items-center justify-center">
+              <Briefcase className="w-3.5 h-3.5 text-white" />
+            </div>
+            <span className="font-semibold">Helvino Technologies Limited</span>
+          </div>
+          <div className="flex items-center gap-4 text-sm text-slate-500">
+            <Link href="/dashboard" className="hover:text-blue-600 transition-colors">Employee Portal</Link>
+            <span className="text-slate-300">|</span>
+            <span>© {new Date().getFullYear()} All rights reserved</span>
+          </div>
+        </div>
+      </footer>
     </div>
   )
 }
 
-function ApplyModal({ job, onClose, onSuccess, submitted }: any) {
-  const [loading, setLoading] = useState(false)
-  const [error, setError] = useState('')
-  const [form, setForm] = useState({ firstName: '', lastName: '', email: '', phone: '', coverLetter: '' })
-
-  async function handleSubmit(e: React.FormEvent) {
-    e.preventDefault()
-    setLoading(true)
-    setError('')
-    const res = await fetch('/api/applicants', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ ...form, jobId: job.id }),
-    })
-    const data = await res.json()
-    if (!res.ok) { setError(data.error); setLoading(false); return }
-    onSuccess()
-    setLoading(false)
-  }
-
+export default function CareersPage() {
   return (
-    <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center bg-black/60 backdrop-blur-sm p-0 sm:p-4">
-      <div className="bg-white rounded-t-3xl sm:rounded-3xl w-full sm:max-w-lg max-h-[95vh] overflow-hidden flex flex-col">
-        <div className="flex items-center justify-between px-6 py-4 border-b border-slate-200 flex-shrink-0">
-          <div>
-            <h2 className="text-lg font-bold text-slate-900">Apply — {job.title}</h2>
-            <p className="text-slate-500 text-xs">Helvino Technologies Limited</p>
-          </div>
-          <button onClick={onClose} className="text-slate-400 hover:text-slate-600 w-8 h-8 flex items-center justify-center rounded-lg hover:bg-slate-100">✕</button>
-        </div>
-        {submitted ? (
-          <div className="flex-1 flex flex-col items-center justify-center p-8 text-center">
-            <div className="w-20 h-20 bg-green-100 rounded-full flex items-center justify-center mb-4">
-              <CheckCircle className="w-10 h-10 text-green-500" />
-            </div>
-            <h3 className="text-xl font-black text-slate-900 mb-2">Application Submitted!</h3>
-            <p className="text-slate-600 mb-1">Thank you for applying for <strong>{job.title}</strong></p>
-            <p className="text-slate-500 text-sm">We'll review your application and reach out within 5–7 business days.</p>
-            <p className="text-slate-400 text-sm mt-3">Check your email for a confirmation message.</p>
-            <button onClick={onClose} className="mt-6 bg-blue-600 hover:bg-blue-700 text-white px-8 py-3 rounded-xl font-bold transition-colors">Done</button>
-          </div>
-        ) : (
-          <form onSubmit={handleSubmit} className="flex-1 overflow-y-auto p-6 space-y-4">
-            {error && <div className="bg-red-50 border border-red-200 text-red-700 rounded-xl p-3 text-sm flex items-start gap-2"><AlertCircle className="w-4 h-4 mt-0.5 flex-shrink-0" />{error}</div>}
-            <div className="grid grid-cols-2 gap-3">
-              {[['firstName','First Name'],['lastName','Last Name']].map(([k,l]) => (
-                <div key={k}>
-                  <label className="block text-xs font-semibold text-slate-500 mb-1.5">{l} *</label>
-                  <input required value={(form as any)[k]} onChange={e => setForm(p => ({ ...p, [k]: e.target.value }))}
-                    className="w-full px-3 py-2.5 text-sm border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500"
-                    placeholder={l} />
-                </div>
-              ))}
-            </div>
-            <div>
-              <label className="block text-xs font-semibold text-slate-500 mb-1.5">Email Address *</label>
-              <input type="email" required value={form.email} onChange={e => setForm(p => ({ ...p, email: e.target.value }))}
-                className="w-full px-3 py-2.5 text-sm border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500"
-                placeholder="your@email.com" />
-            </div>
-            <div>
-              <label className="block text-xs font-semibold text-slate-500 mb-1.5">Phone Number</label>
-              <input value={form.phone} onChange={e => setForm(p => ({ ...p, phone: e.target.value }))}
-                className="w-full px-3 py-2.5 text-sm border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500"
-                placeholder="07XXXXXXXX" />
-            </div>
-            <div>
-              <label className="block text-xs font-semibold text-slate-500 mb-1.5">Cover Letter</label>
-              <textarea rows={5} value={form.coverLetter} onChange={e => setForm(p => ({ ...p, coverLetter: e.target.value }))}
-                className="w-full px-3 py-2.5 text-sm border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 resize-none"
-                placeholder="Tell us why you're a great fit for this role..." />
-            </div>
-            <div className="flex gap-3 pt-2">
-              <button type="button" onClick={onClose} className="flex-1 border border-slate-200 text-slate-700 py-2.5 rounded-xl font-semibold text-sm hover:bg-slate-50">Cancel</button>
-              <button type="submit" disabled={loading}
-                className="flex-1 bg-blue-600 hover:bg-blue-700 text-white py-2.5 rounded-xl font-bold text-sm flex items-center justify-center gap-2">
-                {loading ? <><div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />Submitting...</> : <><Send className="w-4 h-4" />Submit Application</>}
-              </button>
-            </div>
-          </form>
-        )}
-      </div>
-    </div>
+    <Suspense fallback={null}>
+      <CareersContent />
+    </Suspense>
   )
 }
