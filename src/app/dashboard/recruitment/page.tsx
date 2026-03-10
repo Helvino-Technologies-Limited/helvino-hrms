@@ -1,9 +1,11 @@
 'use client'
 import { useEffect, useState } from 'react'
 import Link from 'next/link'
+import { useSearchParams } from 'next/navigation'
+import { Suspense } from 'react'
 import {
-  Briefcase, Users, Video, FileText, BarChart3, Target,
-  Globe, Database, TrendingUp, ArrowRight,
+  Briefcase, Users, Video, FileText, BarChart3,
+  Globe, Database, Linkedin, ArrowRight, Target, TrendingUp,
 } from 'lucide-react'
 import toast from 'react-hot-toast'
 
@@ -37,10 +39,25 @@ function Spinner() {
   )
 }
 
-export default function RecruitmentDashboardPage() {
+function RecruitmentDashboardInner() {
   const [analytics, setAnalytics] = useState<any>(null)
   const [todayInterviews, setTodayInterviews] = useState<any[]>([])
   const [loading, setLoading] = useState(true)
+  const searchParams = useSearchParams()
+
+  // Handle LinkedIn OAuth callback notifications
+  useEffect(() => {
+    const connected = searchParams.get('linkedin_connected')
+    const error = searchParams.get('linkedin_error')
+    const org = searchParams.get('org')
+    if (connected === 'true') {
+      toast.success(`LinkedIn connected! Org ID: ${org || 'detected'}`)
+      window.history.replaceState({}, '', '/dashboard/recruitment')
+    } else if (error) {
+      toast.error(`LinkedIn error: ${error.replace(/_/g, ' ')}`)
+      window.history.replaceState({}, '', '/dashboard/recruitment')
+    }
+  }, [searchParams])
 
   async function loadData() {
     setLoading(true)
@@ -87,13 +104,23 @@ export default function RecruitmentDashboardPage() {
             {loading ? 'Loading...' : `${openJobs} open position${openJobs !== 1 ? 's' : ''} · Applicant tracking system`}
           </p>
         </div>
-        <Link
-          href="/dashboard/recruitment/jobs"
-          className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2.5 rounded-xl font-semibold flex items-center gap-2 text-sm shadow-md transition-colors"
-        >
-          <Briefcase className="w-4 h-4" />
-          Manage Jobs
-        </Link>
+        <div className="flex items-center gap-2">
+          <a
+            href="/api/linkedin/auth"
+            className="flex items-center gap-2 px-4 py-2.5 bg-[#0A66C2] hover:bg-[#004182] text-white rounded-xl font-semibold text-sm shadow-md transition-colors"
+            title="Connect LinkedIn to auto-post jobs"
+          >
+            <Linkedin className="w-4 h-4" />
+            Connect LinkedIn
+          </a>
+          <Link
+            href="/dashboard/recruitment/jobs"
+            className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2.5 rounded-xl font-semibold flex items-center gap-2 text-sm shadow-md transition-colors"
+          >
+            <Briefcase className="w-4 h-4" />
+            Manage Jobs
+          </Link>
+        </div>
       </div>
 
       {loading ? (
@@ -244,5 +271,13 @@ export default function RecruitmentDashboardPage() {
         </>
       )}
     </div>
+  )
+}
+
+export default function RecruitmentDashboardPage() {
+  return (
+    <Suspense fallback={null}>
+      <RecruitmentDashboardInner />
+    </Suspense>
   )
 }
