@@ -1,4 +1,5 @@
 import Link from 'next/link'
+import Image from 'next/image'
 import {
   Building2, Users, Clock, TrendingUp, Shield, Globe,
   Phone, Mail, MapPin, ChevronRight, Star, Briefcase,
@@ -44,7 +45,6 @@ export default function HomePage() {
         <div className="absolute inset-0 opacity-20"
           style={{ backgroundImage: 'radial-gradient(circle at 25% 50%, #3b82f6 0%, transparent 50%), radial-gradient(circle at 75% 20%, #1d4ed8 0%, transparent 40%)' }}
         />
-        {/* Grid pattern */}
         <div className="absolute inset-0 opacity-5"
           style={{ backgroundImage: 'linear-gradient(#ffffff 1px, transparent 1px), linear-gradient(90deg, #ffffff 1px, transparent 1px)', backgroundSize: '50px 50px' }}
         />
@@ -82,7 +82,6 @@ export default function HomePage() {
                 </Link>
               </div>
 
-              {/* Stats row */}
               <div className="grid grid-cols-3 gap-6 pt-8 border-t border-white/20">
                 {[
                   { value: '50+', label: 'Team Members', icon: Users },
@@ -100,21 +99,31 @@ export default function HomePage() {
             {/* Image collage */}
             <div className="hidden lg:block">
               <div className="grid grid-cols-2 gap-3">
-                <img
-                  src="https://images.unsplash.com/photo-1497366216548-37526070297c?w=500&q=80"
-                  alt="Modern office"
-                  className="col-span-2 h-52 w-full object-cover rounded-2xl ring-2 ring-blue-500/30 shadow-2xl"
-                />
-                <img
-                  src="https://images.unsplash.com/photo-1522071820081-009f0129c71c?w=400&q=80"
-                  alt="Team collaboration"
-                  className="h-44 w-full object-cover rounded-2xl ring-2 ring-blue-500/20 shadow-xl"
-                />
-                <img
-                  src="https://images.unsplash.com/photo-1581092921461-eab62e97a780?w=400&q=80"
-                  alt="Tech work"
-                  className="h-44 w-full object-cover rounded-2xl ring-2 ring-blue-500/20 shadow-xl"
-                />
+                <div className="col-span-2 relative h-52 w-full">
+                  <Image
+                    src="https://images.unsplash.com/photo-1497366216548-37526070297c?w=500&q=80"
+                    alt="Modern office"
+                    fill
+                    className="object-cover rounded-2xl ring-2 ring-blue-500/30 shadow-2xl"
+                    priority
+                  />
+                </div>
+                <div className="relative h-44 w-full">
+                  <Image
+                    src="https://images.unsplash.com/photo-1522071820081-009f0129c71c?w=400&q=80"
+                    alt="Team collaboration"
+                    fill
+                    className="object-cover rounded-2xl ring-2 ring-blue-500/20 shadow-xl"
+                  />
+                </div>
+                <div className="relative h-44 w-full">
+                  <Image
+                    src="https://images.unsplash.com/photo-1581092921461-eab62e97a780?w=400&q=80"
+                    alt="Tech work"
+                    fill
+                    className="object-cover rounded-2xl ring-2 ring-blue-500/20 shadow-xl"
+                  />
+                </div>
               </div>
             </div>
           </div>
@@ -188,10 +197,18 @@ export default function HomePage() {
               </div>
             </div>
             <div className="grid grid-cols-2 gap-3">
-              <img src="https://images.unsplash.com/photo-1600880292203-757bb62b4baf?w=400&q=80" alt="Office" className="rounded-2xl h-52 w-full object-cover shadow-lg" />
-              <img src="https://images.unsplash.com/photo-1542744173-8e7e53415bb0?w=400&q=80" alt="Meeting" className="rounded-2xl h-52 w-full object-cover shadow-lg mt-8" />
-              <img src="https://images.unsplash.com/photo-1573164713988-8665fc963095?w=400&q=80" alt="Developer" className="rounded-2xl h-52 w-full object-cover shadow-lg" />
-              <img src="https://images.unsplash.com/photo-1551434678-e076c223a692?w=400&q=80" alt="Team" className="rounded-2xl h-52 w-full object-cover shadow-lg mt-8" />
+              <div className="relative h-52 w-full">
+                <Image src="https://images.unsplash.com/photo-1600880292203-757bb62b4baf?w=400&q=80" alt="Office" fill className="rounded-2xl object-cover shadow-lg" />
+              </div>
+              <div className="relative h-52 w-full mt-8">
+                <Image src="https://images.unsplash.com/photo-1542744173-8e7e53415bb0?w=400&q=80" alt="Meeting" fill className="rounded-2xl object-cover shadow-lg" />
+              </div>
+              <div className="relative h-52 w-full">
+                <Image src="https://images.unsplash.com/photo-1573164713988-8665fc963095?w=400&q=80" alt="Developer" fill className="rounded-2xl object-cover shadow-lg" />
+              </div>
+              <div className="relative h-52 w-full mt-8">
+                <Image src="https://images.unsplash.com/photo-1551434678-e076c223a692?w=400&q=80" alt="Team" fill className="rounded-2xl object-cover shadow-lg" />
+              </div>
             </div>
           </div>
         </div>
@@ -232,17 +249,22 @@ export default function HomePage() {
           </div>
           <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
             {[
-              'https://images.unsplash.com/photo-1522202176988-66273c2fd55f?w=400&q=80',
-              'https://images.unsplash.com/photo-1531545514256-b1400bc00f31?w=400&q=80',
-              'https://images.unsplash.com/photo-1504384764586-bb4cdc1707b0?w=400&q=80',
-              'https://images.unsplash.com/photo-1517245386807-bb43f82c33c4?w=400&q=80',
-              'https://images.unsplash.com/photo-1573497019940-1c28c88b4f3e?w=400&q=80',
-              'https://images.unsplash.com/photo-1556761175-4b46a572b786?w=400&q=80',
-              'https://images.unsplash.com/photo-1559136555-9303baea8ebd?w=400&q=80',
-              'https://images.unsplash.com/photo-1497215728101-856f4ea42174?w=400&q=80',
-            ].map((src, i) => (
-              <div key={i} className={`overflow-hidden rounded-2xl shadow-md ${i === 0 || i === 5 ? 'col-span-2' : ''}`}>
-                <img src={src} alt={`Office ${i + 1}`} className="w-full h-48 object-cover hover:scale-110 transition-transform duration-500" />
+              { src: 'https://images.unsplash.com/photo-1522202176988-66273c2fd55f?w=400&q=80', span: true },
+              { src: 'https://images.unsplash.com/photo-1531545514256-b1400bc00f31?w=400&q=80', span: false },
+              { src: 'https://images.unsplash.com/photo-1504384764586-bb4cdc1707b0?w=400&q=80', span: false },
+              { src: 'https://images.unsplash.com/photo-1517245386807-bb43f82c33c4?w=400&q=80', span: false },
+              { src: 'https://images.unsplash.com/photo-1573497019940-1c28c88b4f3e?w=400&q=80', span: false },
+              { src: 'https://images.unsplash.com/photo-1556761175-4b46a572b786?w=400&q=80', span: true },
+              { src: 'https://images.unsplash.com/photo-1559136555-9303baea8ebd?w=400&q=80', span: false },
+              { src: 'https://images.unsplash.com/photo-1497215728101-856f4ea42174?w=400&q=80', span: false },
+            ].map((item, i) => (
+              <div key={i} className={`relative overflow-hidden rounded-2xl shadow-md h-48 ${item.span ? 'col-span-2' : ''}`}>
+                <Image
+                  src={item.src}
+                  alt={`Office ${i + 1}`}
+                  fill
+                  className="object-cover hover:scale-110 transition-transform duration-500"
+                />
               </div>
             ))}
           </div>
