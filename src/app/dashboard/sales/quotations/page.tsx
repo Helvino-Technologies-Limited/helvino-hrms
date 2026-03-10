@@ -275,7 +275,7 @@ function QuotationsPageInner() {
 
 export default function QuotationsPage() {
   return (
-    <Suspense>
+    <Suspense fallback={null}>
       <QuotationsPageInner />
     </Suspense>
   )
