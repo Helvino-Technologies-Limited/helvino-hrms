@@ -9,9 +9,14 @@ import {
   Bell, Search, Menu, X, LogOut, Settings, UserCircle,
   Shield, ChevronDown, Building, CheckCircle,
   TrendingUp, Target, FileText, Users2, RotateCcw, FolderOpen, Package, ListTodo,
-  Video, Database
+  Video, Database, ShieldCheck
 } from 'lucide-react'
 import { getInitials } from '@/lib/utils'
+
+const adminNavItems = [
+  { href: '/dashboard/admin', icon: ShieldCheck, label: 'Admin Panel', exact: true,
+    roles: ['SUPER_ADMIN'] },
+]
 
 const hrNavItems = [
   { href: '/dashboard', icon: LayoutDashboard, label: 'Dashboard', exact: true,
@@ -89,7 +94,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
   // Enforce page-level access control: redirect if the current path is not in the user's allowed routes
   useEffect(() => {
     if (status !== 'authenticated') return
-    const allItems = [...hrNavItems, ...recruitmentNavItems, ...salesNavItems]
+    const allItems = [...adminNavItems, ...hrNavItems, ...recruitmentNavItems, ...salesNavItems]
     // Find the most specific nav item matching the current path
     const match = allItems
       .filter(item => item.exact ? pathname === item.href : pathname.startsWith(item.href))
@@ -99,10 +104,11 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
     }
   }, [pathname, role, status, router])
   const employee = session?.user?.employee
+  const filteredAdminNav = adminNavItems.filter(item => item.roles.includes(role))
   const filteredHrNav = hrNavItems.filter(item => item.roles.includes(role))
   const filteredRecruitmentNav = recruitmentNavItems.filter(item => item.roles.includes(role))
   const filteredSalesNav = salesNavItems.filter(item => item.roles.includes(role))
-  const allNavItems = [...hrNavItems, ...recruitmentNavItems, ...salesNavItems]
+  const allNavItems = [...adminNavItems, ...hrNavItems, ...recruitmentNavItems, ...salesNavItems]
 
   const [notifOpen, setNotifOpen] = useState(false)
   const [notifications, setNotifications] = useState<any[]>([])
@@ -204,6 +210,25 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
 
         {/* Nav */}
         <nav className="flex-1 overflow-y-auto px-3 py-4">
+          {/* Admin Section */}
+          {filteredAdminNav.length > 0 && (
+            <div className="mb-3">
+              <div className="px-3 mb-1">
+                <span className="text-xs font-bold text-red-400/80 uppercase tracking-wider">Administration</span>
+              </div>
+              <div className="space-y-0.5">
+                {filteredAdminNav.map(item => (
+                  <Link key={item.href} href={item.href} onClick={() => setSidebarOpen(false)}
+                    className={`flex items-center gap-3 px-3.5 py-2.5 rounded-xl transition-all duration-150 group ${isActive(item) ? 'bg-red-600 text-white shadow-lg shadow-red-600/30' : 'text-slate-400 hover:text-white hover:bg-red-900/30'}`}>
+                    <item.icon className={`flex-shrink-0 ${isActive(item) ? 'text-white' : 'text-red-400/70 group-hover:text-red-300'}`} style={{ width: '18px', height: '18px' }} />
+                    <span className="font-medium text-sm">{item.label}</span>
+                    {isActive(item) && <div className="ml-auto w-1.5 h-1.5 bg-white rounded-full" />}
+                  </Link>
+                ))}
+              </div>
+            </div>
+          )}
+
           {/* HR Section */}
           <div className="space-y-0.5">
             {filteredHrNav.map(item => (

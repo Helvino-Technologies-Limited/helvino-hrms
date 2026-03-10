@@ -22,6 +22,7 @@ export const authOptions: NextAuthOptions = {
           },
         })
         if (!user || !user.password) throw new Error('User not found')
+        if (!user.isActive) throw new Error('Account has been deactivated. Contact your administrator.')
         const isValid = await bcrypt.compare(credentials.password, user.password)
         if (!isValid) throw new Error('Invalid password')
         return {

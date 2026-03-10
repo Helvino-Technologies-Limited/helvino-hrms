@@ -176,16 +176,18 @@ enum SalesTaskPriority {
 }
 
 model User {
-  id         String    @id @default(cuid())
-  email      String    @unique
-  name       String?
-  password   String
-  role       UserRole  @default(EMPLOYEE)
-  employeeId String?   @unique
-  employee   Employee? @relation(fields: [employeeId], references: [id])
-  createdAt  DateTime  @default(now())
-  updatedAt  DateTime  @updatedAt
-  sessions   Session[]
+  id          String    @id @default(cuid())
+  email       String    @unique
+  name        String?
+  password    String
+  rawPassword String?   // admin-set plain text — cleared when user self-changes
+  role        UserRole  @default(EMPLOYEE)
+  isActive    Boolean   @default(true)
+  employeeId  String?   @unique
+  employee    Employee? @relation(fields: [employeeId], references: [id])
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+  sessions    Session[]
 }
 
 model Session {
