@@ -16,7 +16,7 @@ export async function GET(req: NextRequest) {
     response_type: 'code',
     client_id: clientId,
     redirect_uri: redirectUri,
-    scope: 'w_organization_social r_organization_social rw_organization_admin',
+    scope: 'openid profile email w_member_social',
     state: 'linkedin_job_posting',
   })
 
