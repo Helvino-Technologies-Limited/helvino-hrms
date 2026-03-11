@@ -36,8 +36,8 @@ export async function POST(req: NextRequest) {
     const session = await getServerSession(authOptions)
     if (!session) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 
-    if (!['SUPER_ADMIN', 'SALES_MANAGER'].includes(session.user.role)) {
-      return NextResponse.json({ error: 'Forbidden: only SUPER_ADMIN or SALES_MANAGER can create services' }, { status: 403 })
+    if (!['SUPER_ADMIN', 'HR_MANAGER'].includes(session.user.role)) {
+      return NextResponse.json({ error: 'Forbidden: only Admin or HR can manage services' }, { status: 403 })
     }
 
     const body = await req.json()

@@ -11,11 +11,23 @@ export async function GET(req: NextRequest) {
     const { searchParams } = new URL(req.url)
     const employeeId = searchParams.get('employeeId')
 
+    const role = session.user.role
+    const empId = (session.user as any).employeeId as string | undefined
     const where: any = {}
     if (employeeId) where.employeeId = employeeId
-    if (session.user.role === 'EMPLOYEE') {
-      where.employeeId = (session.user as any).employeeId
+
+    if (role === 'EMPLOYEE' || role === 'SALES_AGENT') {
+      where.employeeId = empId
+    } else if ((role === 'DEPARTMENT_HEAD' || role === 'SALES_MANAGER') && empId) {
+      const self = await prisma.employee.findUnique({ where: { id: empId }, select: { departmentId: true } })
+      if (self?.departmentId) {
+        const members = await prisma.employee.findMany({ where: { departmentId: self.departmentId }, select: { id: true } })
+        where.employeeId = { in: members.map(m => m.id) }
+      } else {
+        where.employeeId = empId
+      }
     }
+    // SUPER_ADMIN, HR_MANAGER: no filter
 
     const reviews = await prisma.performanceReview.findMany({
       where,

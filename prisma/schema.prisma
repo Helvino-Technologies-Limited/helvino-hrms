@@ -239,6 +239,8 @@ model Employee {
   bankAccount      String?
   mpesaPhone       String?
   kraPin           String?
+  shaNumber        String?
+  nssfNumber       String?
   managerId        String?
   manager          Employee?           @relation("Reports", fields: [managerId], references: [id])
   directReports    Employee[]          @relation("Reports")

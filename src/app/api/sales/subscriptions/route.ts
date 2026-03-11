@@ -24,8 +24,12 @@ export async function GET(req: NextRequest) {
     const billingCycle = searchParams.get('billingCycle')
     const expiringParam = searchParams.get('expiring')
 
+    const VIEW_ALL = ['SUPER_ADMIN', 'HR_MANAGER', 'SALES_MANAGER']
+    const empId = (session.user as any).employeeId as string | undefined
     const where: any = {}
-
+    if (!VIEW_ALL.includes(session.user.role) && empId) {
+      where.client = { OR: [{ assignedToId: empId }, { createdById: empId }] }
+    }
     if (status) where.status = status
     if (clientId) where.clientId = clientId
     if (billingCycle) where.billingCycle = billingCycle

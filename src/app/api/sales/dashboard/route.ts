@@ -8,6 +8,24 @@ export async function GET(req: NextRequest) {
     const session = await getServerSession(authOptions)
     if (!session) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 
+    const VIEW_ALL = ['SUPER_ADMIN', 'HR_MANAGER', 'SALES_MANAGER']
+    const empId = (session.user as any).employeeId as string | undefined
+
+    // Build scoped filters for each entity
+    const leadFilter: any = {}
+    const quotationFilter: any = {}
+    const clientFilter: any = {}
+    const taskFilter: any = {}
+    const subscriptionFilter: any = {}
+
+    if (!VIEW_ALL.includes(session.user.role) && empId) {
+      leadFilter.OR = [{ assignedToId: empId }, { createdById: empId }]
+      quotationFilter.createdById = empId
+      clientFilter.OR = [{ assignedToId: empId }, { createdById: empId }]
+      taskFilter.assignedToId = empId
+      subscriptionFilter.client = { OR: [{ assignedToId: empId }, { createdById: empId }] }
+    }
+
     const now = new Date()
     const today = new Date(now.getFullYear(), now.getMonth(), now.getDate())
     const tomorrow = new Date(today.getTime() + 24 * 60 * 60 * 1000)
@@ -44,102 +62,68 @@ export async function GET(req: NextRequest) {
       leadsBySourceRaw,
       ...monthlyLeadCounts
     ] = await Promise.all([
-      // totalLeads
-      prisma.lead.count(),
-
-      // newLeads (status = NEW)
-      prisma.lead.count({ where: { status: 'NEW' } }),
-
-      // wonLeads
-      prisma.lead.count({ where: { status: 'WON' } }),
-
-      // lostLeads
-      prisma.lead.count({ where: { status: 'LOST' } }),
-
-      // activeLeads (not WON or LOST)
-      prisma.lead.count({
-        where: { status: { notIn: ['WON', 'LOST'] } },
-      }),
-
-      // totalClients (active)
-      prisma.client.count({ where: { isActive: true } }),
-
-      // totalQuotations
-      prisma.quotation.count(),
-
-      // pendingQuotations (DRAFT + SENT)
-      prisma.quotation.count({
-        where: { status: { in: ['DRAFT', 'SENT'] } },
-      }),
-
-      // approvedQuotations
-      prisma.quotation.count({ where: { status: 'APPROVED' } }),
-
-      // totalRevenue — sum of approved quotation totalAmount
+      prisma.lead.count({ where: leadFilter }),
+      prisma.lead.count({ where: { ...leadFilter, status: 'NEW' } }),
+      prisma.lead.count({ where: { ...leadFilter, status: 'WON' } }),
+      prisma.lead.count({ where: { ...leadFilter, status: 'LOST' } }),
+      prisma.lead.count({ where: { ...leadFilter, status: { notIn: ['WON', 'LOST'] } } }),
+      prisma.client.count({ where: { ...clientFilter, isActive: true } }),
+      prisma.quotation.count({ where: quotationFilter }),
+      prisma.quotation.count({ where: { ...quotationFilter, status: { in: ['DRAFT', 'SENT'] } } }),
+      prisma.quotation.count({ where: { ...quotationFilter, status: 'APPROVED' } }),
       prisma.quotation.aggregate({
-        where: { status: 'APPROVED' },
+        where: { ...quotationFilter, status: 'APPROVED' },
         _sum: { totalAmount: true },
       }),
-
-      // expiringSubscriptions (within 30 days, still ACTIVE)
       prisma.subscription.count({
         where: {
+          ...subscriptionFilter,
           status: 'ACTIVE',
           expiryDate: { gte: now, lte: in30Days },
         },
       }),
-
-      // expiredSubscriptions
-      prisma.subscription.count({ where: { status: 'EXPIRED' } }),
-
-      // todayTasks (deadline = today, not DONE)
+      prisma.subscription.count({ where: { ...subscriptionFilter, status: 'EXPIRED' } }),
       prisma.salesTask.count({
         where: {
+          ...taskFilter,
           deadline: { gte: today, lt: tomorrow },
           status: { notIn: ['DONE'] },
         },
       }),
-
-      // overdueTasks (deadline < today, not DONE or CANCELLED)
       prisma.salesTask.count({
         where: {
+          ...taskFilter,
           deadline: { lt: today },
           status: { notIn: ['DONE', 'CANCELLED'] },
         },
       }),
-
-      // recentLeads — last 5 with assignedTo
       prisma.lead.findMany({
         take: 5,
+        where: leadFilter,
         orderBy: { createdAt: 'desc' },
         include: {
           assignedTo: { select: { firstName: true, lastName: true } },
         },
       }),
-
-      // recentClients — last 5
       prisma.client.findMany({
         take: 5,
+        where: { ...clientFilter, isActive: true },
         orderBy: { createdAt: 'desc' },
-        where: { isActive: true },
       }),
-
-      // leadsByStatus
       prisma.lead.groupBy({
         by: ['status'],
+        where: leadFilter,
         _count: { status: true },
       }),
-
-      // leadsBySource
       prisma.lead.groupBy({
         by: ['source'],
+        where: leadFilter,
         _count: { source: true },
       }),
-
-      // monthly lead counts — one query per bucket (6 total, spread via Promise.all)
       ...monthBuckets.map((bucket) =>
         prisma.lead.count({
           where: {
+            ...leadFilter,
             createdAt: { gte: bucket.start, lt: bucket.end },
           },
         })

@@ -18,7 +18,8 @@ export async function GET(req: NextRequest) {
     if (month) where.month = parseInt(month)
     if (year) where.year = parseInt(year)
     if (employeeId) where.employeeId = employeeId
-    if (session.user.role === 'EMPLOYEE') {
+    const ADMIN_ROLES = ['SUPER_ADMIN', 'HR_MANAGER']
+    if (!ADMIN_ROLES.includes(session.user.role)) {
       where.employeeId = (session.user as any).employeeId
     }
 
@@ -46,6 +47,9 @@ export async function POST(req: NextRequest) {
   try {
     const session = await getServerSession(authOptions)
     if (!session) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+    if (!['SUPER_ADMIN', 'HR_MANAGER'].includes(session.user.role)) {
+      return NextResponse.json({ error: 'Forbidden: only Admin or HR can generate payroll' }, { status: 403 })
+    }
 
     const { month, year } = await req.json()
     if (!month || !year) {

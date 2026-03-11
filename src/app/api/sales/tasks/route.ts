@@ -14,8 +14,12 @@ export async function GET(req: NextRequest) {
     const assignedToId = searchParams.get('assignedToId')
     const clientId = searchParams.get('clientId')
 
+    const VIEW_ALL = ['SUPER_ADMIN', 'HR_MANAGER', 'SALES_MANAGER']
+    const empId = (session.user as any).employeeId as string | undefined
     const where: any = {}
-
+    if (!VIEW_ALL.includes(session.user.role) && empId) {
+      where.assignedToId = empId
+    }
     if (status) where.status = status
     if (priority) where.priority = priority
     if (assignedToId) where.assignedToId = assignedToId

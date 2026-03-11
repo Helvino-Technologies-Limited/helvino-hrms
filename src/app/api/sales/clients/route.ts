@@ -13,8 +13,12 @@ export async function GET(req: NextRequest) {
     const isActive = searchParams.get('isActive')
     const search = searchParams.get('search')
 
+    const VIEW_ALL = ['SUPER_ADMIN', 'HR_MANAGER', 'SALES_MANAGER']
+    const empId = (session.user as any).employeeId as string | undefined
     const where: any = {}
-
+    if (!VIEW_ALL.includes(session.user.role) && empId) {
+      where.OR = [{ assignedToId: empId }, { createdById: empId }]
+    }
     if (category) where.category = category
     if (isActive !== null && isActive !== undefined && isActive !== '') {
       where.isActive = isActive === 'true'

@@ -9,8 +9,8 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
   try {
     const session = await getServerSession(authOptions)
     if (!session) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
-    if (!ALLOWED_ROLES.includes(session.user.role)) {
-      return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
+    if (!['SUPER_ADMIN', 'HR_MANAGER'].includes(session.user.role)) {
+      return NextResponse.json({ error: 'Forbidden: only Admin or HR can edit services' }, { status: 403 })
     }
 
     const { id } = await params

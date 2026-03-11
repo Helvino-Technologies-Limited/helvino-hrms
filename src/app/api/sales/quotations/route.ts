@@ -19,7 +19,12 @@ export async function GET(req: NextRequest) {
     const leadId = searchParams.get('leadId')
     const search = searchParams.get('search')
 
+    const VIEW_ALL = ['SUPER_ADMIN', 'HR_MANAGER', 'SALES_MANAGER']
+    const empId = (session.user as any).employeeId as string | undefined
     const where: any = {}
+    if (!VIEW_ALL.includes(session.user.role) && empId) {
+      where.createdById = empId
+    }
     if (status) where.status = status
     if (clientId) where.clientId = clientId
     if (leadId) where.leadId = leadId

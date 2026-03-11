@@ -83,6 +83,8 @@ export async function POST(req: NextRequest) {
         bankAccount: body.bankAccount || null,
         mpesaPhone: body.mpesaPhone || null,
         kraPin: body.kraPin || null,
+        shaNumber: body.shaNumber || null,
+        nssfNumber: body.nssfNumber || null,
         emergencyContact: body.emergencyContact || null,
         emergencyPhone: body.emergencyPhone || null,
         idFrontUrl: body.idFrontUrl || null,

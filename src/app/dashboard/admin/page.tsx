@@ -378,14 +378,20 @@ function AuditLogsPanel() {
 
   const load = useCallback(async () => {
     setLoading(true)
-    const params = new URLSearchParams({ page: String(page) })
-    if (search) params.set('search', search)
-    if (filterEntity) params.set('entity', filterEntity)
-    if (filterAction) params.set('action', filterAction)
-    const data = await fetch(`/api/admin/audit-logs?${params}`).then(r => r.json())
-    setLogs(data.logs || [])
-    setTotal(data.total || 0)
-    setPages(data.pages || 1)
+    try {
+      const params = new URLSearchParams({ page: String(page) })
+      if (search) params.set('search', search)
+      if (filterEntity) params.set('entity', filterEntity)
+      if (filterAction) params.set('action', filterAction)
+      const res = await fetch(`/api/admin/audit-logs?${params}`)
+      const data = await res.json()
+      if (!res.ok) { console.error('Audit logs error:', data); setLoading(false); return }
+      setLogs(Array.isArray(data.logs) ? data.logs : [])
+      setTotal(data.total || 0)
+      setPages(data.pages || 1)
+    } catch (err) {
+      console.error('Failed to load audit logs:', err)
+    }
     setLoading(false)
   }, [page, search, filterEntity, filterAction])
 

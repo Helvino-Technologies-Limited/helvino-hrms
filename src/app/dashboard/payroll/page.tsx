@@ -1,10 +1,29 @@
 'use client'
 import { useEffect, useState } from 'react'
-import { DollarSign, RefreshCw, TrendingUp, TrendingDown, Users } from 'lucide-react'
+import { useSession } from 'next-auth/react'
+import { DollarSign, RefreshCw, TrendingUp, TrendingDown, Users, FileText } from 'lucide-react'
 import { formatCurrency } from '@/lib/utils'
 import toast from 'react-hot-toast'
 
+const ADMIN_ROLES = ['SUPER_ADMIN', 'HR_MANAGER']
+
 export default function PayrollPage() {
+  const { data: session } = useSession()
+  const role = (session?.user as any)?.role as string | undefined
+  const isAdmin = role ? ADMIN_ROLES.includes(role) : false
+
+  if (!session) return (
+    <div className="flex items-center justify-center h-48">
+      <div className="w-7 h-7 border-4 border-blue-600 border-t-transparent rounded-full animate-spin" />
+    </div>
+  )
+
+  return isAdmin ? <AdminPayrollView /> : <EmployeePayslipView />
+}
+
+// ─── Admin view ────────────────────────────────────────────────────────────────
+
+function AdminPayrollView() {
   const [payrolls, setPayrolls] = useState<any[]>([])
   const [loading, setLoading] = useState(true)
   const [generating, setGenerating] = useState(false)
@@ -44,8 +63,6 @@ export default function PayrollPage() {
     nhif: payrolls.reduce((s, p) => s + p.nhif, 0),
     nssf: payrolls.reduce((s, p) => s + p.nssf, 0),
   }
-
-  const months2 = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec']
 
   return (
     <div className="space-y-5">
@@ -159,6 +176,134 @@ export default function PayrollPage() {
           </div>
         )}
       </div>
+    </div>
+  )
+}
+
+// ─── Employee payslip view ──────────────────────────────────────────────────────
+
+function EmployeePayslipView() {
+  const [payslips, setPayslips] = useState<any[]>([])
+  const [selected, setSelected] = useState<any>(null)
+  const [loading, setLoading] = useState(true)
+  const [selectedMonth, setSelectedMonth] = useState(new Date().getMonth() + 1)
+  const [selectedYear, setSelectedYear] = useState(new Date().getFullYear())
+
+  const months = ['January','February','March','April','May','June','July','August','September','October','November','December']
+
+  async function loadPayslips() {
+    setLoading(true)
+    const res = await fetch(`/api/payroll?month=${selectedMonth}&year=${selectedYear}`)
+    const data = await res.json()
+    const list = Array.isArray(data) ? data : []
+    setPayslips(list)
+    setSelected(list[0] ?? null)
+    setLoading(false)
+  }
+
+  useEffect(() => { loadPayslips() }, [selectedMonth, selectedYear])
+
+  return (
+    <div className="space-y-5">
+      <div className="flex items-center justify-between flex-wrap gap-3">
+        <div>
+          <h1 className="text-2xl font-black text-slate-900">My Payslip</h1>
+          <p className="text-slate-500 text-sm">Your monthly salary breakdown</p>
+        </div>
+        <div className="flex gap-2 flex-wrap">
+          <select value={selectedMonth} onChange={e => setSelectedMonth(parseInt(e.target.value))}
+            className="px-3 py-2 text-sm border border-slate-200 rounded-xl bg-white focus:outline-none focus:ring-2 focus:ring-blue-500">
+            {months.map((m, i) => <option key={m} value={i+1}>{m}</option>)}
+          </select>
+          <select value={selectedYear} onChange={e => setSelectedYear(parseInt(e.target.value))}
+            className="px-3 py-2 text-sm border border-slate-200 rounded-xl bg-white focus:outline-none focus:ring-2 focus:ring-blue-500">
+            {[2024, 2025, 2026].map(y => <option key={y} value={y}>{y}</option>)}
+          </select>
+        </div>
+      </div>
+
+      {loading ? (
+        <div className="flex items-center justify-center h-48">
+          <div className="w-7 h-7 border-4 border-blue-600 border-t-transparent rounded-full animate-spin" />
+        </div>
+      ) : !selected ? (
+        <div className="bg-white rounded-2xl shadow-sm border border-slate-100 text-center py-16 text-slate-400">
+          <FileText className="w-12 h-12 mx-auto mb-3 text-slate-200" />
+          <p className="font-semibold text-slate-600">No payslip for {months[selectedMonth-1]} {selectedYear}</p>
+          <p className="text-sm mt-1">Your payslip will appear here once payroll is processed</p>
+        </div>
+      ) : (
+        <div className="max-w-2xl mx-auto bg-white rounded-2xl shadow-sm border border-slate-100 overflow-hidden">
+          {/* Header */}
+          <div className="bg-gradient-to-r from-blue-600 to-blue-700 px-6 py-5 text-white">
+            <div className="flex items-center justify-between">
+              <div>
+                <div className="text-xl font-black">{selected.employee?.firstName} {selected.employee?.lastName}</div>
+                <div className="text-blue-200 text-sm">{selected.employee?.jobTitle} · {selected.employee?.department?.name}</div>
+              </div>
+              <div className="text-right">
+                <div className="text-sm text-blue-200">Payslip</div>
+                <div className="font-bold">{months[selectedMonth-1]} {selectedYear}</div>
+                <span className={`mt-1 inline-block px-2 py-0.5 rounded-full text-xs font-bold ${selected.status === 'PAID' ? 'bg-green-400 text-green-900' : 'bg-blue-400 text-blue-900'}`}>
+                  {selected.status}
+                </span>
+              </div>
+            </div>
+          </div>
+
+          {/* Earnings */}
+          <div className="px-6 py-4 border-b border-slate-100">
+            <div className="text-xs font-semibold text-slate-400 uppercase tracking-wider mb-3">Earnings</div>
+            <div className="space-y-2">
+              <div className="flex justify-between text-sm">
+                <span className="text-slate-600">Basic Salary</span>
+                <span className="font-semibold text-slate-900">{formatCurrency(selected.basicSalary)}</span>
+              </div>
+              {selected.allowances > 0 && (
+                <div className="flex justify-between text-sm">
+                  <span className="text-slate-600">Allowances</span>
+                  <span className="font-semibold text-slate-900">{formatCurrency(selected.allowances)}</span>
+                </div>
+              )}
+              <div className="flex justify-between text-sm pt-1 border-t border-slate-100">
+                <span className="font-semibold text-slate-900">Gross Salary</span>
+                <span className="font-bold text-slate-900">{formatCurrency(selected.grossSalary)}</span>
+              </div>
+            </div>
+          </div>
+
+          {/* Deductions */}
+          <div className="px-6 py-4 border-b border-slate-100">
+            <div className="text-xs font-semibold text-slate-400 uppercase tracking-wider mb-3">Deductions</div>
+            <div className="space-y-2">
+              <div className="flex justify-between text-sm">
+                <span className="text-slate-600">PAYE Tax</span>
+                <span className="font-semibold text-red-600">-{formatCurrency(selected.paye)}</span>
+              </div>
+              <div className="flex justify-between text-sm">
+                <span className="text-slate-600">NHIF</span>
+                <span className="font-semibold text-red-600">-{formatCurrency(selected.nhif)}</span>
+              </div>
+              <div className="flex justify-between text-sm">
+                <span className="text-slate-600">NSSF</span>
+                <span className="font-semibold text-red-600">-{formatCurrency(selected.nssf)}</span>
+              </div>
+              <div className="flex justify-between text-sm pt-1 border-t border-slate-100">
+                <span className="font-semibold text-slate-900">Total Deductions</span>
+                <span className="font-bold text-red-600">-{formatCurrency(selected.paye + selected.nhif + selected.nssf)}</span>
+              </div>
+            </div>
+          </div>
+
+          {/* Net Pay */}
+          <div className="px-6 py-5 bg-green-50">
+            <div className="flex justify-between items-center">
+              <span className="text-lg font-black text-slate-900">Net Pay</span>
+              <span className="text-2xl font-black text-green-600">{formatCurrency(selected.netSalary)}</span>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   )
 }

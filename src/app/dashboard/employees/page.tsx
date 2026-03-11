@@ -231,6 +231,8 @@ function EmployeeFormModal({ employee, departments, employees, onClose, onSave }
     bankAccount: employee?.bankAccount || '',
     mpesaPhone: employee?.mpesaPhone || '',
     kraPin: employee?.kraPin || '',
+    shaNumber: employee?.shaNumber || '',
+    nssfNumber: employee?.nssfNumber || '',
     emergencyContact: employee?.emergencyContact || '',
     emergencyPhone: employee?.emergencyPhone || '',
     role: 'EMPLOYEE',
@@ -372,6 +374,11 @@ function EmployeeFormModal({ employee, departments, employees, onClose, onSave }
               <div className="grid grid-cols-2 gap-4">
                 <FormField label="Basic Salary (KES)" name="basicSalary" type="number" form={form} set={set} />
                 <FormField label="KRA PIN" name="kraPin" form={form} set={set} />
+                <div className="col-span-2 pt-1 pb-0.5">
+                  <p className="text-xs font-bold text-slate-400 uppercase tracking-wider">Government Contributions</p>
+                </div>
+                <FormField label="SHA Number (formerly NHIF)" name="shaNumber" form={form} set={set} />
+                <FormField label="NSSF Number" name="nssfNumber" form={form} set={set} />
                 <div className="col-span-2 pt-1 pb-0.5">
                   <p className="text-xs font-bold text-slate-400 uppercase tracking-wider">Bank Details</p>
                 </div>
