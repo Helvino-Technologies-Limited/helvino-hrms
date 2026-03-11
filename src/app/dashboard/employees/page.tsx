@@ -9,176 +9,732 @@ import toast from 'react-hot-toast'
 type BranchInfo = { name: string; code: string }
 const KENYA_BANK_BRANCHES: Record<string, BranchInfo[]> = {
   'KCB Bank': [
+    // Nairobi County
     { name: 'Head Office', code: '01001' },
-    { name: 'Westlands', code: '01043' },
     { name: 'Moi Avenue', code: '01002' },
     { name: 'Tom Mboya', code: '01003' },
     { name: 'Industrial Area', code: '01004' },
+    { name: 'Westlands', code: '01043' },
     { name: 'Upperhill', code: '01045' },
     { name: 'Karen', code: '01047' },
     { name: 'Gigiri', code: '01050' },
     { name: 'Ngong Road', code: '01054' },
+    { name: 'Thika Road Mall', code: '01055' },
+    // Coast Region
     { name: 'Mombasa Digo Road', code: '01010' },
-    { name: 'Nakuru', code: '01020' },
-    { name: 'Kisumu', code: '01030' },
-    { name: 'Eldoret', code: '01040' },
-    { name: 'Thika', code: '01060' },
+    { name: 'Nyali (Mombasa)', code: '01011' },
+    { name: 'Kwale', code: '01012' },
+    { name: 'Kilifi', code: '01013' },
+    { name: 'Malindi (Kilifi)', code: '01014' },
+    { name: 'Hola (Tana River)', code: '01015' },
+    { name: 'Lamu', code: '01016' },
+    { name: 'Voi (Taita Taveta)', code: '01017' },
+    // North Eastern
+    { name: 'Garissa', code: '01018' },
+    { name: 'Wajir', code: '01019' },
+    { name: 'Mandera', code: '01021' },
+    // Rift Valley / Northern
+    { name: 'Marsabit', code: '01022' },
+    { name: 'Isiolo', code: '01023' },
+    // Central / Eastern
+    { name: 'Meru', code: '01024' },
+    { name: 'Chuka (Tharaka Nithi)', code: '01025' },
+    { name: 'Embu', code: '01026' },
+    { name: 'Kitui', code: '01027' },
+    { name: 'Machakos', code: '01028' },
+    { name: 'Wote (Makueni)', code: '01029' },
+    { name: 'Ol Kalou (Nyandarua)', code: '01031' },
     { name: 'Nyeri', code: '01070' },
+    { name: 'Kerugoya (Kirinyaga)', code: '01032' },
+    { name: "Murang'a", code: '01033' },
+    { name: 'Thika (Kiambu)', code: '01060' },
+    { name: 'Ruiru (Kiambu)', code: '01056' },
+    { name: 'Kiambu Town', code: '01057' },
+    // Rift Valley
+    { name: 'Lodwar (Turkana)', code: '01034' },
+    { name: 'Kapenguria (West Pokot)', code: '01035' },
+    { name: 'Maralal (Samburu)', code: '01036' },
+    { name: 'Kitale (Trans Nzoia)', code: '01037' },
+    { name: 'Eldoret (Uasin Gishu)', code: '01040' },
+    { name: 'Iten (Elgeyo Marakwet)', code: '01038' },
+    { name: 'Kapsabet (Nandi)', code: '01039' },
+    { name: 'Kabarnet (Baringo)', code: '01041' },
+    { name: 'Nanyuki (Laikipia)', code: '01042' },
+    { name: 'Nakuru', code: '01020' },
+    { name: 'Narok', code: '01044' },
+    { name: 'Kajiado', code: '01046' },
+    { name: 'Kericho', code: '01048' },
+    { name: 'Bomet', code: '01049' },
+    // Western
+    { name: 'Kakamega', code: '01051' },
+    { name: 'Vihiga (Mbale)', code: '01052' },
+    { name: 'Bungoma', code: '01053' },
+    { name: 'Busia', code: '01058' },
+    // Nyanza
+    { name: 'Siaya', code: '01059' },
+    { name: 'Kisumu', code: '01030' },
+    { name: 'Homa Bay', code: '01061' },
+    { name: 'Migori', code: '01062' },
+    { name: 'Kisii', code: '01063' },
+    { name: 'Nyamira', code: '01064' },
   ],
   'Equity Bank': [
+    // Nairobi County
     { name: 'Head Office', code: '68001' },
     { name: 'Tom Mboya', code: '68002' },
     { name: 'Westlands', code: '68012' },
     { name: 'Upperhill', code: '68020' },
     { name: 'Karen', code: '68025' },
     { name: 'Gigiri', code: '68030' },
+    { name: 'Ruiru (Kiambu)', code: '68036' },
+    { name: 'Thika (Kiambu)', code: '68080' },
+    { name: 'Kiambu Town', code: '68035' },
+    // Coast Region
     { name: 'Mombasa', code: '68040' },
-    { name: 'Kisumu', code: '68050' },
-    { name: 'Nakuru', code: '68060' },
-    { name: 'Eldoret', code: '68070' },
-    { name: 'Thika', code: '68080' },
-    { name: 'Nyeri', code: '68090' },
-    { name: 'Kitale', code: '68100' },
+    { name: 'Nyali (Mombasa)', code: '68041' },
+    { name: 'Kwale', code: '68042' },
+    { name: 'Kilifi', code: '68043' },
+    { name: 'Malindi (Kilifi)', code: '68044' },
+    { name: 'Hola (Tana River)', code: '68045' },
+    { name: 'Lamu', code: '68046' },
+    { name: 'Voi (Taita Taveta)', code: '68047' },
+    // North Eastern
+    { name: 'Garissa', code: '68048' },
+    { name: 'Wajir', code: '68049' },
+    { name: 'Mandera', code: '68051' },
+    // Northern
+    { name: 'Marsabit', code: '68052' },
+    { name: 'Isiolo', code: '68053' },
+    // Central / Eastern
+    { name: 'Meru', code: '68054' },
+    { name: 'Chuka (Tharaka Nithi)', code: '68055' },
+    { name: 'Embu', code: '68056' },
+    { name: 'Kitui', code: '68057' },
     { name: 'Machakos', code: '68110' },
+    { name: 'Wote (Makueni)', code: '68058' },
+    { name: 'Ol Kalou (Nyandarua)', code: '68059' },
+    { name: 'Nyeri', code: '68090' },
+    { name: 'Kerugoya (Kirinyaga)', code: '68061' },
+    { name: "Murang'a", code: '68062' },
+    // Rift Valley
+    { name: 'Lodwar (Turkana)', code: '68063' },
+    { name: 'Kapenguria (West Pokot)', code: '68064' },
+    { name: 'Maralal (Samburu)', code: '68065' },
+    { name: 'Kitale (Trans Nzoia)', code: '68100' },
+    { name: 'Eldoret (Uasin Gishu)', code: '68070' },
+    { name: 'Iten (Elgeyo Marakwet)', code: '68066' },
+    { name: 'Kapsabet (Nandi)', code: '68067' },
+    { name: 'Kabarnet (Baringo)', code: '68068' },
+    { name: 'Nanyuki (Laikipia)', code: '68069' },
+    { name: 'Nakuru', code: '68060' },
+    { name: 'Narok', code: '68071' },
+    { name: 'Kajiado', code: '68072' },
+    { name: 'Kericho', code: '68073' },
+    { name: 'Bomet', code: '68074' },
+    // Western
+    { name: 'Kakamega', code: '68075' },
+    { name: 'Vihiga (Mbale)', code: '68076' },
+    { name: 'Bungoma', code: '68077' },
+    { name: 'Busia', code: '68078' },
+    // Nyanza
+    { name: 'Siaya', code: '68079' },
+    { name: 'Kisumu', code: '68050' },
+    { name: 'Homa Bay', code: '68081' },
+    { name: 'Migori', code: '68082' },
+    { name: 'Kisii', code: '68083' },
+    { name: 'Nyamira', code: '68084' },
   ],
   'Co-operative Bank': [
+    // Nairobi County
     { name: 'Head Office', code: '11001' },
     { name: 'University Way', code: '11002' },
     { name: 'Westlands', code: '11010' },
     { name: 'Industrial Area', code: '11015' },
     { name: 'Upperhill', code: '11018' },
     { name: 'Karen', code: '11022' },
+    { name: 'Thika (Kiambu)', code: '11080' },
+    { name: 'Ruiru (Kiambu)', code: '11024' },
+    { name: 'Kiambu Town', code: '11023' },
+    // Coast
     { name: 'Mombasa', code: '11040' },
-    { name: 'Kisumu', code: '11050' },
-    { name: 'Nakuru', code: '11060' },
-    { name: 'Eldoret', code: '11070' },
-    { name: 'Thika', code: '11080' },
+    { name: 'Kwale', code: '11043' },
+    { name: 'Kilifi', code: '11041' },
+    { name: 'Malindi (Kilifi)', code: '11042' },
+    { name: 'Lamu', code: '11044' },
+    { name: 'Voi (Taita Taveta)', code: '11045' },
+    // North Eastern
+    { name: 'Garissa', code: '11046' },
+    { name: 'Wajir', code: '11047' },
+    { name: 'Mandera', code: '11048' },
+    // Northern
+    { name: 'Isiolo', code: '11049' },
+    { name: 'Marsabit', code: '11079' },
+    // Eastern / Central
+    { name: 'Meru', code: '11051' },
+    { name: 'Chuka (Tharaka Nithi)', code: '11052' },
+    { name: 'Embu', code: '11053' },
+    { name: 'Kitui', code: '11054' },
+    { name: 'Machakos', code: '11055' },
+    { name: 'Wote (Makueni)', code: '11056' },
+    { name: 'Ol Kalou (Nyandarua)', code: '11057' },
     { name: 'Nyeri', code: '11090' },
+    { name: 'Kerugoya (Kirinyaga)', code: '11058' },
+    { name: "Murang'a", code: '11059' },
+    // Rift Valley
+    { name: 'Lodwar (Turkana)', code: '11078' },
+    { name: 'Kapenguria (West Pokot)', code: '11080' },
+    { name: 'Maralal (Samburu)', code: '11081' },
+    { name: 'Kitale (Trans Nzoia)', code: '11061' },
+    { name: 'Eldoret (Uasin Gishu)', code: '11070' },
+    { name: 'Iten (Elgeyo Marakwet)', code: '11082' },
+    { name: 'Kapsabet (Nandi)', code: '11083' },
+    { name: 'Kabarnet (Baringo)', code: '11077' },
+    { name: 'Nanyuki (Laikipia)', code: '11062' },
+    { name: 'Nakuru', code: '11060' },
+    { name: 'Narok', code: '11063' },
+    { name: 'Kajiado', code: '11064' },
+    { name: 'Kericho', code: '11065' },
+    { name: 'Bomet', code: '11074' },
+    // Western
+    { name: 'Kakamega', code: '11066' },
+    { name: 'Vihiga (Mbale)', code: '11075' },
+    { name: 'Bungoma', code: '11067' },
+    { name: 'Busia', code: '11068' },
+    // Nyanza
+    { name: 'Siaya', code: '11076' },
+    { name: 'Kisumu', code: '11050' },
+    { name: 'Homa Bay', code: '11069' },
+    { name: 'Migori', code: '11071' },
+    { name: 'Kisii', code: '11072' },
+    { name: 'Nyamira', code: '11073' },
   ],
   'NCBA Bank': [
+    // Nairobi County
     { name: 'Head Office', code: '07001' },
     { name: 'Westlands', code: '07010' },
     { name: 'The Oval', code: '07015' },
     { name: 'Karen', code: '07020' },
     { name: 'Gigiri', code: '07025' },
+    { name: 'Thika (Kiambu)', code: '07027' },
+    { name: 'Kiambu Town', code: '07026' },
+    // Coast
     { name: 'Mombasa', code: '07040' },
-    { name: 'Kisumu', code: '07050' },
+    { name: 'Malindi (Kilifi)', code: '07041' },
+    { name: 'Kilifi', code: '07042' },
+    { name: 'Voi (Taita Taveta)', code: '07043' },
+    { name: 'Lamu', code: '07044' },
+    // North Eastern
+    { name: 'Garissa', code: '07045' },
+    // Eastern / Central
+    { name: 'Meru', code: '07046' },
+    { name: 'Embu', code: '07047' },
+    { name: 'Machakos', code: '07048' },
+    { name: 'Nyeri', code: '07049' },
+    { name: "Murang'a", code: '07050' },
+    { name: 'Kitui', code: '07051' },
+    // Rift Valley
     { name: 'Nakuru', code: '07060' },
-    { name: 'Eldoret', code: '07070' },
+    { name: 'Eldoret (Uasin Gishu)', code: '07070' },
+    { name: 'Kitale (Trans Nzoia)', code: '07071' },
+    { name: 'Nanyuki (Laikipia)', code: '07072' },
+    { name: 'Narok', code: '07073' },
+    { name: 'Kajiado', code: '07074' },
+    { name: 'Kericho', code: '07075' },
+    { name: 'Nakuru Town', code: '07076' },
+    // Western
+    { name: 'Kakamega', code: '07077' },
+    { name: 'Bungoma', code: '07078' },
+    // Nyanza
+    { name: 'Kisumu', code: '07079' },
+    { name: 'Kisii', code: '07080' },
+    { name: 'Migori', code: '07081' },
   ],
   'Absa Bank': [
+    // Nairobi County
     { name: 'Head Office', code: '03001' },
     { name: 'Westlands', code: '03010' },
     { name: 'Upperhill', code: '03015' },
     { name: 'Karen', code: '03020' },
     { name: 'Industrial Area', code: '03025' },
+    { name: 'Thika (Kiambu)', code: '03080' },
+    { name: 'Kiambu Town', code: '03026' },
+    // Coast
     { name: 'Mombasa', code: '03040' },
-    { name: 'Kisumu', code: '03050' },
+    { name: 'Malindi (Kilifi)', code: '03041' },
+    { name: 'Kilifi', code: '03042' },
+    { name: 'Voi (Taita Taveta)', code: '03043' },
+    { name: 'Kwale', code: '03044' },
+    // North Eastern
+    { name: 'Garissa', code: '03045' },
+    // Eastern / Central
+    { name: 'Meru', code: '03046' },
+    { name: 'Embu', code: '03047' },
+    { name: 'Machakos', code: '03048' },
+    { name: 'Kitui', code: '03049' },
+    { name: 'Wote (Makueni)', code: '03050' },
+    { name: 'Nyeri', code: '03051' },
+    { name: "Murang'a", code: '03052' },
+    { name: 'Chuka (Tharaka Nithi)', code: '03053' },
+    // Rift Valley
     { name: 'Nakuru', code: '03060' },
-    { name: 'Eldoret', code: '03070' },
-    { name: 'Thika', code: '03080' },
+    { name: 'Eldoret (Uasin Gishu)', code: '03070' },
+    { name: 'Kitale (Trans Nzoia)', code: '03071' },
+    { name: 'Nanyuki (Laikipia)', code: '03072' },
+    { name: 'Narok', code: '03073' },
+    { name: 'Kajiado', code: '03074' },
+    { name: 'Kericho', code: '03075' },
+    { name: 'Bomet', code: '03076' },
+    { name: 'Kabarnet (Baringo)', code: '03077' },
+    // Western
+    { name: 'Kakamega', code: '03078' },
+    { name: 'Bungoma', code: '03079' },
+    { name: 'Busia', code: '03081' },
+    // Nyanza
+    { name: 'Kisumu', code: '03082' },
+    { name: 'Kisii', code: '03083' },
+    { name: 'Migori', code: '03084' },
+    { name: 'Homa Bay', code: '03085' },
   ],
   'Standard Chartered': [
+    // Nairobi County
     { name: 'Head Office', code: '02001' },
     { name: 'Westlands', code: '02010' },
     { name: 'Karen', code: '02020' },
     { name: 'Upperhill', code: '02025' },
     { name: 'Gigiri', code: '02030' },
+    { name: 'Kiambu Town', code: '02031' },
+    { name: 'Thika (Kiambu)', code: '02032' },
+    // Coast
     { name: 'Mombasa', code: '02040' },
-    { name: 'Kisumu', code: '02050' },
+    { name: 'Malindi (Kilifi)', code: '02041' },
+    { name: 'Kilifi', code: '02042' },
+    { name: 'Voi (Taita Taveta)', code: '02043' },
+    // Eastern / Central
+    { name: 'Meru', code: '02044' },
+    { name: 'Embu', code: '02045' },
+    { name: 'Machakos', code: '02046' },
+    { name: 'Nyeri', code: '02047' },
+    { name: "Murang'a", code: '02048' },
+    { name: 'Nanyuki (Laikipia)', code: '02049' },
+    // Rift Valley
     { name: 'Nakuru', code: '02060' },
-    { name: 'Eldoret', code: '02070' },
+    { name: 'Eldoret (Uasin Gishu)', code: '02070' },
+    { name: 'Kitale (Trans Nzoia)', code: '02071' },
+    { name: 'Narok', code: '02072' },
+    { name: 'Kajiado', code: '02073' },
+    { name: 'Kericho', code: '02074' },
+    // Western
+    { name: 'Kakamega', code: '02075' },
+    { name: 'Bungoma', code: '02076' },
+    // Nyanza
+    { name: 'Kisumu', code: '02050' },
+    { name: 'Kisii', code: '02077' },
+    { name: 'Migori', code: '02078' },
   ],
   'DTB Bank': [
+    // Nairobi County
     { name: 'Head Office', code: '63001' },
     { name: 'Westlands', code: '63010' },
     { name: 'Industrial Area', code: '63015' },
     { name: 'Upperhill', code: '63020' },
+    { name: 'Kiambu Town', code: '63021' },
+    { name: 'Thika (Kiambu)', code: '63022' },
+    // Coast
     { name: 'Mombasa', code: '63040' },
-    { name: 'Kisumu', code: '63050' },
+    { name: 'Malindi (Kilifi)', code: '63041' },
+    { name: 'Kilifi', code: '63042' },
+    { name: 'Kwale', code: '63043' },
+    // North Eastern
+    { name: 'Garissa', code: '63044' },
+    // Eastern / Central
+    { name: 'Meru', code: '63045' },
+    { name: 'Embu', code: '63046' },
+    { name: 'Machakos', code: '63047' },
+    { name: 'Nyeri', code: '63048' },
+    // Rift Valley
     { name: 'Nakuru', code: '63060' },
-    { name: 'Eldoret', code: '63070' },
+    { name: 'Eldoret (Uasin Gishu)', code: '63070' },
+    { name: 'Kitale (Trans Nzoia)', code: '63071' },
+    { name: 'Nanyuki (Laikipia)', code: '63072' },
+    { name: 'Narok', code: '63073' },
+    { name: 'Kajiado', code: '63074' },
+    { name: 'Kericho', code: '63075' },
+    // Western
+    { name: 'Kakamega', code: '63076' },
+    { name: 'Bungoma', code: '63077' },
+    // Nyanza
+    { name: 'Kisumu', code: '63050' },
+    { name: 'Kisii', code: '63078' },
   ],
   'Family Bank': [
+    // Nairobi County
     { name: 'Head Office', code: '70001' },
     { name: 'Westlands', code: '70010' },
     { name: 'Moi Avenue', code: '70015' },
     { name: 'Thika Road', code: '70020' },
+    { name: 'Thika Town (Kiambu)', code: '70080' },
+    { name: 'Ruiru (Kiambu)', code: '70022' },
+    { name: 'Kiambu Town', code: '70021' },
+    // Coast
     { name: 'Mombasa', code: '70040' },
-    { name: 'Kisumu', code: '70050' },
-    { name: 'Nakuru', code: '70060' },
-    { name: 'Eldoret', code: '70070' },
-    { name: 'Thika', code: '70080' },
+    { name: 'Kwale', code: '70041' },
+    { name: 'Kilifi', code: '70042' },
+    { name: 'Malindi (Kilifi)', code: '70043' },
+    { name: 'Lamu', code: '70044' },
+    { name: 'Voi (Taita Taveta)', code: '70045' },
+    // North Eastern
+    { name: 'Garissa', code: '70046' },
+    { name: 'Wajir', code: '70047' },
+    // Eastern / Central
+    { name: 'Meru', code: '70048' },
+    { name: 'Chuka (Tharaka Nithi)', code: '70049' },
+    { name: 'Embu', code: '70051' },
+    { name: 'Kitui', code: '70052' },
+    { name: 'Machakos', code: '70053' },
+    { name: 'Wote (Makueni)', code: '70054' },
+    { name: 'Ol Kalou (Nyandarua)', code: '70055' },
     { name: 'Nyeri', code: '70090' },
+    { name: 'Kerugoya (Kirinyaga)', code: '70056' },
+    { name: "Murang'a", code: '70057' },
+    // Rift Valley
+    { name: 'Kitale (Trans Nzoia)', code: '70058' },
+    { name: 'Eldoret (Uasin Gishu)', code: '70070' },
+    { name: 'Nanyuki (Laikipia)', code: '70059' },
+    { name: 'Nakuru', code: '70060' },
+    { name: 'Narok', code: '70061' },
+    { name: 'Kajiado', code: '70062' },
+    { name: 'Kericho', code: '70063' },
+    { name: 'Bomet', code: '70064' },
+    { name: 'Kapenguria (West Pokot)', code: '70065' },
+    // Western
+    { name: 'Kakamega', code: '70066' },
+    { name: 'Vihiga (Mbale)', code: '70067' },
+    { name: 'Bungoma', code: '70068' },
+    { name: 'Busia', code: '70069' },
+    // Nyanza
+    { name: 'Siaya', code: '70071' },
+    { name: 'Kisumu', code: '70050' },
+    { name: 'Homa Bay', code: '70072' },
+    { name: 'Migori', code: '70073' },
+    { name: 'Kisii', code: '70074' },
+    { name: 'Nyamira', code: '70075' },
   ],
   'I&M Bank': [
+    // Nairobi County
     { name: 'Head Office', code: '57001' },
     { name: 'Westlands', code: '57010' },
     { name: 'Karen', code: '57015' },
     { name: 'Upperhill', code: '57020' },
     { name: 'Riverside', code: '57025' },
+    { name: 'Thika (Kiambu)', code: '57026' },
+    { name: 'Kiambu Town', code: '57027' },
+    // Coast
     { name: 'Mombasa', code: '57040' },
-    { name: 'Kisumu', code: '57050' },
+    { name: 'Malindi (Kilifi)', code: '57041' },
+    { name: 'Kilifi', code: '57042' },
+    // Eastern / Central
+    { name: 'Meru', code: '57043' },
+    { name: 'Embu', code: '57044' },
+    { name: 'Machakos', code: '57045' },
+    { name: 'Nyeri', code: '57046' },
+    { name: 'Nanyuki (Laikipia)', code: '57047' },
+    // Rift Valley
     { name: 'Nakuru', code: '57060' },
+    { name: 'Eldoret (Uasin Gishu)', code: '57061' },
+    { name: 'Kitale (Trans Nzoia)', code: '57062' },
+    { name: 'Narok', code: '57063' },
+    { name: 'Kajiado', code: '57064' },
+    { name: 'Kericho', code: '57065' },
+    // Western
+    { name: 'Kakamega', code: '57066' },
+    { name: 'Bungoma', code: '57067' },
+    // Nyanza
+    { name: 'Kisumu', code: '57050' },
+    { name: 'Kisii', code: '57068' },
+    { name: 'Migori', code: '57069' },
   ],
   'Stanbic Bank': [
+    // Nairobi County
     { name: 'Head Office', code: '31001' },
     { name: 'Westlands', code: '31010' },
     { name: 'Chiromo', code: '31015' },
+    { name: 'Kiambu Town', code: '31016' },
+    { name: 'Thika (Kiambu)', code: '31017' },
+    // Coast
     { name: 'Mombasa', code: '31040' },
-    { name: 'Kisumu', code: '31050' },
+    { name: 'Malindi (Kilifi)', code: '31041' },
+    { name: 'Kilifi', code: '31042' },
+    // Eastern / Central
+    { name: 'Meru', code: '31043' },
+    { name: 'Embu', code: '31044' },
+    { name: 'Machakos', code: '31045' },
+    { name: 'Nyeri', code: '31046' },
+    { name: 'Nanyuki (Laikipia)', code: '31047' },
+    // Rift Valley
     { name: 'Nakuru', code: '31060' },
+    { name: 'Eldoret (Uasin Gishu)', code: '31061' },
+    { name: 'Kitale (Trans Nzoia)', code: '31062' },
+    { name: 'Narok', code: '31063' },
+    { name: 'Kajiado', code: '31064' },
+    { name: 'Kericho', code: '31065' },
+    // Western
+    { name: 'Kakamega', code: '31066' },
+    { name: 'Bungoma', code: '31067' },
+    // Nyanza
+    { name: 'Kisumu', code: '31050' },
+    { name: 'Kisii', code: '31068' },
   ],
   'Prime Bank': [
+    // Nairobi County
     { name: 'Head Office', code: '10001' },
     { name: 'Westlands', code: '10010' },
+    { name: 'Gigiri', code: '10011' },
+    { name: 'Thika (Kiambu)', code: '10012' },
+    // Coast
     { name: 'Mombasa', code: '10040' },
-    { name: 'Kisumu', code: '10050' },
+    { name: 'Malindi (Kilifi)', code: '10041' },
+    // Eastern / Central
+    { name: 'Meru', code: '10042' },
+    { name: 'Embu', code: '10043' },
+    { name: 'Machakos', code: '10044' },
+    { name: 'Nyeri', code: '10045' },
+    { name: 'Nanyuki (Laikipia)', code: '10046' },
+    // Rift Valley
+    { name: 'Nakuru', code: '10047' },
+    { name: 'Eldoret (Uasin Gishu)', code: '10048' },
+    { name: 'Kitale (Trans Nzoia)', code: '10049' },
+    { name: 'Kajiado', code: '10050' },
+    { name: 'Kericho', code: '10051' },
+    // Western / Nyanza
+    { name: 'Kakamega', code: '10052' },
+    { name: 'Kisumu', code: '10053' },
+    { name: 'Kisii', code: '10054' },
   ],
   'Sidian Bank': [
+    // Nairobi County
     { name: 'Head Office', code: '66001' },
     { name: 'Westlands', code: '66010' },
-    { name: 'Thika', code: '66020' },
+    { name: 'Thika (Kiambu)', code: '66020' },
+    { name: 'Ruiru (Kiambu)', code: '66021' },
+    { name: 'Kiambu Town', code: '66022' },
+    // Coast
     { name: 'Mombasa', code: '66040' },
+    { name: 'Malindi (Kilifi)', code: '66041' },
+    { name: 'Kilifi', code: '66042' },
+    // Eastern / Central
+    { name: 'Meru', code: '66043' },
+    { name: 'Chuka (Tharaka Nithi)', code: '66044' },
+    { name: 'Embu', code: '66045' },
+    { name: 'Machakos', code: '66046' },
+    { name: 'Nyeri', code: '66047' },
+    { name: 'Nanyuki (Laikipia)', code: '66048' },
+    // Rift Valley
     { name: 'Nakuru', code: '66060' },
+    { name: 'Eldoret (Uasin Gishu)', code: '66061' },
+    { name: 'Kitale (Trans Nzoia)', code: '66062' },
+    { name: 'Kapsabet (Nandi)', code: '66063' },
+    { name: 'Kericho', code: '66064' },
+    // Western / Nyanza
+    { name: 'Kakamega', code: '66065' },
+    { name: 'Bungoma', code: '66066' },
+    { name: 'Kisumu', code: '66067' },
+    { name: 'Kisii', code: '66068' },
   ],
   'Gulf African Bank': [
+    // Nairobi County
     { name: 'Head Office', code: '72001' },
     { name: 'Westlands', code: '72010' },
+    { name: 'Eastleigh', code: '72011' },
+    // Coast (stronghold)
     { name: 'Mombasa', code: '72040' },
-    { name: 'Kisumu', code: '72050' },
+    { name: 'Nyali (Mombasa)', code: '72041' },
+    { name: 'Kilifi', code: '72042' },
+    { name: 'Malindi (Kilifi)', code: '72043' },
+    { name: 'Lamu', code: '72044' },
+    { name: 'Kwale', code: '72045' },
+    // North Eastern
+    { name: 'Garissa', code: '72046' },
+    { name: 'Wajir', code: '72047' },
+    { name: 'Mandera', code: '72048' },
+    { name: 'Isiolo', code: '72049' },
+    { name: 'Marsabit', code: '72050' },
+    // Rift Valley / Western
+    { name: 'Nakuru', code: '72051' },
+    { name: 'Eldoret (Uasin Gishu)', code: '72052' },
+    { name: 'Kitale (Trans Nzoia)', code: '72053' },
+    // Nyanza
+    { name: 'Kisumu', code: '72054' },
+    { name: 'Migori', code: '72055' },
   ],
   'First Community Bank': [
+    // Nairobi County
     { name: 'Head Office', code: '74001' },
     { name: 'Westlands', code: '74010' },
+    { name: 'Eastleigh', code: '74011' },
+    // Coast
     { name: 'Mombasa', code: '74040' },
+    { name: 'Nyali (Mombasa)', code: '74041' },
+    { name: 'Kilifi', code: '74042' },
+    { name: 'Malindi (Kilifi)', code: '74043' },
+    { name: 'Lamu', code: '74044' },
+    { name: 'Kwale', code: '74045' },
+    // North Eastern (stronghold)
     { name: 'Garissa', code: '74060' },
+    { name: 'Wajir', code: '74061' },
+    { name: 'Mandera', code: '74062' },
+    { name: 'Isiolo', code: '74063' },
+    { name: 'Marsabit', code: '74064' },
+    // Eastern
+    { name: 'Meru', code: '74065' },
+    // Rift Valley
+    { name: 'Nakuru', code: '74066' },
+    { name: 'Eldoret (Uasin Gishu)', code: '74067' },
+    { name: 'Kitale (Trans Nzoia)', code: '74068' },
+    // Nyanza
+    { name: 'Kisumu', code: '74069' },
+    { name: 'Migori', code: '74070' },
   ],
   'Bank of Africa': [
+    // Nairobi County
     { name: 'Head Office', code: '19001' },
     { name: 'Westlands', code: '19010' },
+    { name: 'Industrial Area', code: '19011' },
+    { name: 'Kiambu Town', code: '19012' },
+    { name: 'Thika (Kiambu)', code: '19013' },
+    // Coast
     { name: 'Mombasa', code: '19040' },
-    { name: 'Kisumu', code: '19050' },
+    { name: 'Malindi (Kilifi)', code: '19041' },
+    { name: 'Kilifi', code: '19042' },
+    // Eastern / Central
+    { name: 'Meru', code: '19043' },
+    { name: 'Embu', code: '19044' },
+    { name: 'Machakos', code: '19045' },
+    { name: 'Nyeri', code: '19046' },
+    // Rift Valley
+    { name: 'Nakuru', code: '19047' },
+    { name: 'Eldoret (Uasin Gishu)', code: '19048' },
+    { name: 'Kitale (Trans Nzoia)', code: '19049' },
+    { name: 'Kericho', code: '19050' },
+    // Western
+    { name: 'Kakamega', code: '19051' },
+    { name: 'Bungoma', code: '19052' },
+    // Nyanza
+    { name: 'Kisumu', code: '19053' },
+    { name: 'Kisii', code: '19054' },
+    { name: 'Migori', code: '19055' },
   ],
   'HFC Bank': [
+    // Nairobi County
     { name: 'Head Office', code: '61001' },
     { name: 'Westlands', code: '61010' },
+    { name: 'Upperhill', code: '61011' },
+    { name: 'Kiambu Town', code: '61012' },
+    { name: 'Thika (Kiambu)', code: '61013' },
+    // Coast
     { name: 'Mombasa', code: '61040' },
+    { name: 'Malindi (Kilifi)', code: '61041' },
+    // Eastern / Central
+    { name: 'Meru', code: '61042' },
+    { name: 'Embu', code: '61043' },
+    { name: 'Machakos', code: '61044' },
+    { name: 'Nyeri', code: '61045' },
+    { name: 'Nanyuki (Laikipia)', code: '61046' },
+    // Rift Valley
+    { name: 'Nakuru', code: '61047' },
+    { name: 'Eldoret (Uasin Gishu)', code: '61048' },
+    { name: 'Kitale (Trans Nzoia)', code: '61049' },
+    { name: 'Kericho', code: '61050' },
+    { name: 'Narok', code: '61051' },
+    { name: 'Kajiado', code: '61052' },
+    // Western / Nyanza
+    { name: 'Kakamega', code: '61053' },
+    { name: 'Kisumu', code: '61054' },
+    { name: 'Kisii', code: '61055' },
   ],
   'Guaranty Trust Bank': [
+    // Nairobi County
     { name: 'Head Office', code: '76001' },
     { name: 'Westlands', code: '76010' },
+    { name: 'Upperhill', code: '76011' },
+    { name: 'Kiambu Town', code: '76012' },
+    // Coast
     { name: 'Mombasa', code: '76040' },
+    { name: 'Malindi (Kilifi)', code: '76041' },
+    // Eastern / Central
+    { name: 'Meru', code: '76042' },
+    { name: 'Machakos', code: '76043' },
+    { name: 'Nyeri', code: '76044' },
+    // Rift Valley
+    { name: 'Nakuru', code: '76045' },
+    { name: 'Eldoret (Uasin Gishu)', code: '76046' },
+    { name: 'Kericho', code: '76047' },
+    { name: 'Kajiado', code: '76048' },
+    // Western / Nyanza
+    { name: 'Kakamega', code: '76049' },
+    { name: 'Kisumu', code: '76050' },
+    { name: 'Kisii', code: '76051' },
   ],
   'UBA Kenya': [
+    // Nairobi County
     { name: 'Head Office', code: '76101' },
     { name: 'Westlands', code: '76110' },
+    { name: 'Upperhill', code: '76111' },
+    { name: 'Kiambu Town', code: '76112' },
+    // Coast
     { name: 'Mombasa', code: '76140' },
+    { name: 'Malindi (Kilifi)', code: '76141' },
+    // Eastern / Central
+    { name: 'Meru', code: '76142' },
+    { name: 'Machakos', code: '76143' },
+    { name: 'Nyeri', code: '76144' },
+    // Rift Valley
+    { name: 'Nakuru', code: '76145' },
+    { name: 'Eldoret (Uasin Gishu)', code: '76146' },
+    { name: 'Kericho', code: '76147' },
+    // Western / Nyanza
+    { name: 'Kakamega', code: '76148' },
+    { name: 'Kisumu', code: '76149' },
+    { name: 'Kisii', code: '76150' },
   ],
   'Consolidated Bank': [
+    // Nairobi County
     { name: 'Head Office', code: '23001' },
     { name: 'Westlands', code: '23010' },
+    { name: 'Industrial Area', code: '23011' },
+    { name: 'Kiambu Town', code: '23012' },
+    { name: 'Thika (Kiambu)', code: '23013' },
+    // Coast
     { name: 'Mombasa', code: '23040' },
+    { name: 'Malindi (Kilifi)', code: '23041' },
+    { name: 'Voi (Taita Taveta)', code: '23042' },
+    // North Eastern
+    { name: 'Garissa', code: '23043' },
+    // Eastern / Central
+    { name: 'Meru', code: '23044' },
+    { name: 'Embu', code: '23045' },
+    { name: 'Machakos', code: '23046' },
+    { name: 'Nyeri', code: '23047' },
+    { name: "Murang'a", code: '23048' },
+    { name: 'Kitui', code: '23049' },
+    { name: 'Nanyuki (Laikipia)', code: '23050' },
+    // Rift Valley
+    { name: 'Nakuru', code: '23051' },
+    { name: 'Eldoret (Uasin Gishu)', code: '23052' },
+    { name: 'Kitale (Trans Nzoia)', code: '23053' },
+    { name: 'Narok', code: '23054' },
+    { name: 'Kajiado', code: '23055' },
+    { name: 'Kericho', code: '23056' },
+    // Western
+    { name: 'Kakamega', code: '23057' },
+    { name: 'Bungoma', code: '23058' },
+    { name: 'Busia', code: '23059' },
+    // Nyanza
+    { name: 'Kisumu', code: '23060' },
+    { name: 'Kisii', code: '23061' },
+    { name: 'Migori', code: '23062' },
+    { name: 'Homa Bay', code: '23063' },
+    { name: 'Nyamira', code: '23064' },
+    { name: 'Siaya', code: '23065' },
   ],
 }
 
@@ -381,21 +937,76 @@ function FormField({ label, name, type = 'text', required = false, opts, form, s
 
 const INPUT_CLS = 'w-full px-3 py-2.5 text-sm border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white text-slate-900'
 
-function BankBranchSelector({ form, set }: { form: any; set: (k: string, v: string) => void }) {
-  const [manualBranch, setManualBranch] = useState(!form.bankName || !KENYA_BANK_BRANCHES[form.bankName])
+function SearchableDropdown({ label, value, onChange, options, placeholder }: {
+  label: string; value: string; onChange: (v: string) => void
+  options: string[]; placeholder: string
+}) {
+  const [query, setQuery] = useState('')
+  const [open, setOpen] = useState(false)
+  const ref = useRef<HTMLDivElement>(null)
 
+  const filtered = query.trim()
+    ? options.filter(o => o.toLowerCase().includes(query.toLowerCase()))
+    : options
+
+  useEffect(() => {
+    function onClick(e: MouseEvent) {
+      if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false)
+    }
+    document.addEventListener('mousedown', onClick)
+    return () => document.removeEventListener('mousedown', onClick)
+  }, [])
+
+  function select(opt: string) {
+    onChange(opt)
+    setQuery('')
+    setOpen(false)
+  }
+
+  return (
+    <div ref={ref} className="relative">
+      <label className="block text-xs font-semibold text-slate-500 mb-1.5">{label}</label>
+      <input
+        type="text"
+        value={open ? query : value}
+        onChange={e => { setQuery(e.target.value); setOpen(true) }}
+        onFocus={() => { setQuery(''); setOpen(true) }}
+        placeholder={value || placeholder}
+        className={INPUT_CLS}
+        autoComplete="off"
+      />
+      {value && !open && (
+        <div className="absolute right-3 top-1/2 -translate-y-1/2 mt-0.5 text-slate-400 text-xs pointer-events-none">{value}</div>
+      )}
+      {open && (
+        <div className="absolute z-50 mt-1 w-full bg-white border border-slate-200 rounded-xl shadow-lg max-h-56 overflow-y-auto">
+          {filtered.length === 0 ? (
+            <div className="px-3 py-2 text-sm text-slate-400">No results</div>
+          ) : filtered.map(opt => (
+            <button key={opt} type="button" onMouseDown={() => select(opt)}
+              className={`w-full text-left px-3 py-2 text-sm hover:bg-blue-50 hover:text-blue-700 transition-colors ${opt === value ? 'bg-blue-50 text-blue-700 font-medium' : 'text-slate-700'}`}>
+              {opt}
+            </button>
+          ))}
+        </div>
+      )}
+    </div>
+  )
+}
+
+function BankBranchSelector({ form, set }: { form: any; set: (k: string, v: string) => void }) {
+  const allBanks = Object.keys(KENYA_BANK_BRANCHES)
   const branches: BranchInfo[] = KENYA_BANK_BRANCHES[form.bankName] ?? []
+  const branchNames = [...branches.map(b => b.name), 'Other (type manually)']
 
   function onBankChange(bank: string) {
     set('bankName', bank)
     set('bankBranch', '')
     set('bankCode', '')
-    setManualBranch(!KENYA_BANK_BRANCHES[bank])
   }
 
   function onBranchSelect(value: string) {
-    if (value === '__other__') {
-      setManualBranch(true)
+    if (value === 'Other (type manually)') {
       set('bankBranch', '')
       set('bankCode', '')
       return
@@ -403,31 +1014,32 @@ function BankBranchSelector({ form, set }: { form: any; set: (k: string, v: stri
     const found = branches.find(b => b.name === value)
     set('bankBranch', value)
     set('bankCode', found?.code ?? '')
-    setManualBranch(false)
   }
 
   return (
     <>
       {/* Bank Name */}
-      <div>
-        <label className="block text-xs font-semibold text-slate-500 mb-1.5">Bank Name</label>
-        <select value={form.bankName} onChange={e => onBankChange(e.target.value)} className={INPUT_CLS}>
-          <option value="">Select bank...</option>
-          {Object.keys(KENYA_BANK_BRANCHES).map(b => <option key={b} value={b}>{b}</option>)}
-        </select>
-      </div>
+      <SearchableDropdown
+        label="Bank Name"
+        value={form.bankName}
+        onChange={onBankChange}
+        options={allBanks}
+        placeholder="Search bank..."
+      />
 
       {/* Branch */}
       <div>
-        <label className="block text-xs font-semibold text-slate-500 mb-1.5">Bank Branch</label>
-        {branches.length > 0 && !manualBranch ? (
-          <select value={form.bankBranch} onChange={e => onBranchSelect(e.target.value)} className={INPUT_CLS}>
-            <option value="">Select branch...</option>
-            {branches.map(b => <option key={b.name} value={b.name}>{b.name}</option>)}
-            <option value="__other__">Other (type manually)</option>
-          </select>
+        {branches.length > 0 ? (
+          <SearchableDropdown
+            label="Bank Branch"
+            value={form.bankBranch}
+            onChange={onBranchSelect}
+            options={branchNames}
+            placeholder="Search branch..."
+          />
         ) : (
-          <div className="flex gap-2">
+          <div>
+            <label className="block text-xs font-semibold text-slate-500 mb-1.5">Bank Branch</label>
             <input
               type="text"
               value={form.bankBranch}
@@ -435,12 +1047,6 @@ function BankBranchSelector({ form, set }: { form: any; set: (k: string, v: stri
               placeholder="Type branch name"
               className={INPUT_CLS}
             />
-            {branches.length > 0 && (
-              <button type="button" onClick={() => { setManualBranch(false); set('bankBranch', ''); set('bankCode', '') }}
-                className="px-3 py-2 text-xs text-blue-600 border border-blue-200 rounded-xl hover:bg-blue-50 whitespace-nowrap">
-                Pick from list
-              </button>
-            )}
           </div>
         )}
       </div>
