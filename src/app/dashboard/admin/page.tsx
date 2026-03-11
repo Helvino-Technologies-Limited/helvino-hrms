@@ -322,7 +322,7 @@ function UserModal({ user, onClose, onSave }: any) {
               Company Email (Login) <span className="text-red-500">*</span>
             </label>
             <input type="email" value={form.email} onChange={e => set('email', e.target.value)} required
-              placeholder="name@helvino.org"
+              placeholder="name@helvinocrm.org"
               className="w-full px-3 py-2.5 text-sm border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 font-mono" />
           </div>
           <div>

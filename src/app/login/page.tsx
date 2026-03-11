@@ -68,7 +68,7 @@ export default function LoginPage() {
                   value={email}
                   onChange={e => setEmail(e.target.value)}
                   className="w-full pl-11 pr-4 py-3 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent text-slate-900 placeholder:text-slate-400 bg-slate-50 transition-all"
-                  placeholder="you@helvino.org"
+                  placeholder="you@helvinocrm.org"
                   required
                   autoComplete="email"
                 />
@@ -117,7 +117,7 @@ export default function LoginPage() {
         </div>
 
         <p className="text-center text-blue-300/40 text-xs mt-4">
-          © {new Date().getFullYear()} Helvino Technologies Limited | helvino.org | 0703445756
+          © {new Date().getFullYear()} Helvino Technologies Limited | helvinocrm.org | 0703445756
         </p>
       </div>
     </div>

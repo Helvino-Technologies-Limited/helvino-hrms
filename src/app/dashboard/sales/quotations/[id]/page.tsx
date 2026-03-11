@@ -265,7 +265,7 @@ export default function QuotationDetailPage() {
               </div>
               <div className="text-slate-400 text-xs space-y-0.5">
                 <div>Nairobi, Kenya</div>
-                <div>info@helvino.org · helvino.org</div>
+                <div>info@helvino.org · helvinocrm.org</div>
                 <div>P.O Box 12345 - 00100 Nairobi</div>
               </div>
             </div>
@@ -433,7 +433,7 @@ export default function QuotationDetailPage() {
             </div>
           </div>
           <div className="mt-3 pt-3 border-t border-slate-200 text-xs text-center text-slate-400">
-            Helvino Technologies Limited · Nairobi, Kenya · info@helvino.org · helvino.org
+            Helvino Technologies Limited · Nairobi, Kenya · info@helvino.org · helvinocrm.org
           </div>
         </div>
       </div>

@@ -330,7 +330,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
             <Link href="/" target="_blank"
               className="hidden md:flex items-center gap-1.5 text-xs text-slate-500 hover:text-blue-600 border border-slate-200 rounded-lg px-3 py-1.5 hover:border-blue-300 transition-colors">
               <Building className="w-3.5 h-3.5" />
-              helvino.org
+              helvinocrm.org
             </Link>
             <div className="relative" ref={notifRef}>
               <button

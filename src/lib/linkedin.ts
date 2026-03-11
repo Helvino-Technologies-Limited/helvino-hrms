@@ -114,7 +114,7 @@ export async function postJobToLinkedIn(
     return { success: false, error: 'LinkedIn not connected' }
   }
 
-  const appUrl = process.env.NEXT_PUBLIC_APP_URL || 'https://helvino.org'
+  const appUrl = process.env.NEXT_PUBLIC_APP_URL || 'https://helvinocrm.org'
   const jobUrl = job.slug ? `${appUrl}/careers/${job.slug}` : `${appUrl}/careers`
   const postText = buildPostText(job, jobUrl)
 

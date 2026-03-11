@@ -359,7 +359,7 @@ export default function HomePage() {
               <div className="space-y-2 text-slate-400 text-sm">
                 <p className="flex items-center gap-2"><Phone className="w-4 h-4" /> 0703 445 756</p>
                 <p className="flex items-center gap-2"><Mail className="w-4 h-4" /> info@helvino.org</p>
-                <p className="flex items-center gap-2"><Globe className="w-4 h-4" /> helvino.org</p>
+                <p className="flex items-center gap-2"><Globe className="w-4 h-4" /> helvinocrm.org</p>
                 <p className="flex items-center gap-2"><MapPin className="w-4 h-4" /> Nairobi, Kenya</p>
               </div>
             </div>
