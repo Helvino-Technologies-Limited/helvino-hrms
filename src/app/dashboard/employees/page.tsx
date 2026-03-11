@@ -5,6 +5,183 @@ import { Plus, Search, Eye, Edit, Mail, Phone, UserX, Upload, X, FileText, Image
 import { formatDate } from '@/lib/utils'
 import toast from 'react-hot-toast'
 
+// ─── Kenya bank branch data { branchName → code } ────────────────────────────
+type BranchInfo = { name: string; code: string }
+const KENYA_BANK_BRANCHES: Record<string, BranchInfo[]> = {
+  'KCB Bank': [
+    { name: 'Head Office', code: '01001' },
+    { name: 'Westlands', code: '01043' },
+    { name: 'Moi Avenue', code: '01002' },
+    { name: 'Tom Mboya', code: '01003' },
+    { name: 'Industrial Area', code: '01004' },
+    { name: 'Upperhill', code: '01045' },
+    { name: 'Karen', code: '01047' },
+    { name: 'Gigiri', code: '01050' },
+    { name: 'Ngong Road', code: '01054' },
+    { name: 'Mombasa Digo Road', code: '01010' },
+    { name: 'Nakuru', code: '01020' },
+    { name: 'Kisumu', code: '01030' },
+    { name: 'Eldoret', code: '01040' },
+    { name: 'Thika', code: '01060' },
+    { name: 'Nyeri', code: '01070' },
+  ],
+  'Equity Bank': [
+    { name: 'Head Office', code: '68001' },
+    { name: 'Tom Mboya', code: '68002' },
+    { name: 'Westlands', code: '68012' },
+    { name: 'Upperhill', code: '68020' },
+    { name: 'Karen', code: '68025' },
+    { name: 'Gigiri', code: '68030' },
+    { name: 'Mombasa', code: '68040' },
+    { name: 'Kisumu', code: '68050' },
+    { name: 'Nakuru', code: '68060' },
+    { name: 'Eldoret', code: '68070' },
+    { name: 'Thika', code: '68080' },
+    { name: 'Nyeri', code: '68090' },
+    { name: 'Kitale', code: '68100' },
+    { name: 'Machakos', code: '68110' },
+  ],
+  'Co-operative Bank': [
+    { name: 'Head Office', code: '11001' },
+    { name: 'University Way', code: '11002' },
+    { name: 'Westlands', code: '11010' },
+    { name: 'Industrial Area', code: '11015' },
+    { name: 'Upperhill', code: '11018' },
+    { name: 'Karen', code: '11022' },
+    { name: 'Mombasa', code: '11040' },
+    { name: 'Kisumu', code: '11050' },
+    { name: 'Nakuru', code: '11060' },
+    { name: 'Eldoret', code: '11070' },
+    { name: 'Thika', code: '11080' },
+    { name: 'Nyeri', code: '11090' },
+  ],
+  'NCBA Bank': [
+    { name: 'Head Office', code: '07001' },
+    { name: 'Westlands', code: '07010' },
+    { name: 'The Oval', code: '07015' },
+    { name: 'Karen', code: '07020' },
+    { name: 'Gigiri', code: '07025' },
+    { name: 'Mombasa', code: '07040' },
+    { name: 'Kisumu', code: '07050' },
+    { name: 'Nakuru', code: '07060' },
+    { name: 'Eldoret', code: '07070' },
+  ],
+  'Absa Bank': [
+    { name: 'Head Office', code: '03001' },
+    { name: 'Westlands', code: '03010' },
+    { name: 'Upperhill', code: '03015' },
+    { name: 'Karen', code: '03020' },
+    { name: 'Industrial Area', code: '03025' },
+    { name: 'Mombasa', code: '03040' },
+    { name: 'Kisumu', code: '03050' },
+    { name: 'Nakuru', code: '03060' },
+    { name: 'Eldoret', code: '03070' },
+    { name: 'Thika', code: '03080' },
+  ],
+  'Standard Chartered': [
+    { name: 'Head Office', code: '02001' },
+    { name: 'Westlands', code: '02010' },
+    { name: 'Karen', code: '02020' },
+    { name: 'Upperhill', code: '02025' },
+    { name: 'Gigiri', code: '02030' },
+    { name: 'Mombasa', code: '02040' },
+    { name: 'Kisumu', code: '02050' },
+    { name: 'Nakuru', code: '02060' },
+    { name: 'Eldoret', code: '02070' },
+  ],
+  'DTB Bank': [
+    { name: 'Head Office', code: '63001' },
+    { name: 'Westlands', code: '63010' },
+    { name: 'Industrial Area', code: '63015' },
+    { name: 'Upperhill', code: '63020' },
+    { name: 'Mombasa', code: '63040' },
+    { name: 'Kisumu', code: '63050' },
+    { name: 'Nakuru', code: '63060' },
+    { name: 'Eldoret', code: '63070' },
+  ],
+  'Family Bank': [
+    { name: 'Head Office', code: '70001' },
+    { name: 'Westlands', code: '70010' },
+    { name: 'Moi Avenue', code: '70015' },
+    { name: 'Thika Road', code: '70020' },
+    { name: 'Mombasa', code: '70040' },
+    { name: 'Kisumu', code: '70050' },
+    { name: 'Nakuru', code: '70060' },
+    { name: 'Eldoret', code: '70070' },
+    { name: 'Thika', code: '70080' },
+    { name: 'Nyeri', code: '70090' },
+  ],
+  'I&M Bank': [
+    { name: 'Head Office', code: '57001' },
+    { name: 'Westlands', code: '57010' },
+    { name: 'Karen', code: '57015' },
+    { name: 'Upperhill', code: '57020' },
+    { name: 'Riverside', code: '57025' },
+    { name: 'Mombasa', code: '57040' },
+    { name: 'Kisumu', code: '57050' },
+    { name: 'Nakuru', code: '57060' },
+  ],
+  'Stanbic Bank': [
+    { name: 'Head Office', code: '31001' },
+    { name: 'Westlands', code: '31010' },
+    { name: 'Chiromo', code: '31015' },
+    { name: 'Mombasa', code: '31040' },
+    { name: 'Kisumu', code: '31050' },
+    { name: 'Nakuru', code: '31060' },
+  ],
+  'Prime Bank': [
+    { name: 'Head Office', code: '10001' },
+    { name: 'Westlands', code: '10010' },
+    { name: 'Mombasa', code: '10040' },
+    { name: 'Kisumu', code: '10050' },
+  ],
+  'Sidian Bank': [
+    { name: 'Head Office', code: '66001' },
+    { name: 'Westlands', code: '66010' },
+    { name: 'Thika', code: '66020' },
+    { name: 'Mombasa', code: '66040' },
+    { name: 'Nakuru', code: '66060' },
+  ],
+  'Gulf African Bank': [
+    { name: 'Head Office', code: '72001' },
+    { name: 'Westlands', code: '72010' },
+    { name: 'Mombasa', code: '72040' },
+    { name: 'Kisumu', code: '72050' },
+  ],
+  'First Community Bank': [
+    { name: 'Head Office', code: '74001' },
+    { name: 'Westlands', code: '74010' },
+    { name: 'Mombasa', code: '74040' },
+    { name: 'Garissa', code: '74060' },
+  ],
+  'Bank of Africa': [
+    { name: 'Head Office', code: '19001' },
+    { name: 'Westlands', code: '19010' },
+    { name: 'Mombasa', code: '19040' },
+    { name: 'Kisumu', code: '19050' },
+  ],
+  'HFC Bank': [
+    { name: 'Head Office', code: '61001' },
+    { name: 'Westlands', code: '61010' },
+    { name: 'Mombasa', code: '61040' },
+  ],
+  'Guaranty Trust Bank': [
+    { name: 'Head Office', code: '76001' },
+    { name: 'Westlands', code: '76010' },
+    { name: 'Mombasa', code: '76040' },
+  ],
+  'UBA Kenya': [
+    { name: 'Head Office', code: '76101' },
+    { name: 'Westlands', code: '76110' },
+    { name: 'Mombasa', code: '76140' },
+  ],
+  'Consolidated Bank': [
+    { name: 'Head Office', code: '23001' },
+    { name: 'Westlands', code: '23010' },
+    { name: 'Mombasa', code: '23040' },
+  ],
+}
+
 const STATUS_COLORS: Record<string, string> = {
   ACTIVE: 'bg-green-100 text-green-700 border-green-200',
   ON_LEAVE: 'bg-yellow-100 text-yellow-700 border-yellow-200',
@@ -202,6 +379,89 @@ function FormField({ label, name, type = 'text', required = false, opts, form, s
   )
 }
 
+const INPUT_CLS = 'w-full px-3 py-2.5 text-sm border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white text-slate-900'
+
+function BankBranchSelector({ form, set }: { form: any; set: (k: string, v: string) => void }) {
+  const [manualBranch, setManualBranch] = useState(!form.bankName || !KENYA_BANK_BRANCHES[form.bankName])
+
+  const branches: BranchInfo[] = KENYA_BANK_BRANCHES[form.bankName] ?? []
+
+  function onBankChange(bank: string) {
+    set('bankName', bank)
+    set('bankBranch', '')
+    set('bankCode', '')
+    setManualBranch(!KENYA_BANK_BRANCHES[bank])
+  }
+
+  function onBranchSelect(value: string) {
+    if (value === '__other__') {
+      setManualBranch(true)
+      set('bankBranch', '')
+      set('bankCode', '')
+      return
+    }
+    const found = branches.find(b => b.name === value)
+    set('bankBranch', value)
+    set('bankCode', found?.code ?? '')
+    setManualBranch(false)
+  }
+
+  return (
+    <>
+      {/* Bank Name */}
+      <div>
+        <label className="block text-xs font-semibold text-slate-500 mb-1.5">Bank Name</label>
+        <select value={form.bankName} onChange={e => onBankChange(e.target.value)} className={INPUT_CLS}>
+          <option value="">Select bank...</option>
+          {Object.keys(KENYA_BANK_BRANCHES).map(b => <option key={b} value={b}>{b}</option>)}
+        </select>
+      </div>
+
+      {/* Branch */}
+      <div>
+        <label className="block text-xs font-semibold text-slate-500 mb-1.5">Bank Branch</label>
+        {branches.length > 0 && !manualBranch ? (
+          <select value={form.bankBranch} onChange={e => onBranchSelect(e.target.value)} className={INPUT_CLS}>
+            <option value="">Select branch...</option>
+            {branches.map(b => <option key={b.name} value={b.name}>{b.name}</option>)}
+            <option value="__other__">Other (type manually)</option>
+          </select>
+        ) : (
+          <div className="flex gap-2">
+            <input
+              type="text"
+              value={form.bankBranch}
+              onChange={e => set('bankBranch', e.target.value)}
+              placeholder="Type branch name"
+              className={INPUT_CLS}
+            />
+            {branches.length > 0 && (
+              <button type="button" onClick={() => { setManualBranch(false); set('bankBranch', ''); set('bankCode', '') }}
+                className="px-3 py-2 text-xs text-blue-600 border border-blue-200 rounded-xl hover:bg-blue-50 whitespace-nowrap">
+                Pick from list
+              </button>
+            )}
+          </div>
+        )}
+      </div>
+
+      {/* Branch Code — auto-filled but editable */}
+      <div>
+        <label className="block text-xs font-semibold text-slate-500 mb-1.5">
+          Branch Code <span className="font-normal text-slate-400">(auto-filled)</span>
+        </label>
+        <input
+          type="text"
+          value={form.bankCode}
+          onChange={e => set('bankCode', e.target.value)}
+          placeholder="e.g. 01043"
+          className={INPUT_CLS}
+        />
+      </div>
+    </>
+  )
+}
+
 function EmployeeFormModal({ employee, departments, employees, onClose, onSave }: any) {
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
@@ -382,14 +642,7 @@ function EmployeeFormModal({ employee, departments, employees, onClose, onSave }
                 <div className="col-span-2 pt-1 pb-0.5">
                   <p className="text-xs font-bold text-slate-400 uppercase tracking-wider">Bank Details</p>
                 </div>
-                <FormField label="Bank Name" name="bankName" opts={[
-                  'KCB Bank','Equity Bank','Co-operative Bank','NCBA Bank','Absa Bank',
-                  'Standard Chartered','DTB Bank','Family Bank','I&M Bank','Stanbic Bank',
-                  'Prime Bank','NIC Bank','Sidian Bank','Guaranty Trust Bank','HFC Bank',
-                  'Bank of Africa','UBA Kenya','Gulf African Bank','First Community Bank','Consolidated Bank',
-                ].map(b => ({ value: b, label: b }))} form={form} set={set} />
-                <FormField label="Bank Branch" name="bankBranch" form={form} set={set} />
-                <FormField label="Bank Code (Branch Code)" name="bankCode" form={form} set={set} />
+                <BankBranchSelector form={form} set={set} />
                 <FormField label="Account Number" name="bankAccount" form={form} set={set} />
                 <div className="col-span-2 pt-1 pb-0.5">
                   <p className="text-xs font-bold text-slate-400 uppercase tracking-wider">Mobile Money</p>
