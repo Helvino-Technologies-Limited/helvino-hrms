@@ -33,12 +33,13 @@ export default function PaymentsPage() {
     try {
       const [pRes, iRes, cRes] = await Promise.all([
         fetch('/api/accounting/payments'),
-        fetch('/api/accounting/invoices?status=SENT'),
+        fetch('/api/accounting/invoices'),
         fetch('/api/sales/clients'),
       ])
       const [p, i, c] = await Promise.all([pRes.json(), iRes.json(), cRes.json()])
       setPayments(Array.isArray(p) ? p : [])
-      setInvoices(Array.isArray(i) ? i : [])
+      // Only show invoices with a balance due (SENT, OVERDUE, PARTIALLY_PAID)
+      setInvoices(Array.isArray(i) ? i.filter((inv: any) => inv.balanceDue > 0) : [])
       setClients(Array.isArray(c) ? c : [])
     } catch {
       toast.error('Failed to load payments')

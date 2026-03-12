@@ -3,7 +3,10 @@ import { useEffect, useState } from 'react'
 import { useSession } from 'next-auth/react'
 import { useParams, useRouter } from 'next/navigation'
 import Link from 'next/link'
-import { ArrowLeft, Send, CheckCircle, X, CreditCard, Printer } from 'lucide-react'
+import {
+  ArrowLeft, Send, CheckCircle, X, CreditCard, Printer,
+  AlertCircle, ChevronRight, FileText, Clock,
+} from 'lucide-react'
 import toast from 'react-hot-toast'
 import { formatCurrency, formatDate } from '@/lib/utils'
 
@@ -25,7 +28,10 @@ export default function InvoiceDetailPage() {
   const [invoice, setInvoice] = useState<any>(null)
   const [loading, setLoading] = useState(true)
   const [showPayModal, setShowPayModal] = useState(false)
-  const [payForm, setPayForm] = useState({ amount: 0, method: 'BANK_TRANSFER', reference: '', notes: '', paymentDate: new Date().toISOString().split('T')[0] })
+  const [payForm, setPayForm] = useState({
+    amount: 0, method: 'BANK_TRANSFER', reference: '', notes: '',
+    paymentDate: new Date().toISOString().split('T')[0],
+  })
   const [saving, setSaving] = useState(false)
 
   async function loadInvoice() {
@@ -52,7 +58,7 @@ export default function InvoiceDetailPage() {
         body: JSON.stringify({ status }),
       })
       if (!res.ok) throw new Error()
-      toast.success(`Invoice marked as ${status.replace(/_/g, ' ')}`)
+      toast.success(`Invoice ${status.replace(/_/g, ' ').toLowerCase()}`)
       loadInvoice()
     } catch {
       toast.error('Failed to update status')
@@ -94,6 +100,7 @@ export default function InvoiceDetailPage() {
   if (!invoice) {
     return (
       <div className="text-center py-20 text-slate-400">
+        <FileText className="w-12 h-12 mx-auto mb-2 text-slate-200" />
         <p>Invoice not found</p>
         <Link href="/dashboard/accounting/invoices" className="text-blue-600 hover:underline text-sm mt-2 block">
           Back to invoices
@@ -102,84 +109,168 @@ export default function InvoiceDetailPage() {
     )
   }
 
+  /* ── Next-step banner config ── */
+  const nextStep: { label: string; hint: string; color: string; action?: () => void } | null = (() => {
+    if (invoice.status === 'DRAFT') return {
+      label: 'Send to client',
+      hint: 'Mark this invoice as sent once you have shared it with the client.',
+      color: 'bg-blue-50 border-blue-200 text-blue-800',
+      action: () => updateStatus('SENT'),
+    }
+    if (invoice.status === 'SENT') return {
+      label: 'Record a payment',
+      hint: 'Awaiting payment — record a full or partial payment when received.',
+      color: 'bg-amber-50 border-amber-200 text-amber-800',
+      action: () => setShowPayModal(true),
+    }
+    if (invoice.status === 'PARTIALLY_PAID') return {
+      label: 'Record remaining payment',
+      hint: `Balance due: ${formatCurrency(invoice.balanceDue)} — record the remaining amount.`,
+      color: 'bg-amber-50 border-amber-200 text-amber-800',
+      action: () => setShowPayModal(true),
+    }
+    if (invoice.status === 'OVERDUE') return {
+      label: 'Follow up & record payment',
+      hint: 'This invoice is overdue. Chase the client and record payment when received.',
+      color: 'bg-red-50 border-red-200 text-red-800',
+      action: () => setShowPayModal(true),
+    }
+    return null
+  })()
+
   return (
-    <div className="space-y-6 max-w-4xl">
-      {/* Header */}
-      <div className="flex items-center justify-between flex-wrap gap-3">
-        <div className="flex items-center gap-3">
-          <Link href="/dashboard/accounting/invoices"
-            className="p-2 text-slate-400 hover:text-slate-600 hover:bg-slate-100 rounded-xl transition-colors">
-            <ArrowLeft className="w-5 h-5" />
-          </Link>
-          <div>
-            <div className="flex items-center gap-2">
-              <h1 className="text-xl font-black text-slate-900">{invoice.invoiceNumber}</h1>
-              <span className={`text-xs px-2 py-0.5 rounded-full font-bold ${STATUS_COLORS[invoice.status]}`}>
-                {invoice.status.replace(/_/g, ' ')}
-              </span>
+    <div className="space-y-4 max-w-4xl">
+      {/* ── Action bar (hidden on print) ── */}
+      <div className="print-hide">
+        <div className="flex items-center justify-between flex-wrap gap-3">
+          <div className="flex items-center gap-3">
+            <Link href="/dashboard/accounting/invoices"
+              className="p-2 text-slate-400 hover:text-slate-600 hover:bg-slate-100 rounded-xl transition-colors">
+              <ArrowLeft className="w-5 h-5" />
+            </Link>
+            <div>
+              <div className="flex items-center gap-2">
+                <h1 className="text-xl font-black text-slate-900">{invoice.invoiceNumber}</h1>
+                <span className={`text-xs px-2 py-0.5 rounded-full font-bold ${STATUS_COLORS[invoice.status]}`}>
+                  {invoice.status.replace(/_/g, ' ')}
+                </span>
+              </div>
+              <p className="text-slate-500 text-sm">Created {formatDate(invoice.createdAt)}</p>
             </div>
-            <p className="text-slate-500 text-sm">Created {formatDate(invoice.createdAt)}</p>
+          </div>
+
+          <div className="flex gap-2 flex-wrap">
+            {invoice.status === 'DRAFT' && (
+              <button onClick={() => updateStatus('SENT')}
+                className="flex items-center gap-2 px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-xl font-semibold text-sm transition-colors">
+                <Send className="w-4 h-4" /> Mark as Sent
+              </button>
+            )}
+            {['SENT', 'PARTIALLY_PAID', 'OVERDUE'].includes(invoice.status) && (
+              <button onClick={() => setShowPayModal(true)}
+                className="flex items-center gap-2 px-4 py-2 bg-green-600 hover:bg-green-700 text-white rounded-xl font-semibold text-sm transition-colors">
+                <CreditCard className="w-4 h-4" /> Record Payment
+              </button>
+            )}
+            {!['CANCELLED', 'PAID'].includes(invoice.status) && (
+              <button onClick={() => updateStatus('CANCELLED')}
+                className="flex items-center gap-2 px-4 py-2 bg-slate-100 hover:bg-red-50 text-slate-600 hover:text-red-700 rounded-xl font-semibold text-sm transition-colors border border-slate-200">
+                <X className="w-4 h-4" /> Cancel
+              </button>
+            )}
+            <button onClick={() => window.print()}
+              className="flex items-center gap-2 px-4 py-2 bg-white text-slate-700 rounded-xl font-semibold text-sm border border-slate-200 hover:bg-slate-50 transition-colors">
+              <Printer className="w-4 h-4" /> Print
+            </button>
           </div>
         </div>
-        <div className="flex gap-2 flex-wrap">
-          {invoice.status === 'DRAFT' && (
-            <button onClick={() => updateStatus('SENT')}
-              className="flex items-center gap-2 px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-xl font-semibold text-sm transition-colors">
-              <Send className="w-4 h-4" /> Mark as Sent
-            </button>
-          )}
-          {['SENT', 'PARTIALLY_PAID', 'OVERDUE'].includes(invoice.status) && (
-            <button onClick={() => setShowPayModal(true)}
-              className="flex items-center gap-2 px-4 py-2 bg-green-600 hover:bg-green-700 text-white rounded-xl font-semibold text-sm transition-colors">
-              <CreditCard className="w-4 h-4" /> Record Payment
-            </button>
-          )}
-          {invoice.status !== 'CANCELLED' && invoice.status !== 'PAID' && (
-            <button onClick={() => updateStatus('CANCELLED')}
-              className="flex items-center gap-2 px-4 py-2 bg-slate-100 hover:bg-red-50 text-slate-600 hover:text-red-700 rounded-xl font-semibold text-sm transition-colors border border-slate-200">
-              <X className="w-4 h-4" /> Cancel
-            </button>
-          )}
-          <button onClick={() => window.print()}
-            className="flex items-center gap-2 px-4 py-2 bg-white text-slate-700 rounded-xl font-semibold text-sm border border-slate-200 hover:bg-slate-50 transition-colors">
-            <Printer className="w-4 h-4" /> Print
+
+        {/* ── Next Step Banner ── */}
+        {nextStep && (
+          <button
+            onClick={nextStep.action}
+            className={`w-full flex items-center justify-between gap-3 mt-3 px-4 py-3 rounded-xl border text-sm font-medium transition-opacity hover:opacity-80 ${nextStep.color}`}>
+            <div className="flex items-center gap-3">
+              <Clock className="w-4 h-4 flex-shrink-0" />
+              <div className="text-left">
+                <span className="font-bold">Next step: </span>
+                {nextStep.hint}
+              </div>
+            </div>
+            <div className="flex items-center gap-1.5 flex-shrink-0 font-bold">
+              {nextStep.label} <ChevronRight className="w-4 h-4" />
+            </div>
           </button>
-        </div>
+        )}
+
+        {invoice.status === 'PAID' && (
+          <div className="flex items-center gap-3 mt-3 px-4 py-3 rounded-xl border bg-green-50 border-green-200 text-green-800 text-sm">
+            <CheckCircle className="w-4 h-4 flex-shrink-0" />
+            <span>This invoice is fully paid. You may print the receipt below.</span>
+          </div>
+        )}
+
+        {invoice.status === 'CANCELLED' && (
+          <div className="flex items-center gap-3 mt-3 px-4 py-3 rounded-xl border bg-slate-50 border-slate-200 text-slate-600 text-sm">
+            <AlertCircle className="w-4 h-4 flex-shrink-0" />
+            <span>This invoice has been cancelled.</span>
+          </div>
+        )}
       </div>
 
-      {/* Invoice Content */}
-      <div className="bg-white rounded-2xl shadow-sm border border-slate-100 p-6 md:p-8 space-y-6 print:shadow-none">
-        {/* Header Info */}
-        <div className="flex justify-between flex-wrap gap-6">
+      {/* ── Invoice Document (the printable area) ── */}
+      <div className="bg-white rounded-2xl shadow-sm border border-slate-100 p-6 md:p-8 space-y-6 print-doc">
+        {/* Company + Invoice header */}
+        <div className="flex justify-between flex-wrap gap-6 pb-6 border-b border-slate-100">
           <div>
-            <div className="text-2xl font-black text-blue-600 mb-1">INVOICE</div>
-            <div className="text-sm text-slate-500 space-y-0.5">
+            <div className="text-2xl font-black text-blue-700 mb-1">Helvino Technologies Limited</div>
+            <div className="text-xs text-slate-400 space-y-0.5">
+              <div>Nairobi, Kenya</div>
+              <div>info@helvino.org · helvinocrm.org</div>
+            </div>
+          </div>
+          <div className="text-right">
+            <div className="text-3xl font-black text-slate-300 tracking-widest">INVOICE</div>
+            <div className="text-sm text-slate-500 space-y-0.5 mt-2">
               <div><span className="font-semibold text-slate-700">Invoice #:</span> {invoice.invoiceNumber}</div>
               <div><span className="font-semibold text-slate-700">Issue Date:</span> {formatDate(invoice.issueDate)}</div>
               <div><span className="font-semibold text-slate-700">Due Date:</span> {formatDate(invoice.dueDate)}</div>
             </div>
+            <div className="mt-2">
+              <span className={`text-xs px-2.5 py-1 rounded-full font-bold ${STATUS_COLORS[invoice.status]}`}>
+                {invoice.status.replace(/_/g, ' ')}
+              </span>
+            </div>
           </div>
-          <div className="text-right">
-            <div className="font-bold text-slate-900 text-lg">Bill To</div>
-            <div className="text-slate-700 font-semibold">{invoice.clientName}</div>
-            {invoice.clientEmail && <div className="text-slate-500 text-sm">{invoice.clientEmail}</div>}
-          </div>
+        </div>
+
+        {/* Bill To */}
+        <div>
+          <div className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-2">Bill To</div>
+          <div className="font-bold text-slate-900 text-lg">{invoice.clientName}</div>
+          {invoice.clientEmail && <div className="text-slate-500 text-sm">{invoice.clientEmail}</div>}
+          {invoice.quotation && (
+            <div className="text-xs text-slate-400 mt-1">Ref: {invoice.quotation.quotationNumber}</div>
+          )}
+          {invoice.subscription && (
+            <div className="text-xs text-slate-400 mt-1">Subscription: {invoice.subscription.serviceName}</div>
+          )}
         </div>
 
         {/* Items Table */}
         <div className="overflow-x-auto">
           <table className="w-full text-sm">
-            <thead className="bg-slate-50 rounded-xl">
-              <tr>
-                <th className="text-left px-4 py-3 text-xs font-semibold text-slate-500 uppercase">Description</th>
-                <th className="text-right px-4 py-3 text-xs font-semibold text-slate-500 uppercase">Qty</th>
-                <th className="text-right px-4 py-3 text-xs font-semibold text-slate-500 uppercase">Unit Price</th>
-                <th className="text-right px-4 py-3 text-xs font-semibold text-slate-500 uppercase">Total</th>
+            <thead>
+              <tr className="bg-slate-800 text-white">
+                <th className="text-left px-4 py-3 font-semibold rounded-tl-xl">Description</th>
+                <th className="text-right px-4 py-3 font-semibold w-16">Qty</th>
+                <th className="text-right px-4 py-3 font-semibold">Unit Price</th>
+                <th className="text-right px-4 py-3 font-semibold rounded-tr-xl">Total</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-50">
-              {invoice.items.map((item: any) => (
-                <tr key={item.id}>
+              {invoice.items.map((item: any, i: number) => (
+                <tr key={item.id} className={i % 2 === 0 ? 'bg-white' : 'bg-slate-50/50'}>
                   <td className="px-4 py-3 text-slate-700">{item.description}</td>
                   <td className="px-4 py-3 text-right text-slate-600">{item.quantity}</td>
                   <td className="px-4 py-3 text-right text-slate-600">{formatCurrency(item.unitPrice)}</td>
@@ -211,14 +302,24 @@ export default function InvoiceDetailPage() {
               <span className="font-bold text-slate-900">Total</span>
               <span className="text-xl font-black text-slate-900">{formatCurrency(invoice.totalAmount)}</span>
             </div>
-            <div className="flex justify-between">
-              <span className="text-slate-500">Amount Paid</span>
-              <span className="font-semibold text-green-700">{formatCurrency(invoice.amountPaid)}</span>
-            </div>
-            <div className="flex justify-between bg-orange-50 rounded-xl px-3 py-2">
-              <span className="font-bold text-orange-800">Balance Due</span>
-              <span className="text-lg font-black text-orange-600">{formatCurrency(invoice.balanceDue)}</span>
-            </div>
+            {invoice.amountPaid > 0 && (
+              <div className="flex justify-between">
+                <span className="text-slate-500">Amount Paid</span>
+                <span className="font-semibold text-green-700">{formatCurrency(invoice.amountPaid)}</span>
+              </div>
+            )}
+            {invoice.balanceDue > 0 && (
+              <div className="flex justify-between bg-orange-50 rounded-xl px-3 py-2">
+                <span className="font-bold text-orange-800">Balance Due</span>
+                <span className="text-lg font-black text-orange-600">{formatCurrency(invoice.balanceDue)}</span>
+              </div>
+            )}
+            {invoice.balanceDue === 0 && (
+              <div className="flex justify-between bg-green-50 rounded-xl px-3 py-2">
+                <span className="font-bold text-green-800">PAID IN FULL</span>
+                <span className="text-green-700 font-black">✓</span>
+              </div>
+            )}
           </div>
         </div>
 
@@ -239,11 +340,16 @@ export default function InvoiceDetailPage() {
             )}
           </div>
         )}
+
+        {/* Footer */}
+        <div className="border-t border-slate-100 pt-4 text-center text-xs text-slate-400">
+          Helvino Technologies Limited · Nairobi, Kenya · info@helvino.org · helvinocrm.org
+        </div>
       </div>
 
-      {/* Payment History */}
+      {/* ── Payment History (hidden on print) ── */}
       {invoice.payments.length > 0 && (
-        <div className="bg-white rounded-2xl shadow-sm border border-slate-100 overflow-hidden">
+        <div className="bg-white rounded-2xl shadow-sm border border-slate-100 overflow-hidden print-hide">
           <div className="px-5 py-4 border-b border-slate-100">
             <h3 className="font-bold text-slate-900">Payment History</h3>
           </div>
@@ -253,6 +359,7 @@ export default function InvoiceDetailPage() {
                 <div>
                   <div className="font-semibold text-slate-900 text-sm">{pay.paymentNumber}</div>
                   <div className="text-slate-400 text-xs">{formatDate(pay.paymentDate)} · {pay.method.replace(/_/g, ' ')}</div>
+                  {pay.reference && <div className="text-slate-400 text-xs">Ref: {pay.reference}</div>}
                 </div>
                 <div className="font-black text-green-700">{formatCurrency(pay.amount)}</div>
               </div>
@@ -261,12 +368,15 @@ export default function InvoiceDetailPage() {
         </div>
       )}
 
-      {/* Record Payment Modal */}
+      {/* ── Record Payment Modal (hidden on print) ── */}
       {showPayModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm p-4">
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm p-4 print-hide">
           <div className="bg-white rounded-2xl shadow-2xl w-full max-w-md">
             <div className="flex items-center justify-between px-6 py-4 border-b border-slate-100">
-              <h2 className="text-lg font-bold text-slate-900">Record Payment</h2>
+              <div>
+                <h2 className="text-lg font-bold text-slate-900">Record Payment</h2>
+                <p className="text-xs text-slate-400 mt-0.5">{invoice.invoiceNumber} · {invoice.clientName}</p>
+              </div>
               <button onClick={() => setShowPayModal(false)} className="text-slate-400 hover:text-slate-600">
                 <X className="w-5 h-5" />
               </button>
@@ -275,39 +385,40 @@ export default function InvoiceDetailPage() {
               <div>
                 <label className="block text-sm font-semibold text-slate-700 mb-1">Amount *</label>
                 <input
-                  required
-                  type="number"
-                  min="0.01"
-                  step="0.01"
-                  max={invoice.balanceDue}
+                  required type="number" min="0.01" step="0.01" max={invoice.balanceDue}
                   value={payForm.amount}
                   onChange={e => setPayForm(f => ({ ...f, amount: parseFloat(e.target.value) || 0 }))}
                   className="w-full border border-slate-200 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" />
                 <p className="text-xs text-slate-400 mt-1">Balance due: {formatCurrency(invoice.balanceDue)}</p>
               </div>
-              <div>
-                <label className="block text-sm font-semibold text-slate-700 mb-1">Payment Method</label>
-                <select
-                  value={payForm.method}
-                  onChange={e => setPayForm(f => ({ ...f, method: e.target.value }))}
-                  className="w-full border border-slate-200 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500">
-                  {PAYMENT_METHODS.map(m => <option key={m} value={m}>{m.replace(/_/g, ' ')}</option>)}
-                </select>
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="block text-sm font-semibold text-slate-700 mb-1">Payment Method</label>
+                  <select value={payForm.method}
+                    onChange={e => setPayForm(f => ({ ...f, method: e.target.value }))}
+                    className="w-full border border-slate-200 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500">
+                    {PAYMENT_METHODS.map(m => <option key={m} value={m}>{m.replace(/_/g, ' ')}</option>)}
+                  </select>
+                </div>
+                <div>
+                  <label className="block text-sm font-semibold text-slate-700 mb-1">Date</label>
+                  <input type="date" value={payForm.paymentDate}
+                    onChange={e => setPayForm(f => ({ ...f, paymentDate: e.target.value }))}
+                    className="w-full border border-slate-200 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" />
+                </div>
               </div>
               <div>
                 <label className="block text-sm font-semibold text-slate-700 mb-1">Reference / Transaction ID</label>
-                <input
-                  value={payForm.reference}
+                <input value={payForm.reference}
                   onChange={e => setPayForm(f => ({ ...f, reference: e.target.value }))}
-                  placeholder="e.g. M-PESA transaction ID"
+                  placeholder="e.g. M-Pesa transaction ID, cheque no."
                   className="w-full border border-slate-200 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" />
               </div>
               <div>
-                <label className="block text-sm font-semibold text-slate-700 mb-1">Payment Date</label>
-                <input
-                  type="date"
-                  value={payForm.paymentDate}
-                  onChange={e => setPayForm(f => ({ ...f, paymentDate: e.target.value }))}
+                <label className="block text-sm font-semibold text-slate-700 mb-1">Notes</label>
+                <input value={payForm.notes}
+                  onChange={e => setPayForm(f => ({ ...f, notes: e.target.value }))}
+                  placeholder="Optional notes"
                   className="w-full border border-slate-200 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" />
               </div>
               <div className="flex gap-3 pt-2">

@@ -6,7 +6,8 @@ import toast from 'react-hot-toast'
 import { useSession } from 'next-auth/react'
 import {
   ArrowLeft, Printer, Send, Eye, CheckCircle, XCircle,
-  Edit, Trash2, Building2, Mail, Calendar, Clock, FileText, AlertCircle
+  Edit, Trash2, Building2, Mail, Calendar, Clock, FileText, AlertCircle,
+  Receipt, ChevronRight,
 } from 'lucide-react'
 import { formatCurrency, formatDate } from '@/lib/utils'
 
@@ -27,6 +28,7 @@ export default function QuotationDetailPage() {
   const [loading, setLoading] = useState(true)
   const [actionLoading, setActionLoading] = useState(false)
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false)
+  const [converting, setConverting] = useState(false)
 
   useEffect(() => {
     fetch(`/api/sales/quotations/${id}`)
@@ -55,6 +57,45 @@ export default function QuotationDetailPage() {
     } finally {
       setActionLoading(false)
     }
+  }
+
+  async function convertToInvoice() {
+    setConverting(true)
+    try {
+      const subtotal = quotation.items?.reduce((s: number, i: any) => s + i.quantity * i.unitPrice, 0) ?? 0
+      const dueDate = new Date()
+      dueDate.setDate(dueDate.getDate() + 30)
+
+      const res = await fetch('/api/accounting/invoices', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          clientId: quotation.clientId ?? null,
+          clientName: quotation.clientName,
+          clientEmail: quotation.clientEmail ?? null,
+          quotationId: quotation.id,
+          dueDate: dueDate.toISOString(),
+          taxRate: quotation.taxRate ?? 16,
+          discountAmount: quotation.discountAmount ?? 0,
+          notes: quotation.notes ?? null,
+          terms: quotation.terms ?? null,
+          status: 'DRAFT',
+          items: (quotation.items ?? []).map((item: any) => ({
+            description: item.name ?? item.serviceName ?? 'Service',
+            quantity: item.quantity,
+            unitPrice: item.unitPrice,
+            totalPrice: item.quantity * item.unitPrice,
+          })),
+        }),
+      })
+      if (!res.ok) throw new Error()
+      const invoice = await res.json()
+      toast.success('Invoice created from quotation')
+      router.push(`/dashboard/accounting/invoices/${invoice.id}`)
+    } catch {
+      toast.error('Failed to convert to invoice')
+    }
+    setConverting(false)
   }
 
   async function deleteQuotation() {
@@ -182,13 +223,23 @@ export default function QuotationDetailPage() {
             )}
 
             {quotation.status === 'APPROVED' && (
-              <button
-                onClick={() => window.print()}
-                className="flex items-center gap-2 px-4 py-2 bg-slate-800 hover:bg-slate-900 text-white rounded-xl text-sm font-semibold transition-colors"
-              >
-                <Printer className="w-4 h-4" />
-                Print / PDF
-              </button>
+              <>
+                <button
+                  onClick={convertToInvoice}
+                  disabled={converting}
+                  className="flex items-center gap-2 px-4 py-2 bg-emerald-600 hover:bg-emerald-700 disabled:opacity-60 text-white rounded-xl text-sm font-semibold transition-colors shadow-md"
+                >
+                  <Receipt className="w-4 h-4" />
+                  {converting ? 'Creating...' : 'Convert to Invoice'}
+                </button>
+                <button
+                  onClick={() => window.print()}
+                  className="flex items-center gap-2 px-4 py-2 bg-slate-800 hover:bg-slate-900 text-white rounded-xl text-sm font-semibold transition-colors"
+                >
+                  <Printer className="w-4 h-4" />
+                  Print / PDF
+                </button>
+              </>
             )}
 
             {quotation.status !== 'DRAFT' && (
@@ -202,6 +253,47 @@ export default function QuotationDetailPage() {
             )}
           </div>
         </div>
+
+        {/* Next-step banner */}
+        {quotation.status === 'DRAFT' && (
+          <div className="flex items-center justify-between gap-3 px-4 py-3 rounded-xl border bg-blue-50 border-blue-200 text-blue-800 text-sm">
+            <div className="flex items-center gap-2">
+              <Clock className="w-4 h-4 flex-shrink-0" />
+              <span><strong>Next step:</strong> Review the quotation, then click <em>Send to Client</em> to share it.</span>
+            </div>
+          </div>
+        )}
+        {quotation.status === 'SENT' && (
+          <div className="flex items-center justify-between gap-3 px-4 py-3 rounded-xl border bg-amber-50 border-amber-200 text-amber-800 text-sm">
+            <div className="flex items-center gap-2">
+              <Clock className="w-4 h-4 flex-shrink-0" />
+              <span><strong>Next step:</strong> Awaiting client response — mark as <em>Viewed</em> once the client opens it.</span>
+            </div>
+          </div>
+        )}
+        {quotation.status === 'VIEWED' && (
+          <div className="flex items-center justify-between gap-3 px-4 py-3 rounded-xl border bg-purple-50 border-purple-200 text-purple-800 text-sm">
+            <div className="flex items-center gap-2">
+              <Clock className="w-4 h-4 flex-shrink-0" />
+              <span><strong>Next step:</strong> Client has viewed the quotation — mark it as <em>Approved</em> or <em>Rejected</em> based on feedback.</span>
+            </div>
+          </div>
+        )}
+        {quotation.status === 'APPROVED' && (
+          <button
+            onClick={convertToInvoice}
+            disabled={converting}
+            className="w-full flex items-center justify-between gap-3 px-4 py-3 rounded-xl border bg-emerald-50 border-emerald-200 text-emerald-800 text-sm font-medium hover:bg-emerald-100 transition-colors disabled:opacity-60"
+          >
+            <div className="flex items-center gap-2">
+              <Receipt className="w-4 h-4 flex-shrink-0" />
+              <span><strong>Next step:</strong> Quotation approved — convert it to an invoice to bill the client.</span>
+            </div>
+            <div className="flex items-center gap-1 font-bold flex-shrink-0">
+              {converting ? 'Creating...' : 'Convert to Invoice'} <ChevronRight className="w-4 h-4" />
+            </div>
+          </button>
+        )}
 
         {/* Rejection reason banner */}
         {quotation.status === 'REJECTED' && quotation.rejectionReason && (

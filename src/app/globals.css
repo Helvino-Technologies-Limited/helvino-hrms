@@ -32,3 +32,32 @@ body {
 ::-webkit-scrollbar-thumb:hover {
   background: #94a3b8;
 }
+
+/* ─── Print Styles ─────────────────────────────────────────────────── */
+@media print {
+  /* Hide sidebar, topbar, and any element marked print-hide */
+  body aside,
+  body header,
+  .print-hide {
+    display: none !important;
+  }
+
+  /* Allow content containers to flow for printing */
+  body > div,
+  body main {
+    overflow: visible !important;
+    height: auto !important;
+  }
+
+  body main {
+    padding: 0 !important;
+  }
+
+  /* Ensure the print document fills the page */
+  .print-doc {
+    box-shadow: none !important;
+    border-radius: 0 !important;
+    border: 0 !important;
+    margin: 0 !important;
+  }
+}
