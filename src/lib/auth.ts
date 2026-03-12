@@ -19,6 +19,7 @@ export const authOptions: NextAuthOptions = {
           where: { email: credentials.email },
           include: {
             employee: { include: { department: true } },
+            clientRecord: true,
           },
         })
         if (!user || !user.password) throw new Error('User not found')
@@ -32,6 +33,8 @@ export const authOptions: NextAuthOptions = {
           role: user.role,
           employeeId: user.employeeId,
           employee: user.employee,
+          clientId: user.clientId,
+          client: user.clientRecord,
         }
       },
     }),
@@ -42,6 +45,8 @@ export const authOptions: NextAuthOptions = {
         token.role = (user as any).role
         token.employeeId = (user as any).employeeId
         token.employee = (user as any).employee
+        token.clientId = (user as any).clientId
+        token.client = (user as any).client
       }
       return token
     },
@@ -51,6 +56,8 @@ export const authOptions: NextAuthOptions = {
         session.user.role = token.role as string
         session.user.employeeId = token.employeeId as string
         session.user.employee = token.employee as any
+        session.user.clientId = token.clientId as string
+        session.user.client = token.client as any
       }
       return session
     },

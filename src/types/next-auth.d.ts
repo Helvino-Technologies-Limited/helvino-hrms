@@ -10,6 +10,8 @@ declare module 'next-auth' {
       role: string
       employeeId: string
       employee?: any
+      clientId?: string
+      client?: any
     }
   }
 }

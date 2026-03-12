@@ -125,6 +125,11 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
   // Enforce page-level access control: redirect if the current path is not in the user's allowed routes
   useEffect(() => {
     if (status !== 'authenticated') return
+    // Redirect client portal users
+    if (role === 'CLIENT') {
+      router.replace('/client-portal/dashboard')
+      return
+    }
     const allItems = [...adminNavItems, ...hrNavItems, ...recruitmentNavItems, ...salesNavItems, ...accountingNavItems, ...policiesNavItems]
     // Find the most specific nav item matching the current path
     const match = allItems

@@ -86,6 +86,48 @@ enum UserRole {
   EMPLOYEE
   SALES_MANAGER
   SALES_AGENT
+  CLIENT
+}
+
+// ─── Client Portal Enums ──────────────────────────────────────────────────────
+
+enum ServiceRequestStatus {
+  PENDING
+  REVIEWING
+  QUOTED
+  APPROVED
+  IN_PROGRESS
+  COMPLETED
+  REJECTED
+}
+
+enum ProjectStatus {
+  PLANNING
+  IN_PROGRESS
+  ON_HOLD
+  COMPLETED
+  CANCELLED
+}
+
+enum MilestoneStatus {
+  PENDING
+  IN_PROGRESS
+  COMPLETED
+}
+
+enum TicketStatus {
+  OPEN
+  IN_PROGRESS
+  WAITING_CLIENT
+  RESOLVED
+  CLOSED
+}
+
+enum TicketPriority {
+  LOW
+  MEDIUM
+  HIGH
+  URGENT
 }
 
 // ─── Sales Module Enums ───────────────────────────────────────────────────────
@@ -176,18 +218,20 @@ enum SalesTaskPriority {
 }
 
 model User {
-  id          String    @id @default(cuid())
-  email       String    @unique
-  name        String?
-  password    String
-  rawPassword String?   // admin-set plain text — cleared when user self-changes
-  role        UserRole  @default(EMPLOYEE)
-  isActive    Boolean   @default(true)
-  employeeId  String?   @unique
-  employee    Employee? @relation(fields: [employeeId], references: [id])
-  createdAt   DateTime  @default(now())
-  updatedAt   DateTime  @updatedAt
-  sessions    Session[]
+  id           String    @id @default(cuid())
+  email        String    @unique
+  name         String?
+  password     String
+  rawPassword  String?   // admin-set plain text — cleared when user self-changes
+  role         UserRole  @default(EMPLOYEE)
+  isActive     Boolean   @default(true)
+  employeeId   String?   @unique
+  employee     Employee? @relation(fields: [employeeId], references: [id])
+  clientId     String?   @unique
+  clientRecord Client?   @relation("ClientPortalUser", fields: [clientId], references: [id])
+  createdAt    DateTime  @default(now())
+  updatedAt    DateTime  @updatedAt
+  sessions     Session[]
 }
 
 model Session {
@@ -661,35 +705,43 @@ model QuotationItem {
 }
 
 model Client {
-  id            String          @id @default(cuid())
-  clientNumber  String          @unique
-  companyName   String
-  contactPerson String
-  phone         String?
-  whatsapp      String?
-  email         String?
-  address       String?
-  city          String?
-  country       String          @default("Kenya")
-  industry      String?
-  category      ClientCategory  @default(CORPORATE)
-  tags          String[]
-  website       String?
-  notes         String?
-  isActive      Boolean         @default(true)
-  createdById   String?
-  createdBy     Employee?       @relation("ClientCreator", fields: [createdById], references: [id])
-  assignedToId  String?
-  assignedTo    Employee?       @relation("ClientAssignee", fields: [assignedToId], references: [id])
-  leads         Lead[]          @relation("LeadConversion")
-  quotations    Quotation[]
-  services      ClientService[]
-  subscriptions Subscription[]
-  tasks         SalesTask[]
-  invoices      Invoice[]
-  payments      Payment[]
-  createdAt     DateTime        @default(now())
-  updatedAt     DateTime        @updatedAt
+  id              String          @id @default(cuid())
+  clientNumber    String          @unique
+  companyName     String
+  contactPerson   String
+  phone           String?
+  whatsapp        String?
+  email           String?
+  address         String?
+  city            String?
+  country         String          @default("Kenya")
+  industry        String?
+  category        ClientCategory  @default(CORPORATE)
+  tags            String[]
+  website         String?
+  notes           String?
+  isActive        Boolean         @default(true)
+  portalEnabled   Boolean         @default(false)
+  createdById     String?
+  createdBy       Employee?       @relation("ClientCreator", fields: [createdById], references: [id])
+  assignedToId    String?
+  assignedTo      Employee?       @relation("ClientAssignee", fields: [assignedToId], references: [id])
+  leads           Lead[]          @relation("LeadConversion")
+  quotations      Quotation[]
+  services        ClientService[]
+  subscriptions   Subscription[]
+  tasks           SalesTask[]
+  invoices        Invoice[]
+  payments        Payment[]
+  // Client Portal relations
+  portalUser      User?           @relation("ClientPortalUser")
+  serviceRequests ServiceRequest[]
+  projects        ClientProject[]
+  tickets         SupportTicket[]
+  documents       ClientDocument[]
+  notifications   ClientNotification[]
+  createdAt       DateTime        @default(now())
+  updatedAt       DateTime        @updatedAt
 }
 
 model ClientService {
@@ -1082,4 +1134,114 @@ model PolicyNotification {
   notificationSent Boolean  @default(false)
   readStatus       Boolean  @default(false)
   createdAt        DateTime @default(now())
+}
+
+// ─── Client Portal Models ─────────────────────────────────────────────────────
+
+model ServiceRequest {
+  id            String               @id @default(cuid())
+  requestNumber String               @unique
+  clientId      String
+  client        Client               @relation(fields: [clientId], references: [id])
+  title         String
+  serviceType   String
+  description   String
+  businessNeeds String?
+  budget        Float?
+  timeline      String?
+  attachments   String[]
+  status        ServiceRequestStatus @default(PENDING)
+  adminNotes    String?
+  quotationId   String?
+  createdAt     DateTime             @default(now())
+  updatedAt     DateTime             @updatedAt
+}
+
+model ClientProject {
+  id           String             @id @default(cuid())
+  clientId     String
+  client       Client             @relation(fields: [clientId], references: [id])
+  name         String
+  description  String?
+  status       ProjectStatus      @default(PLANNING)
+  progress     Int                @default(0)
+  startDate    DateTime?
+  estimatedEnd DateTime?
+  actualEnd    DateTime?
+  assignedTeam String?
+  quotationId  String?
+  milestones   ProjectMilestone[]
+  createdAt    DateTime           @default(now())
+  updatedAt    DateTime           @updatedAt
+}
+
+model ProjectMilestone {
+  id          String          @id @default(cuid())
+  projectId   String
+  project     ClientProject   @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  title       String
+  description String?
+  status      MilestoneStatus @default(PENDING)
+  dueDate     DateTime?
+  completedAt DateTime?
+  order       Int             @default(0)
+  createdAt   DateTime        @default(now())
+  updatedAt   DateTime        @updatedAt
+}
+
+model SupportTicket {
+  id           String          @id @default(cuid())
+  ticketNumber String          @unique
+  clientId     String
+  client       Client          @relation(fields: [clientId], references: [id])
+  subject      String
+  description  String
+  category     String
+  priority     TicketPriority  @default(MEDIUM)
+  status       TicketStatus    @default(OPEN)
+  attachments  String[]
+  assignedToId String?
+  messages     TicketMessage[]
+  resolvedAt   DateTime?
+  createdAt    DateTime        @default(now())
+  updatedAt    DateTime        @updatedAt
+}
+
+model TicketMessage {
+  id          String        @id @default(cuid())
+  ticketId    String
+  ticket      SupportTicket @relation(fields: [ticketId], references: [id], onDelete: Cascade)
+  message     String
+  senderId    String
+  senderName  String
+  isClient    Boolean       @default(true)
+  attachments String[]
+  createdAt   DateTime      @default(now())
+}
+
+model ClientDocument {
+  id          String   @id @default(cuid())
+  clientId    String
+  client      Client   @relation(fields: [clientId], references: [id])
+  name        String
+  description String?
+  fileUrl     String
+  fileType    String?
+  fileSize    Int?
+  uploadedBy  String   @default("client")
+  category    String?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+}
+
+model ClientNotification {
+  id        String   @id @default(cuid())
+  clientId  String
+  client    Client   @relation(fields: [clientId], references: [id])
+  title     String
+  message   String
+  type      String   @default("INFO")
+  isRead    Boolean  @default(false)
+  link      String?
+  createdAt DateTime @default(now())
 }
