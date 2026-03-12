@@ -9,7 +9,8 @@ import {
   Bell, Search, Menu, X, LogOut, Settings, UserCircle,
   Shield, ChevronDown, Building, CheckCircle,
   TrendingUp, Target, FileText, Users2, RotateCcw, FolderOpen, Package, ListTodo,
-  Video, Database, ShieldCheck
+  Video, Database, ShieldCheck,
+  BookOpen, CreditCard, Receipt, Truck, Landmark, Percent, PiggyBank, ScrollText, ClipboardCheck
 } from 'lucide-react'
 import { getInitials } from '@/lib/utils'
 
@@ -77,6 +78,36 @@ const salesNavItems = [
     roles: ['SUPER_ADMIN', 'HR_MANAGER', 'SALES_MANAGER', 'FINANCE_OFFICER'] },
 ]
 
+const accountingNavItems = [
+  { href: '/dashboard/accounting', icon: LayoutDashboard, label: 'Finance Dashboard', exact: true,
+    roles: ['SUPER_ADMIN', 'FINANCE_OFFICER'] },
+  { href: '/dashboard/accounting/chart-of-accounts', icon: BookOpen, label: 'Chart of Accounts',
+    roles: ['SUPER_ADMIN', 'FINANCE_OFFICER'] },
+  { href: '/dashboard/accounting/invoices', icon: FileText, label: 'Invoices',
+    roles: ['SUPER_ADMIN', 'FINANCE_OFFICER'] },
+  { href: '/dashboard/accounting/payments', icon: CreditCard, label: 'Payments',
+    roles: ['SUPER_ADMIN', 'FINANCE_OFFICER'] },
+  { href: '/dashboard/accounting/expenses', icon: Receipt, label: 'Expenses',
+    roles: ['SUPER_ADMIN', 'FINANCE_OFFICER'] },
+  { href: '/dashboard/accounting/suppliers', icon: Truck, label: 'Suppliers & Bills',
+    roles: ['SUPER_ADMIN', 'FINANCE_OFFICER'] },
+  { href: '/dashboard/accounting/bank', icon: Landmark, label: 'Bank Accounts',
+    roles: ['SUPER_ADMIN', 'FINANCE_OFFICER'] },
+  { href: '/dashboard/accounting/taxes', icon: Percent, label: 'Tax Management',
+    roles: ['SUPER_ADMIN', 'FINANCE_OFFICER'] },
+  { href: '/dashboard/accounting/budgets', icon: PiggyBank, label: 'Budgets',
+    roles: ['SUPER_ADMIN', 'FINANCE_OFFICER'] },
+  { href: '/dashboard/accounting/reports', icon: BarChart3, label: 'Financial Reports',
+    roles: ['SUPER_ADMIN', 'FINANCE_OFFICER'] },
+]
+
+const policiesNavItems = [
+  { href: '/dashboard/policies', icon: ScrollText, label: 'Company Policies', exact: true,
+    roles: ['SUPER_ADMIN', 'FINANCE_OFFICER', 'HR_MANAGER', 'DEPARTMENT_HEAD', 'EMPLOYEE'] },
+  { href: '/dashboard/policies/compliance', icon: ClipboardCheck, label: 'Policy Compliance',
+    roles: ['SUPER_ADMIN', 'FINANCE_OFFICER', 'HR_MANAGER'] },
+]
+
 export default function DashboardLayout({ children }: { children: React.ReactNode }) {
   const { data: session, status } = useSession()
   const pathname = usePathname()
@@ -94,7 +125,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
   // Enforce page-level access control: redirect if the current path is not in the user's allowed routes
   useEffect(() => {
     if (status !== 'authenticated') return
-    const allItems = [...adminNavItems, ...hrNavItems, ...recruitmentNavItems, ...salesNavItems]
+    const allItems = [...adminNavItems, ...hrNavItems, ...recruitmentNavItems, ...salesNavItems, ...accountingNavItems, ...policiesNavItems]
     // Find the most specific nav item matching the current path
     const match = allItems
       .filter(item => item.exact ? pathname === item.href : pathname.startsWith(item.href))
@@ -108,7 +139,9 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
   const filteredHrNav = hrNavItems.filter(item => item.roles.includes(role))
   const filteredRecruitmentNav = recruitmentNavItems.filter(item => item.roles.includes(role))
   const filteredSalesNav = salesNavItems.filter(item => item.roles.includes(role))
-  const allNavItems = [...adminNavItems, ...hrNavItems, ...recruitmentNavItems, ...salesNavItems]
+  const filteredAccountingNav = accountingNavItems.filter(item => item.roles.includes(role))
+  const filteredPoliciesNav = policiesNavItems.filter(item => item.roles.includes(role))
+  const allNavItems = [...adminNavItems, ...hrNavItems, ...recruitmentNavItems, ...salesNavItems, ...accountingNavItems, ...policiesNavItems]
 
   const [notifOpen, setNotifOpen] = useState(false)
   const [notifications, setNotifications] = useState<any[]>([])
@@ -280,6 +313,56 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
               </div>
               <div className="space-y-0.5">
                 {filteredSalesNav.map(item => (
+                  <Link key={item.href} href={item.href} onClick={() => setSidebarOpen(false)}
+                    className={`
+                      flex items-center gap-3 px-3.5 py-2.5 rounded-xl transition-all duration-150 group
+                      ${isActive(item)
+                        ? 'bg-blue-600 text-white shadow-lg shadow-blue-600/30'
+                        : 'text-slate-400 hover:text-white hover:bg-slate-800'
+                      }
+                    `}>
+                    <item.icon className={`w-4.5 h-4.5 flex-shrink-0 ${isActive(item) ? 'text-white' : 'text-slate-500 group-hover:text-slate-300'}`} style={{ width: '18px', height: '18px' }} />
+                    <span className="font-medium text-sm">{item.label}</span>
+                    {isActive(item) && <div className="ml-auto w-1.5 h-1.5 bg-white rounded-full" />}
+                  </Link>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {/* Accounting & Finance Section */}
+          {filteredAccountingNav.length > 0 && (
+            <div className="mt-4">
+              <div className="px-3 mb-1">
+                <span className="text-xs font-bold text-emerald-400/80 uppercase tracking-wider">Accounting & Finance</span>
+              </div>
+              <div className="space-y-0.5">
+                {filteredAccountingNav.map(item => (
+                  <Link key={item.href} href={item.href} onClick={() => setSidebarOpen(false)}
+                    className={`
+                      flex items-center gap-3 px-3.5 py-2.5 rounded-xl transition-all duration-150 group
+                      ${isActive(item)
+                        ? 'bg-emerald-600 text-white shadow-lg shadow-emerald-600/30'
+                        : 'text-slate-400 hover:text-white hover:bg-emerald-900/30'
+                      }
+                    `}>
+                    <item.icon className={`flex-shrink-0 ${isActive(item) ? 'text-white' : 'text-emerald-400/70 group-hover:text-emerald-300'}`} style={{ width: '18px', height: '18px' }} />
+                    <span className="font-medium text-sm">{item.label}</span>
+                    {isActive(item) && <div className="ml-auto w-1.5 h-1.5 bg-white rounded-full" />}
+                  </Link>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {/* HR Policies Section */}
+          {filteredPoliciesNav.length > 0 && (
+            <div className="mt-4">
+              <div className="px-3 mb-1">
+                <span className="text-xs font-bold text-slate-500 uppercase tracking-wider">HR Policies</span>
+              </div>
+              <div className="space-y-0.5">
+                {filteredPoliciesNav.map(item => (
                   <Link key={item.href} href={item.href} onClick={() => setSidebarOpen(false)}
                     className={`
                       flex items-center gap-3 px-3.5 py-2.5 rounded-xl transition-all duration-150 group
