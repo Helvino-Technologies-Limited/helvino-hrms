@@ -29,15 +29,18 @@ export default function ClientPortalLayout({ children }: { children: React.React
   const [notifications, setNotifications] = useState<any[]>([])
   const [notifOpen, setNotifOpen] = useState(false)
 
+  const isPublicPage = pathname === '/client-portal/register' || pathname === '/client-portal/login'
+
   useEffect(() => {
+    if (isPublicPage) return
     if (status === 'unauthenticated') {
-      router.replace('/login')
+      router.replace('/client-portal/login')
       return
     }
     if (status === 'authenticated' && session.user.role !== 'CLIENT') {
       router.replace('/dashboard')
     }
-  }, [status, session, router])
+  }, [status, session, router, isPublicPage])
 
   useEffect(() => {
     if (session?.user?.role === 'CLIENT') {
@@ -48,7 +51,7 @@ export default function ClientPortalLayout({ children }: { children: React.React
     }
   }, [session])
 
-  if (status === 'loading') {
+  if (!isPublicPage && status === 'loading') {
     return (
       <div className="min-h-screen bg-slate-50 flex items-center justify-center">
         <div className="w-8 h-8 border-4 border-blue-600 border-t-transparent rounded-full animate-spin" />
@@ -56,8 +59,12 @@ export default function ClientPortalLayout({ children }: { children: React.React
     )
   }
 
-  if (status === 'unauthenticated' || (status === 'authenticated' && session.user.role !== 'CLIENT')) {
+  if (!isPublicPage && (status === 'unauthenticated' || (status === 'authenticated' && session.user.role !== 'CLIENT'))) {
     return null
+  }
+
+  if (isPublicPage) {
+    return <>{children}</>
   }
 
   const client = session?.user?.client
