@@ -10,7 +10,8 @@ import {
   Shield, ChevronDown, Building, CheckCircle,
   TrendingUp, Target, FileText, Users2, RotateCcw, FolderOpen, Package, ListTodo,
   Video, Database, ShieldCheck,
-  BookOpen, CreditCard, Receipt, Truck, Landmark, Percent, PiggyBank, ScrollText, ClipboardCheck
+  BookOpen, CreditCard, Receipt, Truck, Landmark, Percent, PiggyBank, ScrollText, ClipboardCheck,
+  LifeBuoy
 } from 'lucide-react'
 import { getInitials } from '@/lib/utils'
 
@@ -108,6 +109,11 @@ const policiesNavItems = [
     roles: ['SUPER_ADMIN', 'FINANCE_OFFICER', 'HR_MANAGER'] },
 ]
 
+const supportNavItems = [
+  { href: '/dashboard/tickets', icon: LifeBuoy, label: 'Support Tickets', exact: false,
+    roles: ['SUPER_ADMIN', 'HR_MANAGER', 'SALES_MANAGER', 'SALES_AGENT', 'DEPARTMENT_HEAD', 'FINANCE_OFFICER', 'EMPLOYEE'] },
+]
+
 export default function DashboardLayout({ children }: { children: React.ReactNode }) {
   const { data: session, status } = useSession()
   const pathname = usePathname()
@@ -130,7 +136,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
       router.replace('/client-portal/dashboard')
       return
     }
-    const allItems = [...adminNavItems, ...hrNavItems, ...recruitmentNavItems, ...salesNavItems, ...accountingNavItems, ...policiesNavItems]
+    const allItems = [...adminNavItems, ...hrNavItems, ...recruitmentNavItems, ...salesNavItems, ...accountingNavItems, ...policiesNavItems, ...supportNavItems]
     // Find the most specific nav item matching the current path
     const match = allItems
       .filter(item => item.exact ? pathname === item.href : pathname.startsWith(item.href))
@@ -146,7 +152,8 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
   const filteredSalesNav = salesNavItems.filter(item => item.roles.includes(role))
   const filteredAccountingNav = accountingNavItems.filter(item => item.roles.includes(role))
   const filteredPoliciesNav = policiesNavItems.filter(item => item.roles.includes(role))
-  const allNavItems = [...adminNavItems, ...hrNavItems, ...recruitmentNavItems, ...salesNavItems, ...accountingNavItems, ...policiesNavItems]
+  const filteredSupportNav = supportNavItems.filter(item => item.roles.includes(role))
+  const allNavItems = [...adminNavItems, ...hrNavItems, ...recruitmentNavItems, ...salesNavItems, ...accountingNavItems, ...policiesNavItems, ...supportNavItems]
 
   const [notifOpen, setNotifOpen] = useState(false)
   const [notifications, setNotifications] = useState<any[]>([])
@@ -368,6 +375,31 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
               </div>
               <div className="space-y-0.5">
                 {filteredPoliciesNav.map(item => (
+                  <Link key={item.href} href={item.href} onClick={() => setSidebarOpen(false)}
+                    className={`
+                      flex items-center gap-3 px-3.5 py-2.5 rounded-xl transition-all duration-150 group
+                      ${isActive(item)
+                        ? 'bg-blue-600 text-white shadow-lg shadow-blue-600/30'
+                        : 'text-slate-400 hover:text-white hover:bg-slate-800'
+                      }
+                    `}>
+                    <item.icon className={`w-4.5 h-4.5 flex-shrink-0 ${isActive(item) ? 'text-white' : 'text-slate-500 group-hover:text-slate-300'}`} style={{ width: '18px', height: '18px' }} />
+                    <span className="font-medium text-sm">{item.label}</span>
+                    {isActive(item) && <div className="ml-auto w-1.5 h-1.5 bg-white rounded-full" />}
+                  </Link>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {/* Support Section */}
+          {filteredSupportNav.length > 0 && (
+            <div className="mt-4">
+              <div className="px-3 mb-1">
+                <span className="text-xs font-bold text-slate-500 uppercase tracking-wider">Client Support</span>
+              </div>
+              <div className="space-y-0.5">
+                {filteredSupportNav.map(item => (
                   <Link key={item.href} href={item.href} onClick={() => setSidebarOpen(false)}
                     className={`
                       flex items-center gap-3 px-3.5 py-2.5 rounded-xl transition-all duration-150 group
