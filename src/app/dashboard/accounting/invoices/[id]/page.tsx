@@ -1,11 +1,11 @@
 'use client'
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { useSession } from 'next-auth/react'
 import { useParams, useRouter } from 'next/navigation'
 import Link from 'next/link'
 import {
   ArrowLeft, Send, CheckCircle, X, CreditCard, Printer,
-  AlertCircle, ChevronRight, FileText, Clock,
+  AlertCircle, ChevronRight, FileText, Clock, Download, Mail, MessageCircle,
 } from 'lucide-react'
 import toast from 'react-hot-toast'
 import { formatCurrency, formatDate } from '@/lib/utils'
@@ -33,6 +33,9 @@ export default function InvoiceDetailPage() {
     paymentDate: new Date().toISOString().split('T')[0],
   })
   const [saving, setSaving] = useState(false)
+  const [sendingEmail, setSendingEmail] = useState(false)
+  const [downloadingPdf, setDownloadingPdf] = useState(false)
+  const docRef = useRef<HTMLDivElement>(null)
 
   async function loadInvoice() {
     setLoading(true)
@@ -88,6 +91,75 @@ export default function InvoiceDetailPage() {
     setSaving(false)
   }
 
+  async function downloadPdf() {
+    if (!docRef.current) return
+    setDownloadingPdf(true)
+    try {
+      const [{ default: html2canvas }, { default: jsPDF }] = await Promise.all([
+        import('html2canvas'),
+        import('jspdf'),
+      ])
+      const canvas = await html2canvas(docRef.current, { scale: 2, useCORS: true, logging: false })
+      const imgData = canvas.toDataURL('image/png')
+      const pdf = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4' })
+      const pageWidth = pdf.internal.pageSize.getWidth()
+      const pageHeight = pdf.internal.pageSize.getHeight()
+      const imgWidth = pageWidth
+      const imgHeight = (canvas.height * imgWidth) / canvas.width
+      let heightLeft = imgHeight
+      let position = 0
+      pdf.addImage(imgData, 'PNG', 0, position, imgWidth, imgHeight)
+      heightLeft -= pageHeight
+      while (heightLeft > 0) {
+        position -= pageHeight
+        pdf.addPage()
+        pdf.addImage(imgData, 'PNG', 0, position, imgWidth, imgHeight)
+        heightLeft -= pageHeight
+      }
+      pdf.save(`${invoice.invoiceNumber}.pdf`)
+      toast.success('PDF downloaded')
+    } catch {
+      toast.error('Failed to generate PDF')
+    }
+    setDownloadingPdf(false)
+  }
+
+  async function sendEmail() {
+    setSendingEmail(true)
+    try {
+      const res = await fetch(`/api/accounting/invoices/${params.id}/send`, { method: 'POST' })
+      if (!res.ok) {
+        const err = await res.json()
+        throw new Error(err.error || 'Failed')
+      }
+      toast.success('Invoice emailed to client')
+      loadInvoice()
+    } catch (e: any) {
+      toast.error(e.message || 'Failed to send email')
+    }
+    setSendingEmail(false)
+  }
+
+  function shareWhatsApp() {
+    if (!invoice) return
+    const msg = [
+      `*Invoice ${invoice.invoiceNumber}*`,
+      `Client: ${invoice.clientName}`,
+      `Amount: KES ${Number(invoice.totalAmount).toLocaleString('en-KE', { minimumFractionDigits: 2 })}`,
+      invoice.balanceDue > 0 ? `Balance Due: KES ${Number(invoice.balanceDue).toLocaleString('en-KE', { minimumFractionDigits: 2 })}` : 'Status: PAID IN FULL',
+      `Due Date: ${formatDate(invoice.dueDate)}`,
+      '',
+      '*Payment Instructions (M-Pesa Paybill):*',
+      'Business: Helvino Technologies',
+      'Paybill No: 522533',
+      'Account No: 8071524',
+      'Phone: 0110421320',
+      '',
+      `Reference: ${invoice.invoiceNumber}`,
+    ].join('\n')
+    window.open(`https://wa.me/?text=${encodeURIComponent(msg)}`, '_blank')
+  }
+
   if (loading) {
     return (
       <div className="space-y-6">
@@ -109,7 +181,6 @@ export default function InvoiceDetailPage() {
     )
   }
 
-  /* ── Next-step banner config ── */
   const nextStep: { label: string; hint: string; color: string; action?: () => void } | null = (() => {
     if (invoice.status === 'DRAFT') return {
       label: 'Send to client',
@@ -172,6 +243,21 @@ export default function InvoiceDetailPage() {
                 <CreditCard className="w-4 h-4" /> Record Payment
               </button>
             )}
+            {/* PDF / Email / WhatsApp */}
+            <button onClick={downloadPdf} disabled={downloadingPdf}
+              className="flex items-center gap-2 px-4 py-2 bg-slate-800 hover:bg-slate-900 text-white rounded-xl font-semibold text-sm transition-colors disabled:opacity-50">
+              <Download className="w-4 h-4" /> {downloadingPdf ? 'Generating...' : 'PDF'}
+            </button>
+            {invoice.clientEmail && (
+              <button onClick={sendEmail} disabled={sendingEmail}
+                className="flex items-center gap-2 px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl font-semibold text-sm transition-colors disabled:opacity-50">
+                <Mail className="w-4 h-4" /> {sendingEmail ? 'Sending...' : 'Email'}
+              </button>
+            )}
+            <button onClick={shareWhatsApp}
+              className="flex items-center gap-2 px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl font-semibold text-sm transition-colors">
+              <MessageCircle className="w-4 h-4" /> WhatsApp
+            </button>
             {!['CANCELLED', 'PAID'].includes(invoice.status) && (
               <button onClick={() => updateStatus('CANCELLED')}
                 className="flex items-center gap-2 px-4 py-2 bg-slate-100 hover:bg-red-50 text-slate-600 hover:text-red-700 rounded-xl font-semibold text-sm transition-colors border border-slate-200">
@@ -218,8 +304,8 @@ export default function InvoiceDetailPage() {
         )}
       </div>
 
-      {/* ── Invoice Document (the printable area) ── */}
-      <div className="bg-white rounded-2xl shadow-sm border border-slate-100 p-6 md:p-8 space-y-6 print-doc">
+      {/* ── Invoice Document ── */}
+      <div ref={docRef} className="bg-white rounded-2xl shadow-sm border border-slate-100 p-6 md:p-8 space-y-6 print-doc">
         {/* Company + Invoice header */}
         <div className="flex justify-between flex-wrap gap-6 pb-6 border-b border-slate-100">
           <div>
@@ -227,6 +313,7 @@ export default function InvoiceDetailPage() {
             <div className="text-xs text-slate-400 space-y-0.5">
               <div>Nairobi, Kenya</div>
               <div>info@helvino.org · helvinocrm.org</div>
+              <div>Tel: 0110421320</div>
             </div>
           </div>
           <div className="text-right">
@@ -323,6 +410,30 @@ export default function InvoiceDetailPage() {
           </div>
         </div>
 
+        {/* Payment Details */}
+        <div className="rounded-2xl border-2 border-green-200 bg-green-50 p-5">
+          <div className="text-xs font-bold text-green-700 uppercase tracking-wider mb-3">Payment Instructions (M-Pesa Paybill)</div>
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
+            <div>
+              <div className="text-xs text-green-600 font-semibold uppercase mb-0.5">Business</div>
+              <div className="font-bold text-slate-900 text-sm">Helvino Technologies</div>
+            </div>
+            <div>
+              <div className="text-xs text-green-600 font-semibold uppercase mb-0.5">Paybill No</div>
+              <div className="font-black text-slate-900 text-xl tracking-widest">522533</div>
+            </div>
+            <div>
+              <div className="text-xs text-green-600 font-semibold uppercase mb-0.5">Account No</div>
+              <div className="font-black text-slate-900 text-xl tracking-widest">8071524</div>
+            </div>
+            <div>
+              <div className="text-xs text-green-600 font-semibold uppercase mb-0.5">Phone</div>
+              <div className="font-bold text-slate-900 text-sm">0110421320</div>
+            </div>
+          </div>
+          <p className="text-xs text-green-700 mt-3">Use invoice number <strong>{invoice.invoiceNumber}</strong> as your payment reference. Contact us on <strong>0110421320</strong> after payment.</p>
+        </div>
+
         {/* Notes & Terms */}
         {(invoice.notes || invoice.terms) && (
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6 border-t border-slate-100 pt-6">
@@ -343,7 +454,7 @@ export default function InvoiceDetailPage() {
 
         {/* Footer */}
         <div className="border-t border-slate-100 pt-4 text-center text-xs text-slate-400">
-          Helvino Technologies Limited · Nairobi, Kenya · info@helvino.org · helvinocrm.org
+          Helvino Technologies Limited · Nairobi, Kenya · info@helvino.org · helvinocrm.org · 0110421320
         </div>
       </div>
 

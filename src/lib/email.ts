@@ -144,3 +144,200 @@ export function leaveStatusEmailHtml(employeeName: string, status: string, leave
     `
   )
 }
+
+const PAYMENT_BLOCK = `
+  <div style="background:#f0fdf4;border:1px solid #bbf7d0;border-radius:12px;padding:20px;margin:24px 0;">
+    <h3 style="margin:0 0 12px;color:#15803d;font-size:15px;">Payment Instructions</h3>
+    <table style="width:100%;border-collapse:collapse;">
+      <tr>
+        <td style="padding:6px 0;color:#374151;font-weight:bold;width:140px;">Business Name:</td>
+        <td style="padding:6px 0;color:#111827;">Helvino Technologies</td>
+      </tr>
+      <tr>
+        <td style="padding:6px 0;color:#374151;font-weight:bold;">Paybill No:</td>
+        <td style="padding:6px 0;color:#111827;font-size:18px;font-weight:800;">522533</td>
+      </tr>
+      <tr>
+        <td style="padding:6px 0;color:#374151;font-weight:bold;">Account No:</td>
+        <td style="padding:6px 0;color:#111827;font-size:18px;font-weight:800;">8071524</td>
+      </tr>
+      <tr>
+        <td style="padding:6px 0;color:#374151;font-weight:bold;">Phone:</td>
+        <td style="padding:6px 0;color:#111827;">0110421320</td>
+      </tr>
+    </table>
+    <p style="margin:12px 0 0;font-size:12px;color:#6b7280;">Use your invoice number as the payment reference. Contact us on 0110421320 after payment.</p>
+  </div>
+`
+
+export function invoiceEmailHtml(params: {
+  clientName: string
+  invoiceNumber: string
+  issueDate: string
+  dueDate: string
+  items: { description: string; quantity: number; unitPrice: number; totalPrice: number }[]
+  subtotal: number
+  taxRate: number
+  taxAmount: number
+  discountAmount: number
+  totalAmount: number
+  balanceDue: number
+  notes?: string
+  terms?: string
+}): string {
+  const { clientName, invoiceNumber, issueDate, dueDate, items, subtotal, taxRate, taxAmount, discountAmount, totalAmount, balanceDue, notes, terms } = params
+
+  const fmt = (n: number) => `KES ${Number(n).toLocaleString('en-KE', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
+
+  const itemRows = items.map(item => `
+    <tr>
+      <td style="padding:10px 12px;border-bottom:1px solid #f1f5f9;color:#374151;">${item.description}</td>
+      <td style="padding:10px 12px;border-bottom:1px solid #f1f5f9;text-align:center;color:#374151;">${item.quantity}</td>
+      <td style="padding:10px 12px;border-bottom:1px solid #f1f5f9;text-align:right;color:#374151;">${fmt(item.unitPrice)}</td>
+      <td style="padding:10px 12px;border-bottom:1px solid #f1f5f9;text-align:right;font-weight:bold;color:#111827;">${fmt(item.totalPrice)}</td>
+    </tr>
+  `).join('')
+
+  return emailTemplate(
+    `Invoice ${invoiceNumber}`,
+    `
+    <p>Dear <strong>${clientName}</strong>,</p>
+    <p>Please find below your invoice from <strong>Helvino Technologies Limited</strong>. Kindly make payment before the due date.</p>
+
+    <table style="width:100%;border-collapse:collapse;margin:16px 0;">
+      <tr>
+        <td style="padding:6px 0;color:#374151;font-weight:bold;width:120px;">Invoice #:</td>
+        <td style="padding:6px 0;color:#111827;">${invoiceNumber}</td>
+        <td style="padding:6px 0;color:#374151;font-weight:bold;width:100px;">Issue Date:</td>
+        <td style="padding:6px 0;color:#111827;">${issueDate}</td>
+      </tr>
+      <tr>
+        <td style="padding:6px 0;color:#374151;font-weight:bold;">Due Date:</td>
+        <td style="padding:6px 0;color:#dc2626;font-weight:bold;">${dueDate}</td>
+      </tr>
+    </table>
+
+    <table style="width:100%;border-collapse:collapse;margin:16px 0;">
+      <thead>
+        <tr style="background:#1e293b;color:white;">
+          <th style="padding:10px 12px;text-align:left;border-radius:8px 0 0 0;">Description</th>
+          <th style="padding:10px 12px;text-align:center;">Qty</th>
+          <th style="padding:10px 12px;text-align:right;">Unit Price</th>
+          <th style="padding:10px 12px;text-align:right;border-radius:0 8px 0 0;">Total</th>
+        </tr>
+      </thead>
+      <tbody>${itemRows}</tbody>
+    </table>
+
+    <table style="width:260px;margin-left:auto;border-collapse:collapse;">
+      <tr>
+        <td style="padding:5px 0;color:#6b7280;">Subtotal</td>
+        <td style="padding:5px 0;text-align:right;font-weight:600;">${fmt(subtotal)}</td>
+      </tr>
+      <tr>
+        <td style="padding:5px 0;color:#6b7280;">VAT (${taxRate}%)</td>
+        <td style="padding:5px 0;text-align:right;font-weight:600;">${fmt(taxAmount)}</td>
+      </tr>
+      ${discountAmount > 0 ? `<tr><td style="padding:5px 0;color:#6b7280;">Discount</td><td style="padding:5px 0;text-align:right;font-weight:600;color:#dc2626;">-${fmt(discountAmount)}</td></tr>` : ''}
+      <tr style="border-top:2px solid #1e293b;">
+        <td style="padding:10px 0 5px;font-weight:bold;font-size:15px;">Total</td>
+        <td style="padding:10px 0 5px;text-align:right;font-weight:900;font-size:18px;">${fmt(totalAmount)}</td>
+      </tr>
+      ${balanceDue > 0 ? `<tr><td style="padding:5px 0;color:#c2410c;font-weight:bold;">Balance Due</td><td style="padding:5px 0;text-align:right;font-weight:900;color:#c2410c;font-size:16px;">${fmt(balanceDue)}</td></tr>` : ''}
+    </table>
+
+    ${PAYMENT_BLOCK}
+
+    ${notes ? `<p><strong>Notes:</strong> ${notes}</p>` : ''}
+    ${terms ? `<p><strong>Payment Terms:</strong> ${terms}</p>` : ''}
+    `
+  )
+}
+
+export function quotationEmailHtml(params: {
+  clientName: string
+  quotationNumber: string
+  date: string
+  validUntil?: string
+  deliveryTimeline?: string
+  items: { serviceName?: string; name?: string; description?: string; quantity: number; unitPrice: number }[]
+  subtotal: number
+  taxRate: number
+  taxAmount: number
+  discountAmount: number
+  totalAmount: number
+  projectScope?: string
+  notes?: string
+  terms?: string
+}): string {
+  const { clientName, quotationNumber, date, validUntil, deliveryTimeline, items, subtotal, taxRate, taxAmount, discountAmount, totalAmount, projectScope, notes, terms } = params
+
+  const fmt = (n: number) => `KES ${Number(n).toLocaleString('en-KE', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
+
+  const itemRows = items.map((item, i) => `
+    <tr style="background:${i % 2 === 0 ? 'white' : '#f8fafc'}">
+      <td style="padding:10px 12px;border-bottom:1px solid #f1f5f9;font-weight:600;color:#111827;">${item.serviceName || item.name || ''}</td>
+      <td style="padding:10px 12px;border-bottom:1px solid #f1f5f9;color:#374151;">${item.description || ''}</td>
+      <td style="padding:10px 12px;border-bottom:1px solid #f1f5f9;text-align:center;color:#374151;">${item.quantity}</td>
+      <td style="padding:10px 12px;border-bottom:1px solid #f1f5f9;text-align:right;color:#374151;">${fmt(item.unitPrice)}</td>
+      <td style="padding:10px 12px;border-bottom:1px solid #f1f5f9;text-align:right;font-weight:bold;color:#111827;">${fmt(item.quantity * item.unitPrice)}</td>
+    </tr>
+  `).join('')
+
+  return emailTemplate(
+    `Quotation ${quotationNumber}`,
+    `
+    <p>Dear <strong>${clientName}</strong>,</p>
+    <p>Thank you for your interest in <strong>Helvino Technologies Limited</strong>. Please find below our quotation for your review.</p>
+
+    <table style="width:100%;border-collapse:collapse;margin:16px 0;">
+      <tr>
+        <td style="padding:6px 0;color:#374151;font-weight:bold;width:140px;">Quotation #:</td>
+        <td style="padding:6px 0;color:#111827;">${quotationNumber}</td>
+        <td style="padding:6px 0;color:#374151;font-weight:bold;width:100px;">Date:</td>
+        <td style="padding:6px 0;color:#111827;">${date}</td>
+      </tr>
+      ${validUntil ? `<tr><td style="padding:6px 0;color:#374151;font-weight:bold;">Valid Until:</td><td style="padding:6px 0;color:#111827;">${validUntil}</td></tr>` : ''}
+      ${deliveryTimeline ? `<tr><td style="padding:6px 0;color:#374151;font-weight:bold;">Delivery:</td><td style="padding:6px 0;color:#111827;">${deliveryTimeline}</td></tr>` : ''}
+    </table>
+
+    <table style="width:100%;border-collapse:collapse;margin:16px 0;">
+      <thead>
+        <tr style="background:#1e293b;color:white;">
+          <th style="padding:10px 12px;text-align:left;border-radius:8px 0 0 0;">Service</th>
+          <th style="padding:10px 12px;text-align:left;">Description</th>
+          <th style="padding:10px 12px;text-align:center;">Qty</th>
+          <th style="padding:10px 12px;text-align:right;">Unit Price</th>
+          <th style="padding:10px 12px;text-align:right;border-radius:0 8px 0 0;">Total</th>
+        </tr>
+      </thead>
+      <tbody>${itemRows}</tbody>
+    </table>
+
+    <table style="width:260px;margin-left:auto;border-collapse:collapse;">
+      <tr>
+        <td style="padding:5px 0;color:#6b7280;">Subtotal</td>
+        <td style="padding:5px 0;text-align:right;font-weight:600;">${fmt(subtotal)}</td>
+      </tr>
+      ${discountAmount > 0 ? `<tr><td style="padding:5px 0;color:#6b7280;">Discount</td><td style="padding:5px 0;text-align:right;font-weight:600;color:#dc2626;">-${fmt(discountAmount)}</td></tr>` : ''}
+      <tr>
+        <td style="padding:5px 0;color:#6b7280;">VAT (${taxRate}%)</td>
+        <td style="padding:5px 0;text-align:right;font-weight:600;">${fmt(taxAmount)}</td>
+      </tr>
+      <tr style="border-top:2px solid #1e293b;">
+        <td style="padding:10px 0 5px;font-weight:bold;font-size:15px;">Total Amount</td>
+        <td style="padding:10px 0 5px;text-align:right;font-weight:900;font-size:18px;">${fmt(totalAmount)}</td>
+      </tr>
+    </table>
+
+    ${projectScope ? `<div style="margin:16px 0;"><strong>Project Scope:</strong><br><div style="background:#f8fafc;padding:12px;border-radius:8px;margin-top:8px;font-size:13px;color:#374151;">${projectScope}</div></div>` : ''}
+
+    ${PAYMENT_BLOCK}
+
+    ${notes ? `<p><strong>Additional Notes:</strong> ${notes}</p>` : ''}
+    ${terms ? `<p><strong>Terms &amp; Conditions:</strong> ${terms}</p>` : ''}
+
+    <p style="color:#6b7280;font-size:13px;">To accept this quotation, reply to this email or contact us on <strong>0110421320</strong>. ${validUntil ? `This quotation is valid until <strong>${validUntil}</strong>.` : ''}</p>
+    `
+  )
+}

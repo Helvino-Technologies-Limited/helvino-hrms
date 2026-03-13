@@ -1,5 +1,5 @@
 'use client'
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { useParams, useRouter } from 'next/navigation'
 import Link from 'next/link'
 import toast from 'react-hot-toast'
@@ -7,7 +7,7 @@ import { useSession } from 'next-auth/react'
 import {
   ArrowLeft, Printer, Send, Eye, CheckCircle, XCircle,
   Edit, Trash2, Building2, Mail, Calendar, Clock, FileText, AlertCircle,
-  Receipt, ChevronRight,
+  Receipt, ChevronRight, Download, MessageCircle,
 } from 'lucide-react'
 import { formatCurrency, formatDate } from '@/lib/utils'
 
@@ -29,6 +29,9 @@ export default function QuotationDetailPage() {
   const [actionLoading, setActionLoading] = useState(false)
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false)
   const [converting, setConverting] = useState(false)
+  const [sendingEmail, setSendingEmail] = useState(false)
+  const [downloadingPdf, setDownloadingPdf] = useState(false)
+  const docRef = useRef<HTMLDivElement>(null)
 
   useEffect(() => {
     fetch(`/api/sales/quotations/${id}`)
@@ -110,6 +113,82 @@ export default function QuotationDetailPage() {
     } finally {
       setActionLoading(false)
     }
+  }
+
+  async function downloadPdf() {
+    if (!docRef.current) return
+    setDownloadingPdf(true)
+    try {
+      const [{ default: html2canvas }, { default: jsPDF }] = await Promise.all([
+        import('html2canvas'),
+        import('jspdf'),
+      ])
+      const canvas = await html2canvas(docRef.current, { scale: 2, useCORS: true, logging: false })
+      const imgData = canvas.toDataURL('image/png')
+      const pdf = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4' })
+      const pageWidth = pdf.internal.pageSize.getWidth()
+      const pageHeight = pdf.internal.pageSize.getHeight()
+      const imgWidth = pageWidth
+      const imgHeight = (canvas.height * imgWidth) / canvas.width
+      let heightLeft = imgHeight
+      let position = 0
+      pdf.addImage(imgData, 'PNG', 0, position, imgWidth, imgHeight)
+      heightLeft -= pageHeight
+      while (heightLeft > 0) {
+        position -= pageHeight
+        pdf.addPage()
+        pdf.addImage(imgData, 'PNG', 0, position, imgWidth, imgHeight)
+        heightLeft -= pageHeight
+      }
+      pdf.save(`${quotation.quotationNumber}.pdf`)
+      toast.success('PDF downloaded')
+    } catch {
+      toast.error('Failed to generate PDF')
+    }
+    setDownloadingPdf(false)
+  }
+
+  async function sendEmail() {
+    setSendingEmail(true)
+    try {
+      const res = await fetch(`/api/sales/quotations/${id}/send`, { method: 'POST' })
+      if (!res.ok) {
+        const err = await res.json()
+        throw new Error(err.error || 'Failed')
+      }
+      toast.success('Quotation emailed to client')
+      // Refresh quotation status
+      const updated = await fetch(`/api/sales/quotations/${id}`).then(r => r.json())
+      if (!updated.error) setQuotation(updated)
+    } catch (e: any) {
+      toast.error(e.message || 'Failed to send email')
+    }
+    setSendingEmail(false)
+  }
+
+  function shareWhatsApp() {
+    if (!quotation) return
+    const subtotal = quotation.items?.reduce((s: number, i: any) => s + i.quantity * i.unitPrice, 0) || 0
+    const discount = quotation.discountAmount || 0
+    const taxRate = quotation.taxRate ?? 16
+    const total = (subtotal - discount) * (1 + taxRate / 100)
+
+    const msg = [
+      `*Quotation ${quotation.quotationNumber}*`,
+      `Client: ${quotation.clientName}`,
+      `Total: KES ${total.toLocaleString('en-KE', { minimumFractionDigits: 2 })}`,
+      quotation.validUntil ? `Valid Until: ${formatDate(quotation.validUntil)}` : '',
+      quotation.deliveryTimeline ? `Delivery: ${quotation.deliveryTimeline}` : '',
+      '',
+      '*To proceed, make payment via M-Pesa Paybill:*',
+      'Business: Helvino Technologies',
+      'Paybill No: 522533',
+      'Account No: 8071524',
+      'Phone: 0110421320',
+      '',
+      `Reference: ${quotation.quotationNumber}`,
+    ].filter(Boolean).join('\n')
+    window.open(`https://wa.me/?text=${encodeURIComponent(msg)}`, '_blank')
   }
 
   if (loading) {
@@ -223,24 +302,31 @@ export default function QuotationDetailPage() {
             )}
 
             {quotation.status === 'APPROVED' && (
-              <>
-                <button
-                  onClick={convertToInvoice}
-                  disabled={converting}
-                  className="flex items-center gap-2 px-4 py-2 bg-emerald-600 hover:bg-emerald-700 disabled:opacity-60 text-white rounded-xl text-sm font-semibold transition-colors shadow-md"
-                >
-                  <Receipt className="w-4 h-4" />
-                  {converting ? 'Creating...' : 'Convert to Invoice'}
-                </button>
-                <button
-                  onClick={() => window.print()}
-                  className="flex items-center gap-2 px-4 py-2 bg-slate-800 hover:bg-slate-900 text-white rounded-xl text-sm font-semibold transition-colors"
-                >
-                  <Printer className="w-4 h-4" />
-                  Print / PDF
-                </button>
-              </>
+              <button
+                onClick={convertToInvoice}
+                disabled={converting}
+                className="flex items-center gap-2 px-4 py-2 bg-emerald-600 hover:bg-emerald-700 disabled:opacity-60 text-white rounded-xl text-sm font-semibold transition-colors shadow-md"
+              >
+                <Receipt className="w-4 h-4" />
+                {converting ? 'Creating...' : 'Convert to Invoice'}
+              </button>
             )}
+
+            {/* PDF / Email / WhatsApp — always visible */}
+            <button onClick={downloadPdf} disabled={downloadingPdf}
+              className="flex items-center gap-2 px-4 py-2 bg-slate-800 hover:bg-slate-900 text-white rounded-xl text-sm font-semibold transition-colors disabled:opacity-50">
+              <Download className="w-4 h-4" /> {downloadingPdf ? 'Generating...' : 'PDF'}
+            </button>
+            {quotation.clientEmail && (
+              <button onClick={sendEmail} disabled={sendingEmail}
+                className="flex items-center gap-2 px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl text-sm font-semibold transition-colors disabled:opacity-50">
+                <Mail className="w-4 h-4" /> {sendingEmail ? 'Sending...' : 'Email'}
+              </button>
+            )}
+            <button onClick={shareWhatsApp}
+              className="flex items-center gap-2 px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-sm font-semibold transition-colors">
+              <MessageCircle className="w-4 h-4" /> WhatsApp
+            </button>
 
             {quotation.status !== 'DRAFT' && (
               <button
@@ -340,7 +426,7 @@ export default function QuotationDetailPage() {
       )}
 
       {/* Quotation Document */}
-      <div className="bg-white rounded-2xl shadow-sm border border-slate-100 print:shadow-none print:rounded-none print:border-0 print:m-0 overflow-hidden">
+      <div ref={docRef} className="bg-white rounded-2xl shadow-sm border border-slate-100 print:shadow-none print:rounded-none print:border-0 print:m-0 overflow-hidden">
         {/* Document Header */}
         <div className="bg-gradient-to-br from-slate-800 to-slate-900 text-white px-8 py-7 print:bg-slate-900">
           <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-4">
@@ -358,7 +444,7 @@ export default function QuotationDetailPage() {
               <div className="text-slate-400 text-xs space-y-0.5">
                 <div>Nairobi, Kenya</div>
                 <div>info@helvino.org · helvinocrm.org</div>
-                <div>P.O Box 12345 - 00100 Nairobi</div>
+                <div>Tel: 0110421320 · P.O Box 12345 - 00100 Nairobi</div>
               </div>
             </div>
 
@@ -510,6 +596,32 @@ export default function QuotationDetailPage() {
           </div>
         )}
 
+        {/* Payment Details */}
+        <div className="px-8 py-5 border-t border-slate-100">
+          <div className="rounded-2xl border-2 border-green-200 bg-green-50 p-5">
+            <div className="text-xs font-bold text-green-700 uppercase tracking-wider mb-3">Payment Instructions (M-Pesa Paybill)</div>
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
+              <div>
+                <div className="text-xs text-green-600 font-semibold uppercase mb-0.5">Business</div>
+                <div className="font-bold text-slate-900 text-sm">Helvino Technologies</div>
+              </div>
+              <div>
+                <div className="text-xs text-green-600 font-semibold uppercase mb-0.5">Paybill No</div>
+                <div className="font-black text-slate-900 text-xl tracking-widest">522533</div>
+              </div>
+              <div>
+                <div className="text-xs text-green-600 font-semibold uppercase mb-0.5">Account No</div>
+                <div className="font-black text-slate-900 text-xl tracking-widest">8071524</div>
+              </div>
+              <div>
+                <div className="text-xs text-green-600 font-semibold uppercase mb-0.5">Phone</div>
+                <div className="font-bold text-slate-900 text-sm">0110421320</div>
+              </div>
+            </div>
+            <p className="text-xs text-green-700 mt-3">Use quotation number <strong>{quotation.quotationNumber}</strong> as your payment reference. Contact us on <strong>0110421320</strong> after payment.</p>
+          </div>
+        </div>
+
         {/* Footer */}
         <div className="px-8 py-5 bg-slate-50 border-t border-slate-100">
           <div className="flex flex-col sm:flex-row items-center justify-between gap-4">
@@ -525,7 +637,7 @@ export default function QuotationDetailPage() {
             </div>
           </div>
           <div className="mt-3 pt-3 border-t border-slate-200 text-xs text-center text-slate-400">
-            Helvino Technologies Limited · Nairobi, Kenya · info@helvino.org · helvinocrm.org
+            Helvino Technologies Limited · Nairobi, Kenya · info@helvino.org · helvinocrm.org · 0110421320
           </div>
         </div>
       </div>
