@@ -17,12 +17,7 @@ export async function POST(req: NextRequest) {
     return new Response('Prompt is required', { status: 400 })
   }
 
-  const apiKey = process.env.ANTHROPIC_API_KEY
-  if (!apiKey) {
-    return new Response('AI service not configured', { status: 503 })
-  }
-
-  const client = new Anthropic({ apiKey })
+  const client = new Anthropic()
 
   const systemPrompt = `You are a professional business letter writer for Helvino Technologies Ltd, a technology company based in Kenya.
 Write formal, professional business letters in proper English.

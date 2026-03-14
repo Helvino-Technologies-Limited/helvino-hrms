@@ -104,7 +104,7 @@ export default function NewLetterPage() {
 
       if (!res.ok) {
         const text = await res.text()
-        if (res.status === 503) throw new Error('AI service not configured. Please add your ANTHROPIC_API_KEY to .env.local')
+        if (res.status === 503) throw new Error('AI service not configured. Please add ANTHROPIC_API_KEY to your environment variables.')
         throw new Error(text || 'Failed to generate letter')
       }
 

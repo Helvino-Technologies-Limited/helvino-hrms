@@ -44,11 +44,6 @@ export async function POST(req: NextRequest) {
     return new Response('type, candidateName, jobTitle required', { status: 400 })
   }
 
-  const apiKey = process.env.ANTHROPIC_API_KEY
-  if (!apiKey) {
-    return new Response('AI service not configured', { status: 503 })
-  }
-
   const systemPrompt = SYSTEM_PROMPTS[type] || SYSTEM_PROMPTS.INTERVIEW_INVITE
   const userMessage = `Write the email body for:
 Candidate Name: ${candidateName}
@@ -57,7 +52,7 @@ ${context ? `Additional Context: ${context}` : ''}
 
 Write only the body paragraphs (no greeting, no sign-off, no subject line).`
 
-  const client = new Anthropic({ apiKey })
+  const client = new Anthropic()
   const encoder = new TextEncoder()
 
   const stream = new ReadableStream({
