@@ -17,7 +17,7 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: 'Prompt is required' }, { status: 400 })
   }
 
-  const client = new Anthropic()
+  const client = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY ?? '' })
 
   const systemPrompt = `You are an expert HR professional and technical recruiter for Helvino Technologies Ltd, a technology company based in Siaya, Kenya specialising in IT infrastructure, software development, cybersecurity, and CCTV systems.
 

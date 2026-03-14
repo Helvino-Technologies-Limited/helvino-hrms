@@ -66,11 +66,7 @@ ${context ? `Additional Context: ${context}` : ''}
 
 Write only the body paragraphs (no greeting, no sign-off, no subject line).`
 
-  if (!process.env.ANTHROPIC_API_KEY) {
-    return new Response('AI service not configured. Please add ANTHROPIC_API_KEY to your environment variables.', { status: 503 })
-  }
-
-  const client = new Anthropic()
+  const client = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY ?? '' })
   const encoder = new TextEncoder()
 
   const stream = new ReadableStream({

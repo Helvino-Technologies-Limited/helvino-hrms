@@ -22,10 +22,6 @@ export async function POST(req: NextRequest) {
     return new Response('Unauthorized', { status: 401 })
   }
 
-  if (!process.env.ANTHROPIC_API_KEY) {
-    return new Response('AI service not configured. Please add ANTHROPIC_API_KEY to your environment variables.', { status: 503 })
-  }
-
   const { policyType, title, context } = await req.json()
   if (!policyType) return new Response('policyType is required', { status: 400 })
 
@@ -53,7 +49,7 @@ ${context ? `Additional Instructions: ${context}` : ''}
 
 Follow the 7-section structure. Make it specific and practical for a technology company in Kenya.`
 
-  const client = new Anthropic()
+  const client = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY ?? '' })
   const encoder = new TextEncoder()
 
   const stream = new ReadableStream({
