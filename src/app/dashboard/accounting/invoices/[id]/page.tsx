@@ -9,6 +9,7 @@ import {
 } from 'lucide-react'
 import toast from 'react-hot-toast'
 import { formatCurrency, formatDate } from '@/lib/utils'
+import Letterhead from '@/components/Letterhead'
 
 const STATUS_COLORS: Record<string, string> = {
   DRAFT: 'bg-slate-100 text-slate-600',
@@ -304,158 +305,146 @@ export default function InvoiceDetailPage() {
         )}
       </div>
 
-      {/* ── Invoice Document ── */}
-      <div ref={docRef} className="bg-white rounded-2xl shadow-sm border border-slate-100 p-6 md:p-8 space-y-6 print-doc">
-        {/* Company + Invoice header */}
-        <div className="flex justify-between flex-wrap gap-6 pb-6 border-b border-slate-100">
-          <div>
-            <div className="text-2xl font-black text-blue-700 mb-1">Helvino Technologies Limited</div>
-            <div className="text-xs text-slate-400 space-y-0.5">
-              <div>Nairobi, Kenya</div>
-              <div>info@helvino.org · helvinocrm.org</div>
-              <div>Tel: 0110421320</div>
+      {/* ── Invoice Document (inside letterhead) ── */}
+      <div ref={docRef} className="bg-white rounded-2xl shadow-sm border border-slate-100 print-doc overflow-hidden">
+        <Letterhead
+          signerName={(session?.user as any)?.firstName ? `${(session?.user as any)?.firstName ?? ''} ${(session?.user as any)?.lastName ?? ''}`.trim() : ''}
+          signerTitle={(session?.user as any)?.role?.replace(/_/g, ' ') ?? ''}
+        >
+          {/* Invoice title & meta */}
+          <div style={{ paddingTop: '16px', paddingBottom: '8px', display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', flexWrap: 'wrap', gap: '12px', borderBottom: '1px solid #e2e8f0', marginBottom: '16px' }}>
+            <div>
+              <div style={{ fontSize: '22px', fontWeight: '900', letterSpacing: '-0.5px', color: '#0f766e' }}>INVOICE</div>
+              <div style={{ fontSize: '13px', fontWeight: '700', color: '#1e293b', marginTop: '2px' }}>{invoice.invoiceNumber}</div>
+            </div>
+            <div style={{ textAlign: 'right', fontSize: '11px', color: '#64748b', lineHeight: '1.8' }}>
+              <div><strong>Issue Date:</strong> {formatDate(invoice.issueDate)}</div>
+              <div><strong>Due Date:</strong> {formatDate(invoice.dueDate)}</div>
+              <div style={{ marginTop: '4px' }}>
+                <span style={{ padding: '2px 10px', borderRadius: '20px', fontSize: '10px', fontWeight: '700', background: invoice.status === 'PAID' ? '#dcfce7' : '#fef3c7', color: invoice.status === 'PAID' ? '#15803d' : '#92400e' }}>
+                  {invoice.status.replace(/_/g, ' ')}
+                </span>
+              </div>
             </div>
           </div>
-          <div className="text-right">
-            <div className="text-3xl font-black text-slate-300 tracking-widest">INVOICE</div>
-            <div className="text-sm text-slate-500 space-y-0.5 mt-2">
-              <div><span className="font-semibold text-slate-700">Invoice #:</span> {invoice.invoiceNumber}</div>
-              <div><span className="font-semibold text-slate-700">Issue Date:</span> {formatDate(invoice.issueDate)}</div>
-              <div><span className="font-semibold text-slate-700">Due Date:</span> {formatDate(invoice.dueDate)}</div>
-            </div>
-            <div className="mt-2">
-              <span className={`text-xs px-2.5 py-1 rounded-full font-bold ${STATUS_COLORS[invoice.status]}`}>
-                {invoice.status.replace(/_/g, ' ')}
-              </span>
-            </div>
+
+          {/* Bill To */}
+          <div style={{ marginBottom: '16px', padding: '10px 0', borderBottom: '1px solid #e2e8f0' }}>
+            <div style={{ fontSize: '9px', fontWeight: '700', color: '#94a3b8', letterSpacing: '1.5px', textTransform: 'uppercase', marginBottom: '4px' }}>Bill To</div>
+            <div style={{ fontWeight: '700', fontSize: '14px', color: '#1e293b' }}>{invoice.clientName}</div>
+            {invoice.clientEmail && <div style={{ fontSize: '11px', color: '#64748b', marginTop: '2px' }}>{invoice.clientEmail}</div>}
+            {invoice.quotation && <div style={{ fontSize: '10px', color: '#94a3b8', marginTop: '2px' }}>Ref: {invoice.quotation.quotationNumber}</div>}
+            {invoice.subscription && <div style={{ fontSize: '10px', color: '#94a3b8' }}>Subscription: {invoice.subscription.serviceName}</div>}
           </div>
-        </div>
 
-        {/* Bill To */}
-        <div>
-          <div className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-2">Bill To</div>
-          <div className="font-bold text-slate-900 text-lg">{invoice.clientName}</div>
-          {invoice.clientEmail && <div className="text-slate-500 text-sm">{invoice.clientEmail}</div>}
-          {invoice.quotation && (
-            <div className="text-xs text-slate-400 mt-1">Ref: {invoice.quotation.quotationNumber}</div>
-          )}
-          {invoice.subscription && (
-            <div className="text-xs text-slate-400 mt-1">Subscription: {invoice.subscription.serviceName}</div>
-          )}
-        </div>
-
-        {/* Items Table */}
-        <div className="overflow-x-auto">
-          <table className="w-full text-sm">
-            <thead>
-              <tr className="bg-slate-800 text-white">
-                <th className="text-left px-4 py-3 font-semibold rounded-tl-xl">Description</th>
-                <th className="text-right px-4 py-3 font-semibold w-16">Qty</th>
-                <th className="text-right px-4 py-3 font-semibold">Unit Price</th>
-                <th className="text-right px-4 py-3 font-semibold rounded-tr-xl">Total</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-slate-50">
-              {invoice.items.map((item: any, i: number) => (
-                <tr key={item.id} className={i % 2 === 0 ? 'bg-white' : 'bg-slate-50/50'}>
-                  <td className="px-4 py-3 text-slate-700">{item.description}</td>
-                  <td className="px-4 py-3 text-right text-slate-600">{item.quantity}</td>
-                  <td className="px-4 py-3 text-right text-slate-600">{formatCurrency(item.unitPrice)}</td>
-                  <td className="px-4 py-3 text-right font-semibold text-slate-900">{formatCurrency(item.totalPrice)}</td>
+          {/* Items Table */}
+          <div style={{ marginBottom: '16px' }}>
+            <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '11px' }}>
+              <thead>
+                <tr style={{ background: '#1e293b', color: '#fff' }}>
+                  <th style={{ textAlign: 'left', padding: '8px 10px', fontWeight: '600' }}>Description</th>
+                  <th style={{ textAlign: 'right', padding: '8px 10px', fontWeight: '600', width: '40px' }}>Qty</th>
+                  <th style={{ textAlign: 'right', padding: '8px 10px', fontWeight: '600' }}>Unit Price</th>
+                  <th style={{ textAlign: 'right', padding: '8px 10px', fontWeight: '600' }}>Total</th>
                 </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
+              </thead>
+              <tbody>
+                {invoice.items.map((item: any, i: number) => (
+                  <tr key={item.id} style={{ background: i % 2 === 0 ? '#fff' : '#f8fafc', borderBottom: '1px solid #f1f5f9' }}>
+                    <td style={{ padding: '7px 10px', color: '#334155' }}>{item.description}</td>
+                    <td style={{ padding: '7px 10px', textAlign: 'right', color: '#64748b' }}>{item.quantity}</td>
+                    <td style={{ padding: '7px 10px', textAlign: 'right', color: '#64748b' }}>{formatCurrency(item.unitPrice)}</td>
+                    <td style={{ padding: '7px 10px', textAlign: 'right', fontWeight: '600', color: '#1e293b' }}>{formatCurrency(item.totalPrice)}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
 
-        {/* Totals */}
-        <div className="flex justify-end">
-          <div className="w-64 space-y-2 text-sm">
-            <div className="flex justify-between">
-              <span className="text-slate-500">Subtotal</span>
-              <span className="font-semibold">{formatCurrency(invoice.subtotal)}</span>
-            </div>
-            <div className="flex justify-between">
-              <span className="text-slate-500">VAT ({invoice.taxRate}%)</span>
-              <span className="font-semibold">{formatCurrency(invoice.taxAmount)}</span>
-            </div>
-            {invoice.discountAmount > 0 && (
-              <div className="flex justify-between">
-                <span className="text-slate-500">Discount</span>
-                <span className="font-semibold text-red-600">-{formatCurrency(invoice.discountAmount)}</span>
+            {/* Totals */}
+            <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: '10px' }}>
+              <div style={{ minWidth: '220px', fontSize: '11px' }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', color: '#64748b', marginBottom: '4px' }}>
+                  <span>Subtotal</span><span style={{ fontWeight: '600' }}>{formatCurrency(invoice.subtotal)}</span>
+                </div>
+                <div style={{ display: 'flex', justifyContent: 'space-between', color: '#64748b', marginBottom: '4px' }}>
+                  <span>VAT ({invoice.taxRate}%)</span><span style={{ fontWeight: '600' }}>{formatCurrency(invoice.taxAmount)}</span>
+                </div>
+                {invoice.discountAmount > 0 && (
+                  <div style={{ display: 'flex', justifyContent: 'space-between', color: '#dc2626', marginBottom: '4px' }}>
+                    <span>Discount</span><span style={{ fontWeight: '600' }}>-{formatCurrency(invoice.discountAmount)}</span>
+                  </div>
+                )}
+                <div style={{ display: 'flex', justifyContent: 'space-between', borderTop: '2px solid #1e293b', paddingTop: '6px', marginTop: '2px' }}>
+                  <span style={{ fontWeight: '900', color: '#1e293b', fontSize: '12px' }}>Total</span>
+                  <span style={{ fontWeight: '900', color: '#1e293b', fontSize: '15px' }}>{formatCurrency(invoice.totalAmount)}</span>
+                </div>
+                {invoice.amountPaid > 0 && (
+                  <div style={{ display: 'flex', justifyContent: 'space-between', color: '#15803d', marginTop: '4px' }}>
+                    <span>Amount Paid</span><span style={{ fontWeight: '600' }}>{formatCurrency(invoice.amountPaid)}</span>
+                  </div>
+                )}
+                {invoice.balanceDue > 0 && (
+                  <div style={{ display: 'flex', justifyContent: 'space-between', background: '#fff7ed', borderRadius: '6px', padding: '6px 8px', marginTop: '4px' }}>
+                    <span style={{ fontWeight: '800', color: '#9a3412' }}>Balance Due</span>
+                    <span style={{ fontWeight: '900', color: '#ea580c', fontSize: '13px' }}>{formatCurrency(invoice.balanceDue)}</span>
+                  </div>
+                )}
+                {invoice.balanceDue === 0 && (
+                  <div style={{ display: 'flex', justifyContent: 'space-between', background: '#f0fdf4', borderRadius: '6px', padding: '6px 8px', marginTop: '4px' }}>
+                    <span style={{ fontWeight: '800', color: '#14532d' }}>PAID IN FULL</span>
+                    <span style={{ fontWeight: '900', color: '#16a34a' }}>✓</span>
+                  </div>
+                )}
               </div>
-            )}
-            <div className="flex justify-between border-t border-slate-200 pt-2">
-              <span className="font-bold text-slate-900">Total</span>
-              <span className="text-xl font-black text-slate-900">{formatCurrency(invoice.totalAmount)}</span>
-            </div>
-            {invoice.amountPaid > 0 && (
-              <div className="flex justify-between">
-                <span className="text-slate-500">Amount Paid</span>
-                <span className="font-semibold text-green-700">{formatCurrency(invoice.amountPaid)}</span>
-              </div>
-            )}
-            {invoice.balanceDue > 0 && (
-              <div className="flex justify-between bg-orange-50 rounded-xl px-3 py-2">
-                <span className="font-bold text-orange-800">Balance Due</span>
-                <span className="text-lg font-black text-orange-600">{formatCurrency(invoice.balanceDue)}</span>
-              </div>
-            )}
-            {invoice.balanceDue === 0 && (
-              <div className="flex justify-between bg-green-50 rounded-xl px-3 py-2">
-                <span className="font-bold text-green-800">PAID IN FULL</span>
-                <span className="text-green-700 font-black">✓</span>
-              </div>
-            )}
-          </div>
-        </div>
-
-        {/* Payment Details */}
-        <div className="rounded-2xl border-2 border-green-200 bg-green-50 p-5">
-          <div className="text-xs font-bold text-green-700 uppercase tracking-wider mb-3">Payment Instructions (M-Pesa Paybill)</div>
-          <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
-            <div>
-              <div className="text-xs text-green-600 font-semibold uppercase mb-0.5">Business</div>
-              <div className="font-bold text-slate-900 text-sm">Helvino Technologies</div>
-            </div>
-            <div>
-              <div className="text-xs text-green-600 font-semibold uppercase mb-0.5">Paybill No</div>
-              <div className="font-black text-slate-900 text-xl tracking-widest">522533</div>
-            </div>
-            <div>
-              <div className="text-xs text-green-600 font-semibold uppercase mb-0.5">Account No</div>
-              <div className="font-black text-slate-900 text-xl tracking-widest">8071524</div>
-            </div>
-            <div>
-              <div className="text-xs text-green-600 font-semibold uppercase mb-0.5">Phone</div>
-              <div className="font-bold text-slate-900 text-sm">0110421320</div>
             </div>
           </div>
-          <p className="text-xs text-green-700 mt-3">Use invoice number <strong>{invoice.invoiceNumber}</strong> as your payment reference. Contact us on <strong>0110421320</strong> after payment.</p>
-        </div>
 
-        {/* Notes & Terms */}
-        {(invoice.notes || invoice.terms) && (
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6 border-t border-slate-100 pt-6">
-            {invoice.notes && (
+          {/* Payment Instructions */}
+          <div style={{ padding: '12px 14px', background: '#f0fdf4', border: '1.5px solid #bbf7d0', borderRadius: '8px', marginBottom: '12px' }}>
+            <div style={{ fontSize: '9px', fontWeight: '700', color: '#15803d', letterSpacing: '1.5px', textTransform: 'uppercase', marginBottom: '8px' }}>
+              Payment Instructions — M-Pesa Paybill
+            </div>
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '8px', fontSize: '11px' }}>
               <div>
-                <div className="text-sm font-bold text-slate-700 mb-1">Notes</div>
-                <p className="text-slate-500 text-sm">{invoice.notes}</p>
+                <div style={{ color: '#16a34a', fontWeight: '700', fontSize: '9px', textTransform: 'uppercase', marginBottom: '2px' }}>Business</div>
+                <div style={{ fontWeight: '700', color: '#1e293b' }}>Helvino Technologies</div>
               </div>
-            )}
-            {invoice.terms && (
               <div>
-                <div className="text-sm font-bold text-slate-700 mb-1">Payment Terms</div>
-                <p className="text-slate-500 text-sm">{invoice.terms}</p>
+                <div style={{ color: '#16a34a', fontWeight: '700', fontSize: '9px', textTransform: 'uppercase', marginBottom: '2px' }}>Paybill No</div>
+                <div style={{ fontWeight: '900', color: '#1e293b', fontSize: '14px', letterSpacing: '2px' }}>522533</div>
               </div>
-            )}
+              <div>
+                <div style={{ color: '#16a34a', fontWeight: '700', fontSize: '9px', textTransform: 'uppercase', marginBottom: '2px' }}>Account No</div>
+                <div style={{ fontWeight: '900', color: '#1e293b', fontSize: '14px', letterSpacing: '2px' }}>8071524</div>
+              </div>
+              <div>
+                <div style={{ color: '#16a34a', fontWeight: '700', fontSize: '9px', textTransform: 'uppercase', marginBottom: '2px' }}>Phone</div>
+                <div style={{ fontWeight: '700', color: '#1e293b' }}>0110421320</div>
+              </div>
+            </div>
+            <div style={{ fontSize: '10px', color: '#15803d', marginTop: '6px' }}>
+              Use <strong>{invoice.invoiceNumber}</strong> as your payment reference. Contact <strong>0110421320</strong> after payment.
+            </div>
           </div>
-        )}
 
-        {/* Footer */}
-        <div className="border-t border-slate-100 pt-4 text-center text-xs text-slate-400">
-          Helvino Technologies Limited · Nairobi, Kenya · info@helvino.org · helvinocrm.org · 0110421320
-        </div>
+          {/* Notes & Terms */}
+          {(invoice.notes || invoice.terms) && (
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px', borderTop: '1px solid #e2e8f0', paddingTop: '12px', marginBottom: '8px' }}>
+              {invoice.notes && (
+                <div>
+                  <div style={{ fontSize: '9px', fontWeight: '700', color: '#94a3b8', letterSpacing: '1.5px', textTransform: 'uppercase', marginBottom: '4px' }}>Notes</div>
+                  <div style={{ fontSize: '11px', color: '#64748b', lineHeight: '1.6' }}>{invoice.notes}</div>
+                </div>
+              )}
+              {invoice.terms && (
+                <div>
+                  <div style={{ fontSize: '9px', fontWeight: '700', color: '#94a3b8', letterSpacing: '1.5px', textTransform: 'uppercase', marginBottom: '4px' }}>Payment Terms</div>
+                  <div style={{ fontSize: '11px', color: '#64748b', lineHeight: '1.6' }}>{invoice.terms}</div>
+                </div>
+              )}
+            </div>
+          )}
+        </Letterhead>
       </div>
 
       {/* ── Payment History (hidden on print) ── */}

@@ -11,7 +11,7 @@ import {
   TrendingUp, Target, FileText, Users2, RotateCcw, FolderOpen, Package, ListTodo,
   Video, Database, ShieldCheck,
   BookOpen, CreditCard, Receipt, Truck, Landmark, Percent, PiggyBank, ScrollText, ClipboardCheck,
-  LifeBuoy
+  LifeBuoy, Mail
 } from 'lucide-react'
 import { getInitials } from '@/lib/utils'
 
@@ -75,6 +75,8 @@ const salesNavItems = [
     roles: ['SUPER_ADMIN', 'HR_MANAGER', 'SALES_MANAGER', 'SALES_AGENT', 'FINANCE_OFFICER'] },
   { href: '/dashboard/sales/portfolio', icon: FolderOpen, label: 'Portfolio',
     roles: ['SUPER_ADMIN', 'HR_MANAGER', 'SALES_MANAGER', 'SALES_AGENT', 'FINANCE_OFFICER', 'EMPLOYEE'] },
+  { href: '/dashboard/sales/letters', icon: Mail, label: 'Official Letters',
+    roles: ['SUPER_ADMIN', 'HR_MANAGER', 'SALES_MANAGER'] },
   { href: '/dashboard/sales/reports', icon: BarChart3, label: 'Sales Reports',
     roles: ['SUPER_ADMIN', 'HR_MANAGER', 'SALES_MANAGER', 'FINANCE_OFFICER'] },
 ]

@@ -10,6 +10,7 @@ import {
   Receipt, ChevronRight, Download, MessageCircle,
 } from 'lucide-react'
 import { formatCurrency, formatDate } from '@/lib/utils'
+import Letterhead from '@/components/Letterhead'
 
 const STATUS_COLORS: Record<string, string> = {
   DRAFT: 'bg-slate-100 text-slate-700',
@@ -425,221 +426,166 @@ export default function QuotationDetailPage() {
         </div>
       )}
 
-      {/* Quotation Document */}
+      {/* ── Quotation Document (inside letterhead) ── */}
       <div ref={docRef} className="bg-white rounded-2xl shadow-sm border border-slate-100 print:shadow-none print:rounded-none print:border-0 print:m-0 overflow-hidden">
-        {/* Document Header */}
-        <div className="bg-gradient-to-br from-slate-800 to-slate-900 text-white px-8 py-7 print:bg-slate-900">
-          <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-4">
-            {/* Company info */}
+        <Letterhead
+          signerName={(session?.user as any)?.firstName ? `${(session?.user as any)?.firstName ?? ''} ${(session?.user as any)?.lastName ?? ''}`.trim() : ''}
+          signerTitle={(session?.user as any)?.role?.replace(/_/g, ' ') ?? ''}
+        >
+          {/* Quotation title & meta */}
+          <div style={{ paddingTop: '16px', paddingBottom: '8px', display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', flexWrap: 'wrap', gap: '12px', borderBottom: '1px solid #e2e8f0', marginBottom: '16px' }}>
             <div>
-              <div className="flex items-center gap-3 mb-3">
-                <div className="w-12 h-12 bg-blue-600 rounded-xl flex items-center justify-center flex-shrink-0">
-                  <Building2 className="w-7 h-7 text-white" />
-                </div>
-                <div>
-                  <div className="font-black text-xl leading-tight">Helvino Technologies</div>
-                  <div className="text-blue-300 font-semibold text-sm">Limited</div>
-                </div>
-              </div>
-              <div className="text-slate-400 text-xs space-y-0.5">
-                <div>Nairobi, Kenya</div>
-                <div>info@helvino.org · helvinocrm.org</div>
-                <div>Tel: 0110421320 · P.O Box 12345 - 00100 Nairobi</div>
-              </div>
+              <div style={{ fontSize: '22px', fontWeight: '900', letterSpacing: '-0.5px', color: '#1d4ed8' }}>QUOTATION</div>
+              <div style={{ fontSize: '13px', fontWeight: '700', color: '#1e293b', marginTop: '2px' }}>{quotation.quotationNumber}</div>
             </div>
-
-            {/* Quotation number / date */}
-            <div className="sm:text-right">
-              <div className="text-3xl font-black tracking-tight text-blue-400">QUOTATION</div>
-              <div className="text-lg font-bold mt-1">{quotation.quotationNumber}</div>
-              <div className="text-slate-400 text-sm mt-2">
-                <div className="flex sm:justify-end items-center gap-1.5">
-                  <Calendar className="w-3.5 h-3.5" />
-                  Date: {formatDate(quotation.createdAt)}
-                </div>
-                {quotation.validUntil && (
-                  <div className="flex sm:justify-end items-center gap-1.5 mt-0.5">
-                    <Clock className="w-3.5 h-3.5" />
-                    Valid Until: {formatDate(quotation.validUntil)}
-                  </div>
-                )}
+            <div style={{ textAlign: 'right', fontSize: '11px', color: '#64748b', lineHeight: '1.8' }}>
+              <div><strong>Date:</strong> {formatDate(quotation.createdAt)}</div>
+              {quotation.validUntil && <div><strong>Valid Until:</strong> {formatDate(quotation.validUntil)}</div>}
+              <div style={{ marginTop: '4px' }}>
+                <span style={{ padding: '2px 10px', borderRadius: '20px', fontSize: '10px', fontWeight: '700', background: '#dbeafe', color: '#1d4ed8' }}>
+                  {quotation.status}
+                </span>
               </div>
             </div>
           </div>
-        </div>
 
-        {/* Client info */}
-        <div className="px-8 py-5 border-b border-slate-100 bg-slate-50">
-          <div className="grid sm:grid-cols-2 gap-4">
+          {/* Client info */}
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px', marginBottom: '16px', padding: '12px 0', borderBottom: '1px solid #e2e8f0' }}>
             <div>
-              <div className="text-xs font-bold text-slate-400 uppercase tracking-wide mb-2">Prepared For</div>
-              <div className="font-bold text-slate-900 text-lg">{quotation.clientName}</div>
-              {quotation.clientEmail && (
-                <div className="flex items-center gap-1.5 text-sm text-slate-500 mt-1">
-                  <Mail className="w-3.5 h-3.5" />
-                  {quotation.clientEmail}
-                </div>
-              )}
-              {quotation.client && (
-                <div className="text-sm text-slate-500 mt-0.5">{quotation.client.companyName}</div>
-              )}
+              <div style={{ fontSize: '9px', fontWeight: '700', color: '#94a3b8', letterSpacing: '1.5px', textTransform: 'uppercase', marginBottom: '4px' }}>Prepared For</div>
+              <div style={{ fontWeight: '700', fontSize: '14px', color: '#1e293b' }}>{quotation.clientName}</div>
+              {quotation.clientEmail && <div style={{ fontSize: '11px', color: '#64748b', marginTop: '2px' }}>{quotation.clientEmail}</div>}
+              {quotation.client?.companyName && <div style={{ fontSize: '11px', color: '#64748b' }}>{quotation.client.companyName}</div>}
             </div>
-            <div className="space-y-2">
+            <div>
               {quotation.deliveryTimeline && (
-                <div>
-                  <div className="text-xs font-bold text-slate-400 uppercase tracking-wide mb-0.5">Delivery Timeline</div>
-                  <div className="text-sm font-semibold text-slate-700">{quotation.deliveryTimeline}</div>
+                <div style={{ marginBottom: '6px' }}>
+                  <div style={{ fontSize: '9px', fontWeight: '700', color: '#94a3b8', letterSpacing: '1.5px', textTransform: 'uppercase', marginBottom: '2px' }}>Delivery Timeline</div>
+                  <div style={{ fontSize: '11px', fontWeight: '600', color: '#1e293b' }}>{quotation.deliveryTimeline}</div>
                 </div>
               )}
               {quotation.validUntil && (
                 <div>
-                  <div className="text-xs font-bold text-slate-400 uppercase tracking-wide mb-0.5">Valid Until</div>
-                  <div className="text-sm font-semibold text-slate-700">{formatDate(quotation.validUntil)}</div>
+                  <div style={{ fontSize: '9px', fontWeight: '700', color: '#94a3b8', letterSpacing: '1.5px', textTransform: 'uppercase', marginBottom: '2px' }}>Valid Until</div>
+                  <div style={{ fontSize: '11px', fontWeight: '600', color: '#1e293b' }}>{formatDate(quotation.validUntil)}</div>
                 </div>
               )}
             </div>
           </div>
-        </div>
 
-        {/* Services Table */}
-        <div className="px-8 py-6">
-          <div className="text-xs font-bold text-slate-400 uppercase tracking-wide mb-3">Services</div>
-          <div className="overflow-x-auto">
-            <table className="w-full text-sm">
+          {/* Services Table */}
+          <div style={{ marginBottom: '16px' }}>
+            <div style={{ fontSize: '9px', fontWeight: '700', color: '#94a3b8', letterSpacing: '1.5px', textTransform: 'uppercase', marginBottom: '8px' }}>Services</div>
+            <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '11px' }}>
               <thead>
-                <tr className="bg-slate-800 text-white">
-                  <th className="text-left px-4 py-3 font-semibold rounded-tl-xl w-8">#</th>
-                  <th className="text-left px-4 py-3 font-semibold">Service</th>
-                  <th className="text-left px-4 py-3 font-semibold">Description</th>
-                  <th className="text-center px-4 py-3 font-semibold w-16">Qty</th>
-                  <th className="text-right px-4 py-3 font-semibold">Unit Price</th>
-                  <th className="text-right px-4 py-3 font-semibold rounded-tr-xl">Total</th>
+                <tr style={{ background: '#1e293b', color: '#fff' }}>
+                  <th style={{ textAlign: 'left', padding: '8px 10px', fontWeight: '600', width: '28px' }}>#</th>
+                  <th style={{ textAlign: 'left', padding: '8px 10px', fontWeight: '600' }}>Service</th>
+                  <th style={{ textAlign: 'left', padding: '8px 10px', fontWeight: '600' }}>Description</th>
+                  <th style={{ textAlign: 'center', padding: '8px 10px', fontWeight: '600', width: '40px' }}>Qty</th>
+                  <th style={{ textAlign: 'right', padding: '8px 10px', fontWeight: '600' }}>Unit Price</th>
+                  <th style={{ textAlign: 'right', padding: '8px 10px', fontWeight: '600' }}>Total</th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-slate-100">
+              <tbody>
                 {quotation.items?.length > 0 ? (
                   quotation.items.map((item: any, i: number) => (
-                    <tr key={item.id || i} className={i % 2 === 0 ? 'bg-white' : 'bg-slate-50/50'}>
-                      <td className="px-4 py-3.5 text-slate-400 font-medium">{i + 1}</td>
-                      <td className="px-4 py-3.5">
-                        <div className="font-semibold text-slate-900">{item.serviceName || item.name}</div>
-                      </td>
-                      <td className="px-4 py-3.5 text-slate-500 max-w-xs">
-                        {item.description || '—'}
-                      </td>
-                      <td className="px-4 py-3.5 text-center text-slate-700 font-medium">{item.quantity}</td>
-                      <td className="px-4 py-3.5 text-right text-slate-700">{formatCurrency(item.unitPrice)}</td>
-                      <td className="px-4 py-3.5 text-right font-bold text-slate-900">{formatCurrency(item.quantity * item.unitPrice)}</td>
+                    <tr key={item.id || i} style={{ background: i % 2 === 0 ? '#fff' : '#f8fafc', borderBottom: '1px solid #f1f5f9' }}>
+                      <td style={{ padding: '7px 10px', color: '#94a3b8', fontWeight: '600' }}>{i + 1}</td>
+                      <td style={{ padding: '7px 10px', fontWeight: '600', color: '#1e293b' }}>{item.serviceName || item.name}</td>
+                      <td style={{ padding: '7px 10px', color: '#64748b', maxWidth: '200px' }}>{item.description || '—'}</td>
+                      <td style={{ padding: '7px 10px', textAlign: 'center', color: '#475569', fontWeight: '500' }}>{item.quantity}</td>
+                      <td style={{ padding: '7px 10px', textAlign: 'right', color: '#475569' }}>{formatCurrency(item.unitPrice)}</td>
+                      <td style={{ padding: '7px 10px', textAlign: 'right', fontWeight: '700', color: '#1e293b' }}>{formatCurrency(item.quantity * item.unitPrice)}</td>
                     </tr>
                   ))
                 ) : (
-                  <tr>
-                    <td colSpan={6} className="px-4 py-8 text-center text-slate-400">No line items</td>
-                  </tr>
+                  <tr><td colSpan={6} style={{ padding: '16px', textAlign: 'center', color: '#94a3b8' }}>No line items</td></tr>
                 )}
               </tbody>
             </table>
-          </div>
 
-          {/* Totals */}
-          <div className="mt-5 flex justify-end">
-            <div className="w-full max-w-xs space-y-2">
-              <div className="flex justify-between text-sm text-slate-600">
-                <span>Subtotal</span>
-                <span className="font-semibold">{formatCurrency(subtotal)}</span>
-              </div>
-              {discount > 0 && (
-                <div className="flex justify-between text-sm text-red-600">
-                  <span>Discount</span>
-                  <span className="font-semibold">-{formatCurrency(discount)}</span>
+            {/* Totals */}
+            <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: '12px' }}>
+              <div style={{ minWidth: '220px' }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '11px', color: '#64748b', marginBottom: '4px' }}>
+                  <span>Subtotal</span><span style={{ fontWeight: '600' }}>{formatCurrency(subtotal)}</span>
                 </div>
-              )}
-              <div className="flex justify-between text-sm text-slate-600">
-                <span>VAT ({taxRate}%)</span>
-                <span className="font-semibold">{formatCurrency(tax)}</span>
+                {discount > 0 && (
+                  <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '11px', color: '#dc2626', marginBottom: '4px' }}>
+                    <span>Discount</span><span style={{ fontWeight: '600' }}>-{formatCurrency(discount)}</span>
+                  </div>
+                )}
+                <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '11px', color: '#64748b', marginBottom: '6px' }}>
+                  <span>VAT ({taxRate}%)</span><span style={{ fontWeight: '600' }}>{formatCurrency(tax)}</span>
+                </div>
+                <div style={{ display: 'flex', justifyContent: 'space-between', borderTop: '2px solid #1e293b', paddingTop: '6px' }}>
+                  <span style={{ fontWeight: '900', color: '#1e293b', fontSize: '12px' }}>Total Amount</span>
+                  <span style={{ fontWeight: '900', color: '#1e293b', fontSize: '15px' }}>{formatCurrency(total)}</span>
+                </div>
               </div>
-              <div className="flex justify-between border-t-2 border-slate-900 pt-2 mt-2">
-                <span className="font-black text-slate-900">Total Amount</span>
-                <span className="font-black text-xl text-slate-900">{formatCurrency(total)}</span>
-              </div>
             </div>
           </div>
-        </div>
 
-        {/* Project Scope */}
-        {quotation.projectScope && (
-          <div className="px-8 py-5 border-t border-slate-100">
-            <div className="text-xs font-bold text-slate-400 uppercase tracking-wide mb-2">Project Scope</div>
-            <div className="text-sm text-slate-700 leading-relaxed whitespace-pre-wrap bg-slate-50 rounded-xl p-4">
-              {quotation.projectScope}
+          {/* Project Scope */}
+          {quotation.projectScope && (
+            <div style={{ marginBottom: '12px', padding: '10px 12px', background: '#f8fafc', borderLeft: '3px solid #1d4ed8', borderRadius: '4px' }}>
+              <div style={{ fontSize: '9px', fontWeight: '700', color: '#94a3b8', letterSpacing: '1.5px', textTransform: 'uppercase', marginBottom: '6px' }}>Project Scope</div>
+              <div style={{ fontSize: '11px', color: '#334155', lineHeight: '1.7', whiteSpace: 'pre-wrap' }}>{quotation.projectScope}</div>
             </div>
-          </div>
-        )}
+          )}
 
-        {/* Terms & Conditions */}
-        {quotation.termsAndConditions && (
-          <div className="px-8 py-5 border-t border-slate-100">
-            <div className="text-xs font-bold text-slate-400 uppercase tracking-wide mb-2">Terms &amp; Conditions</div>
-            <div className="text-sm text-slate-700 leading-relaxed whitespace-pre-wrap bg-slate-50 rounded-xl p-4">
-              {quotation.termsAndConditions}
+          {/* Terms */}
+          {quotation.termsAndConditions && (
+            <div style={{ marginBottom: '12px', padding: '10px 12px', background: '#f8fafc', borderRadius: '4px' }}>
+              <div style={{ fontSize: '9px', fontWeight: '700', color: '#94a3b8', letterSpacing: '1.5px', textTransform: 'uppercase', marginBottom: '6px' }}>Terms &amp; Conditions</div>
+              <div style={{ fontSize: '11px', color: '#334155', lineHeight: '1.7', whiteSpace: 'pre-wrap' }}>{quotation.termsAndConditions}</div>
             </div>
-          </div>
-        )}
+          )}
 
-        {/* Notes */}
-        {quotation.notes && (
-          <div className="px-8 py-5 border-t border-slate-100">
-            <div className="text-xs font-bold text-slate-400 uppercase tracking-wide mb-2">Additional Notes</div>
-            <div className="text-sm text-slate-700 leading-relaxed whitespace-pre-wrap bg-blue-50 border border-blue-100 rounded-xl p-4">
-              {quotation.notes}
+          {/* Notes */}
+          {quotation.notes && (
+            <div style={{ marginBottom: '12px', padding: '10px 12px', background: '#eff6ff', border: '1px solid #bfdbfe', borderRadius: '4px' }}>
+              <div style={{ fontSize: '9px', fontWeight: '700', color: '#1d4ed8', letterSpacing: '1.5px', textTransform: 'uppercase', marginBottom: '6px' }}>Additional Notes</div>
+              <div style={{ fontSize: '11px', color: '#1e40af', lineHeight: '1.7', whiteSpace: 'pre-wrap' }}>{quotation.notes}</div>
             </div>
-          </div>
-        )}
+          )}
 
-        {/* Payment Details */}
-        <div className="px-8 py-5 border-t border-slate-100">
-          <div className="rounded-2xl border-2 border-green-200 bg-green-50 p-5">
-            <div className="text-xs font-bold text-green-700 uppercase tracking-wider mb-3">Payment Instructions (M-Pesa Paybill)</div>
-            <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
+          {/* Payment Instructions */}
+          <div style={{ padding: '12px 14px', background: '#f0fdf4', border: '1.5px solid #bbf7d0', borderRadius: '8px', marginBottom: '8px' }}>
+            <div style={{ fontSize: '9px', fontWeight: '700', color: '#15803d', letterSpacing: '1.5px', textTransform: 'uppercase', marginBottom: '8px' }}>
+              Payment Instructions — M-Pesa Paybill
+            </div>
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '8px', fontSize: '11px' }}>
               <div>
-                <div className="text-xs text-green-600 font-semibold uppercase mb-0.5">Business</div>
-                <div className="font-bold text-slate-900 text-sm">Helvino Technologies</div>
+                <div style={{ color: '#16a34a', fontWeight: '700', fontSize: '9px', textTransform: 'uppercase', marginBottom: '2px' }}>Business</div>
+                <div style={{ fontWeight: '700', color: '#1e293b' }}>Helvino Technologies</div>
               </div>
               <div>
-                <div className="text-xs text-green-600 font-semibold uppercase mb-0.5">Paybill No</div>
-                <div className="font-black text-slate-900 text-xl tracking-widest">522533</div>
+                <div style={{ color: '#16a34a', fontWeight: '700', fontSize: '9px', textTransform: 'uppercase', marginBottom: '2px' }}>Paybill No</div>
+                <div style={{ fontWeight: '900', color: '#1e293b', fontSize: '14px', letterSpacing: '2px' }}>522533</div>
               </div>
               <div>
-                <div className="text-xs text-green-600 font-semibold uppercase mb-0.5">Account No</div>
-                <div className="font-black text-slate-900 text-xl tracking-widest">8071524</div>
+                <div style={{ color: '#16a34a', fontWeight: '700', fontSize: '9px', textTransform: 'uppercase', marginBottom: '2px' }}>Account No</div>
+                <div style={{ fontWeight: '900', color: '#1e293b', fontSize: '14px', letterSpacing: '2px' }}>8071524</div>
               </div>
               <div>
-                <div className="text-xs text-green-600 font-semibold uppercase mb-0.5">Phone</div>
-                <div className="font-bold text-slate-900 text-sm">0110421320</div>
+                <div style={{ color: '#16a34a', fontWeight: '700', fontSize: '9px', textTransform: 'uppercase', marginBottom: '2px' }}>Phone</div>
+                <div style={{ fontWeight: '700', color: '#1e293b' }}>0110421320</div>
               </div>
             </div>
-            <p className="text-xs text-green-700 mt-3">Use quotation number <strong>{quotation.quotationNumber}</strong> as your payment reference. Contact us on <strong>0110421320</strong> after payment.</p>
+            <div style={{ fontSize: '10px', color: '#15803d', marginTop: '6px' }}>
+              Use <strong>{quotation.quotationNumber}</strong> as your payment reference. Contact <strong>0110421320</strong> after payment.
+            </div>
           </div>
-        </div>
 
-        {/* Footer */}
-        <div className="px-8 py-5 bg-slate-50 border-t border-slate-100">
-          <div className="flex flex-col sm:flex-row items-center justify-between gap-4">
-            <div className="text-sm text-slate-500">
-              {quotation.validUntil ? (
-                <span className="font-medium">This quotation is valid until <span className="text-slate-800 font-bold">{formatDate(quotation.validUntil)}</span></span>
-              ) : (
-                <span>Thank you for considering Helvino Technologies Limited.</span>
-              )}
+          {/* Validity note */}
+          {quotation.validUntil && (
+            <div style={{ fontSize: '10px', color: '#64748b', textAlign: 'center', marginTop: '8px', marginBottom: '4px' }}>
+              This quotation is valid until <strong>{formatDate(quotation.validUntil)}</strong>. Thank you for choosing Helvino Technologies Ltd.
             </div>
-            <div className="text-center text-xs text-slate-400">
-              <div className="border-t border-slate-300 pt-2 w-40">Authorized Signature</div>
-            </div>
-          </div>
-          <div className="mt-3 pt-3 border-t border-slate-200 text-xs text-center text-slate-400">
-            Helvino Technologies Limited · Nairobi, Kenya · info@helvino.org · helvinocrm.org · 0110421320
-          </div>
-        </div>
+          )}
+        </Letterhead>
       </div>
     </>
   )
