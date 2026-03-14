@@ -3,24 +3,20 @@ import nodemailer from 'nodemailer'
 const COMPANY_FROM = '"Helvino Technologies Ltd" <helvinotechltd@gmail.com>'
 
 function getTransporter() {
-  // Use Gmail for the company email
-  if (process.env.EMAIL_USER && process.env.EMAIL_PASS) {
-    return nodemailer.createTransport({
-      service: 'gmail',
-      auth: {
-        user: process.env.EMAIL_USER,
-        pass: process.env.EMAIL_PASS,
-      },
-    })
+  const emailUser = process.env.EMAIL_USER?.trim()
+  const emailPass = process.env.EMAIL_PASS?.trim()
+
+  if (!emailUser || !emailPass) {
+    throw new Error(
+      'Email not configured. Please set EMAIL_USER and EMAIL_PASS environment variables in your Render dashboard.'
+    )
   }
-  // Fallback to legacy SMTP config
+
   return nodemailer.createTransport({
-    host: process.env.SMTP_HOST,
-    port: parseInt(process.env.SMTP_PORT || '587'),
-    secure: false,
+    service: 'gmail',
     auth: {
-      user: process.env.SMTP_USER,
-      pass: process.env.SMTP_PASS,
+      user: emailUser,
+      pass: emailPass,
     },
   })
 }
