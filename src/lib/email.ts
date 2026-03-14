@@ -1,14 +1,29 @@
 import nodemailer from 'nodemailer'
 
-const transporter = nodemailer.createTransport({
-  host: process.env.SMTP_HOST,
-  port: parseInt(process.env.SMTP_PORT || '587'),
-  secure: false,
-  auth: {
-    user: process.env.SMTP_USER,
-    pass: process.env.SMTP_PASS,
-  },
-})
+const COMPANY_FROM = '"Helvino Technologies Ltd" <helvinotechltd@gmail.com>'
+
+function getTransporter() {
+  // Use Gmail for the company email
+  if (process.env.EMAIL_USER && process.env.EMAIL_PASS) {
+    return nodemailer.createTransport({
+      service: 'gmail',
+      auth: {
+        user: process.env.EMAIL_USER,
+        pass: process.env.EMAIL_PASS,
+      },
+    })
+  }
+  // Fallback to legacy SMTP config
+  return nodemailer.createTransport({
+    host: process.env.SMTP_HOST,
+    port: parseInt(process.env.SMTP_PORT || '587'),
+    secure: false,
+    auth: {
+      user: process.env.SMTP_USER,
+      pass: process.env.SMTP_PASS,
+    },
+  })
+}
 
 export async function sendEmail({
   to,
@@ -20,14 +35,16 @@ export async function sendEmail({
   html: string
 }) {
   try {
+    const transporter = getTransporter()
     await transporter.sendMail({
-      from: process.env.SMTP_FROM,
+      from: process.env.EMAIL_USER ? COMPANY_FROM : process.env.SMTP_FROM,
       to,
       subject,
       html,
     })
   } catch (error) {
     console.error('Email send error:', error)
+    throw error
   }
 }
 
@@ -339,5 +356,121 @@ export function quotationEmailHtml(params: {
 
     <p style="color:#6b7280;font-size:13px;">To accept this quotation, reply to this email or contact us on <strong>0110421320</strong>. ${validUntil ? `This quotation is valid until <strong>${validUntil}</strong>.` : ''}</p>
     `
+  )
+}
+
+// ─── Recruitment Email Templates ─────────────────────────────────────────────
+
+export function recruitmentEmailHtml(subject: string, bodyHtml: string): string {
+  return emailTemplate(subject, bodyHtml)
+}
+
+export function interviewInviteEmailHtml(params: {
+  candidateName: string
+  jobTitle: string
+  bodyText: string
+  interviewDate?: string
+  interviewTime?: string
+  interviewType?: string
+  location?: string
+  meetingLink?: string
+  interviewerName?: string
+}): string {
+  const { candidateName, jobTitle, bodyText, interviewDate, interviewTime, interviewType, location, meetingLink, interviewerName } = params
+  const detailsHtml = (interviewDate || interviewTime || interviewType || location || meetingLink) ? `
+    <div style="background:#eff6ff;border:1px solid #bfdbfe;border-radius:12px;padding:20px;margin:20px 0;">
+      <h3 style="margin:0 0 12px;color:#1d4ed8;font-size:14px;text-transform:uppercase;letter-spacing:0.5px;">Interview Details</h3>
+      <table style="width:100%;border-collapse:collapse;">
+        ${interviewDate ? `<tr><td style="padding:5px 0;font-weight:bold;width:130px;color:#374151;">Date:</td><td style="padding:5px 0;color:#111827;">${interviewDate}</td></tr>` : ''}
+        ${interviewTime ? `<tr><td style="padding:5px 0;font-weight:bold;color:#374151;">Time:</td><td style="padding:5px 0;color:#111827;">${interviewTime} EAT</td></tr>` : ''}
+        ${interviewType ? `<tr><td style="padding:5px 0;font-weight:bold;color:#374151;">Format:</td><td style="padding:5px 0;color:#111827;">${interviewType}</td></tr>` : ''}
+        ${location ? `<tr><td style="padding:5px 0;font-weight:bold;color:#374151;">Location:</td><td style="padding:5px 0;color:#111827;">${location}</td></tr>` : ''}
+        ${meetingLink ? `<tr><td style="padding:5px 0;font-weight:bold;color:#374151;">Meeting Link:</td><td style="padding:5px 0;"><a href="${meetingLink}" style="color:#2563eb;">${meetingLink}</a></td></tr>` : ''}
+        ${interviewerName ? `<tr><td style="padding:5px 0;font-weight:bold;color:#374151;">Interviewer:</td><td style="padding:5px 0;color:#111827;">${interviewerName}</td></tr>` : ''}
+      </table>
+    </div>
+  ` : ''
+  return emailTemplate(
+    `Interview Invitation — ${jobTitle}`,
+    `<p>Dear <strong>${candidateName}</strong>,</p>
+    <div style="white-space:pre-line;color:#374151;line-height:1.7;">${bodyText}</div>
+    ${detailsHtml}
+    <p style="color:#6b7280;font-size:13px;margin-top:20px;">
+      For any queries, please contact us at <a href="mailto:helvinotechltd@gmail.com" style="color:#2563eb;">helvinotechltd@gmail.com</a> or call <strong>0110421320</strong>.
+    </p>`
+  )
+}
+
+export function onboardingRequestEmailHtml(params: {
+  candidateName: string
+  jobTitle: string
+  bodyText: string
+  uploadLink: string
+  deadline?: string
+}): string {
+  const { candidateName, jobTitle, bodyText, uploadLink, deadline } = params
+  return emailTemplate(
+    `Onboarding Documents Request — ${jobTitle}`,
+    `<p>Dear <strong>${candidateName}</strong>,</p>
+    <div style="white-space:pre-line;color:#374151;line-height:1.7;">${bodyText}</div>
+    <div style="background:#f0fdf4;border:1px solid #bbf7d0;border-radius:12px;padding:20px;margin:20px 0;">
+      <h3 style="margin:0 0 12px;color:#15803d;font-size:14px;text-transform:uppercase;letter-spacing:0.5px;">Required Documents</h3>
+      <ul style="margin:0;padding-left:18px;color:#374151;line-height:1.9;">
+        <li>National ID / Passport (both sides)</li>
+        <li>Academic & Professional Certificates</li>
+        <li>Recent Passport-size Photograph</li>
+        <li>KRA PIN Certificate</li>
+        <li>NSSF / NHIF Card (if available)</li>
+        <li>Bank Account Details / M-Pesa Statement</li>
+        <li>Certificate of Good Conduct (where applicable)</li>
+      </ul>
+    </div>
+    <div style="text-align:center;margin:28px 0;">
+      <a href="${uploadLink}" style="background:#16a34a;color:white;padding:14px 32px;border-radius:10px;text-decoration:none;display:inline-block;font-weight:bold;font-size:15px;">
+        Upload My Documents →
+      </a>
+    </div>
+    ${deadline ? `<p style="color:#dc2626;font-size:13px;text-align:center;"><strong>⏰ Please submit your documents by ${deadline}.</strong></p>` : ''}
+    <p style="color:#6b7280;font-size:12px;">If the button above does not work, copy and paste this link into your browser:<br><a href="${uploadLink}" style="color:#2563eb;word-break:break-all;">${uploadLink}</a></p>
+    <p style="color:#6b7280;font-size:13px;">For assistance, contact <a href="mailto:helvinotechltd@gmail.com" style="color:#2563eb;">helvinotechltd@gmail.com</a> or call <strong>0110421320</strong>.</p>`
+  )
+}
+
+export function rejectionEmailHtml(params: {
+  candidateName: string
+  jobTitle: string
+  bodyText: string
+}): string {
+  const { candidateName, jobTitle, bodyText } = params
+  return emailTemplate(
+    `Application Update — ${jobTitle}`,
+    `<p>Dear <strong>${candidateName}</strong>,</p>
+    <div style="white-space:pre-line;color:#374151;line-height:1.7;">${bodyText}</div>
+    <p style="color:#6b7280;font-size:13px;margin-top:20px;">
+      We wish you all the best in your career endeavors. Feel free to visit our careers page at <a href="https://helvino.org/careers" style="color:#2563eb;">helvino.org/careers</a> for future opportunities.
+    </p>`
+  )
+}
+
+export function onboardingApprovedEmailHtml(params: {
+  candidateName: string
+  jobTitle: string
+  portalUrl: string
+}): string {
+  const { candidateName, jobTitle, portalUrl } = params
+  return emailTemplate(
+    `Welcome to Helvino Technologies — ${jobTitle}`,
+    `<p>Dear <strong>${candidateName}</strong>,</p>
+    <p>We are delighted to confirm that your onboarding documents have been reviewed and approved. You are now officially part of the <strong>Helvino Technologies Ltd</strong> family!</p>
+    <div style="background:#eff6ff;border:1px solid #bfdbfe;border-radius:12px;padding:20px;margin:20px 0;text-align:center;">
+      <p style="margin:0 0 12px;color:#1e40af;font-weight:bold;font-size:16px;">🎉 Welcome aboard!</p>
+      <p style="margin:0;color:#374151;font-size:14px;">Your employee portal account will be set up shortly. You will receive a separate email with your login credentials.</p>
+    </div>
+    <div style="text-align:center;margin:24px 0;">
+      <a href="${portalUrl}" style="background:#2563eb;color:white;padding:12px 28px;border-radius:10px;text-decoration:none;display:inline-block;font-weight:bold;">
+        Visit Employee Portal →
+      </a>
+    </div>
+    <p style="color:#6b7280;font-size:13px;">For any questions, contact HR at <a href="mailto:helvinotechltd@gmail.com" style="color:#2563eb;">helvinotechltd@gmail.com</a>.</p>`
   )
 }

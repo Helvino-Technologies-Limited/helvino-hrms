@@ -58,6 +58,8 @@ const recruitmentNavItems = [
     roles: ['SUPER_ADMIN', 'HR_MANAGER'] },
   { href: '/dashboard/recruitment/analytics', icon: BarChart3, label: 'ATS Analytics',
     roles: ['SUPER_ADMIN', 'HR_MANAGER'] },
+  { href: '/dashboard/recruitment/onboarding', icon: ClipboardCheck, label: 'Onboarding Docs',
+    roles: ['SUPER_ADMIN', 'HR_MANAGER'] },
 ]
 
 const salesNavItems = [
