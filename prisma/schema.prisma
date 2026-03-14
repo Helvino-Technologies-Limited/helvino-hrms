@@ -462,6 +462,16 @@ model Applicant {
   score           Int?
   notes           String?
   interviewDate   DateTime?
+  // Email tracking
+  interviewInviteSentAt    DateTime?
+  onboardingRequestSentAt  DateTime?
+  rejectionEmailSentAt     DateTime?
+  // Onboarding documents
+  onboardingToken          String?   @unique
+  onboardingTokenExpiry    DateTime?
+  onboardingDocuments      Json?
+  onboardingApproved       Boolean   @default(false)
+  onboardingApprovedAt     DateTime?
   interviews      Interview[]
   offer           JobOffer?
   notesList       RecruitmentNote[]

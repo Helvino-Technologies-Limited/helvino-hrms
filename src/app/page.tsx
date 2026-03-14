@@ -314,7 +314,7 @@ export default function HomePage() {
             {[
               { icon: Phone, title: 'Phone', value: '0703 445 756', href: 'tel:+254703445756', sub: 'Mon–Fri, 8am–6pm EAT' },
               { icon: Mail, title: 'Email', value: 'info@helvino.org', href: 'mailto:info@helvino.org', sub: 'We reply within 24 hours' },
-              { icon: MapPin, title: 'Location', value: 'Nairobi, Kenya', href: '#', sub: 'East Africa & Beyond' },
+              { icon: MapPin, title: 'Location', value: 'Siaya, Kenya', href: '#', sub: 'East Africa & Beyond' },
             ].map(contact => (
               <a key={contact.title} href={contact.href}
                 className="text-center p-8 rounded-2xl border border-slate-200 hover:border-blue-300 hover:shadow-xl transition-all duration-300 group block">
@@ -360,7 +360,7 @@ export default function HomePage() {
                 <p className="flex items-center gap-2"><Phone className="w-4 h-4" /> 0703 445 756</p>
                 <p className="flex items-center gap-2"><Mail className="w-4 h-4" /> info@helvino.org</p>
                 <p className="flex items-center gap-2"><Globe className="w-4 h-4" /> helvinocrm.org</p>
-                <p className="flex items-center gap-2"><MapPin className="w-4 h-4" /> Nairobi, Kenya</p>
+                <p className="flex items-center gap-2"><MapPin className="w-4 h-4" /> Siaya, Kenya</p>
               </div>
             </div>
           </div>

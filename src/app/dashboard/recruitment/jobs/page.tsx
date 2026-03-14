@@ -317,7 +317,7 @@ function CreateEditJobModal({ job, departments, onClose, onSave }: {
     requirements: job?.requirements ?? '',
     departmentId: job?.departmentId ?? '',
     type: job?.type ?? 'Full-time',
-    location: job?.location ?? 'Nairobi, Kenya',
+    location: job?.location ?? 'Siaya, Kenya',
     positions: job?.positions ?? 1,
     salaryMin: job?.salaryMin ?? '',
     salaryMax: job?.salaryMax ?? '',
@@ -537,7 +537,7 @@ function CreateEditJobModal({ job, departments, onClose, onSave }: {
                   <input
                     value={form.location}
                     onChange={e => set('location', e.target.value)}
-                    placeholder="e.g. Nairobi, Kenya"
+                    placeholder="e.g. Siaya, Kenya"
                     className="w-full px-3 py-2.5 text-sm border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white"
                   />
                 </div>

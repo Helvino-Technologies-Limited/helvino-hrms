@@ -12,13 +12,13 @@ interface LetterheadProps {
 
 const COMPANY = {
   name: 'Helvino Technologies Ltd',
-  address: 'Nairobi, Kenya',
+  address: 'Siaya, Kenya',
   phone: '0110421320',
   email: 'helvinotechltd@gmail.com',
   website: 'helvino.org',
   paybill: '522533',
   account: '8071524',
-  regLine: 'Reg. No. · P.O Box 12345-00100 Nairobi',
+  regLine: 'Reg. No. · P.O Box 12345-40600 Siaya',
 }
 
 export default function Letterhead({

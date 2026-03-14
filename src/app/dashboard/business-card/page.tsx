@@ -345,7 +345,7 @@ function CardBack({ theme }: { theme: typeof THEMES[0] }) {
 
         {/* Address */}
         <div style={{ color: 'rgba(255,255,255,0.4)', fontSize: '9px', marginTop: '10px', letterSpacing: '0.5px' }}>
-          Nairobi, Kenya · Paybill: 522533 · A/c: 8071524
+          Siaya, Kenya · Paybill: 522533 · A/c: 8071524
         </div>
       </div>
     </div>

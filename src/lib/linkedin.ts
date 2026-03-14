@@ -99,7 +99,7 @@ function buildPostText(job: JobForPost, jobUrl: string): string {
   lines.push('')
   lines.push(`🔗 Apply now: ${jobUrl}`)
   lines.push('')
-  lines.push('#Hiring #JobOpening #Nairobi #Kenya #HelvinoTechnologies #Jobs')
+  lines.push('#Hiring #JobOpening #Siaya #Kenya #HelvinoTechnologies #Jobs')
 
   return lines.join('\n')
 }

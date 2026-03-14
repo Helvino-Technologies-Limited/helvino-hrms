@@ -40,7 +40,7 @@ export async function POST(req: NextRequest) {
         responsibilities: body.responsibilities || null,
         departmentId: body.departmentId || null,
         type: body.type || 'Full-time',
-        location: body.location || 'Nairobi, Kenya',
+        location: body.location || 'Siaya, Kenya',
         salaryMin: body.salaryMin ? parseFloat(body.salaryMin) : null,
         salaryMax: body.salaryMax ? parseFloat(body.salaryMax) : null,
         status: body.status || 'OPEN',
