@@ -1,6 +1,6 @@
 'use client'
 import { useEffect, useState } from 'react'
-import { CheckCircle, Clock, FileText, Eye, X, Download, Loader2, ShieldCheck, AlertCircle, Users } from 'lucide-react'
+import { CheckCircle, Clock, FileText, Eye, X, Download, Loader2, ShieldCheck, AlertCircle, Users, PenLine } from 'lucide-react'
 import toast from 'react-hot-toast'
 import { formatDate } from '@/lib/utils'
 
@@ -163,6 +163,35 @@ export default function OnboardingReviewPage() {
                     {selected.onboardingApprovedAt && (
                       <p className="text-green-600 text-xs mt-0.5">Approved on {formatDate(selected.onboardingApprovedAt)}</p>
                     )}
+                  </div>
+                </div>
+              )}
+
+              {/* Offer Letter status */}
+              {selected.offerLetterContent && (
+                <div className={`rounded-xl p-4 border flex items-start gap-3 ${
+                  selected.offerLetterSignedAt
+                    ? 'bg-green-50 border-green-200'
+                    : 'bg-amber-50 border-amber-200'
+                }`}>
+                  <PenLine className={`w-5 h-5 flex-shrink-0 mt-0.5 ${selected.offerLetterSignedAt ? 'text-green-600' : 'text-amber-600'}`} />
+                  <div className="flex-1 min-w-0">
+                    <p className={`font-semibold text-sm ${selected.offerLetterSignedAt ? 'text-green-800' : 'text-amber-800'}`}>
+                      Employment Offer Letter — {selected.offerLetterSignedAt ? 'Signed' : 'Awaiting Signature'}
+                    </p>
+                    {selected.offerLetterSignedAt ? (
+                      <p className="text-xs mt-0.5 text-green-600">
+                        Signed as <strong>{selected.offerLetterSignature}</strong> on {new Date(selected.offerLetterSignedAt).toLocaleString('en-KE')}
+                      </p>
+                    ) : (
+                      <p className="text-xs mt-0.5 text-amber-600">The candidate has not yet signed the offer letter.</p>
+                    )}
+                    <details className="mt-2">
+                      <summary className="text-xs text-slate-500 cursor-pointer hover:text-slate-700">View offer letter content</summary>
+                      <div className="mt-2 bg-white rounded-lg border border-slate-200 p-3 text-xs text-slate-700 whitespace-pre-line leading-relaxed max-h-48 overflow-y-auto">
+                        {selected.offerLetterContent}
+                      </div>
+                    </details>
                   </div>
                 </div>
               )}

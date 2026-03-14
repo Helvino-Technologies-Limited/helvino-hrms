@@ -1,9 +1,10 @@
 'use client'
-import { useEffect, useState } from 'react'
+import { useEffect, useState, useRef } from 'react'
 import Link from 'next/link'
 import {
   Plus, Search, Briefcase, Users, Edit, Trash2, Eye,
   Share2, MapPin, Clock, DollarSign, X, ChevronDown,
+  Sparkles, Loader2, ChevronRight,
 } from 'lucide-react'
 import toast from 'react-hot-toast'
 import { formatCurrency, formatDate } from '@/lib/utils'
@@ -310,6 +311,11 @@ function CreateEditJobModal({ job, departments, onClose, onSave }: {
     return String(job.skills).split(',').map((s: string) => s.trim()).filter(Boolean)
   })
 
+  // AI state
+  const [aiPrompt, setAiPrompt] = useState('')
+  const [aiLoading, setAiLoading] = useState(false)
+  const [aiExpanded, setAiExpanded] = useState(!isEdit)
+
   const [form, setForm] = useState({
     title: job?.title ?? '',
     description: job?.description ?? '',
@@ -385,6 +391,43 @@ function CreateEditJobModal({ job, departments, onClose, onSave }: {
     setForm(prev => ({ ...prev, [field]: value }))
   }
 
+  async function generateWithAI() {
+    if (!aiPrompt.trim()) {
+      toast.error('Describe the role you want to post')
+      return
+    }
+    setAiLoading(true)
+    try {
+      const res = await fetch('/api/ai/generate-job', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ prompt: aiPrompt }),
+      })
+      const data = await res.json()
+      if (!res.ok) throw new Error(data.error || 'Failed to generate')
+
+      setForm(prev => ({
+        ...prev,
+        title: data.title || prev.title,
+        description: data.description || prev.description,
+        responsibilities: data.responsibilities || prev.responsibilities,
+        requirements: data.requirements || prev.requirements,
+        benefits: data.benefits || prev.benefits,
+        experienceLevel: data.experienceLevel || prev.experienceLevel,
+        educationReq: data.educationReq || prev.educationReq,
+        type: data.type || prev.type,
+      }))
+      if (Array.isArray(data.skills) && data.skills.length > 0) {
+        setSkills(data.skills)
+      }
+      setAiExpanded(false)
+      toast.success('Job posting generated! Review and edit before saving.')
+    } catch (e: any) {
+      toast.error(e.message || 'AI generation failed')
+    }
+    setAiLoading(false)
+  }
+
   const shareLink = createdJob ? `${typeof window !== 'undefined' ? window.location.origin : ''}/careers/${createdJob.slug ?? createdJob.id}` : ''
 
   return (
@@ -447,6 +490,48 @@ function CreateEditJobModal({ job, departments, onClose, onSave }: {
         ) : (
           <>
             <form onSubmit={handleSubmit} className="flex-1 overflow-y-auto p-6 space-y-4">
+
+              {/* AI Generator Panel */}
+              <div className="bg-gradient-to-br from-violet-50 to-purple-50 rounded-2xl border border-violet-200 overflow-hidden">
+                <button
+                  type="button"
+                  onClick={() => setAiExpanded(p => !p)}
+                  className="w-full flex items-center justify-between px-4 py-3 hover:bg-violet-100/50 transition-colors"
+                >
+                  <div className="flex items-center gap-2">
+                    <Sparkles className="w-4 h-4 text-violet-600" />
+                    <span className="text-sm font-bold text-violet-900">AI Job Generator</span>
+                    <span className="text-xs bg-violet-100 text-violet-600 px-2 py-0.5 rounded-full">Claude</span>
+                  </div>
+                  <ChevronRight className={`w-4 h-4 text-violet-500 transition-transform ${aiExpanded ? 'rotate-90' : ''}`} />
+                </button>
+
+                {aiExpanded && (
+                  <div className="px-4 pb-4 space-y-3 border-t border-violet-100">
+                    <p className="text-xs text-violet-600 mt-3">
+                      Describe the role and Claude will generate a complete job posting — title, description, responsibilities, requirements, skills and benefits.
+                    </p>
+                    <textarea
+                      value={aiPrompt}
+                      onChange={e => setAiPrompt(e.target.value)}
+                      rows={3}
+                      placeholder="e.g. We need a senior network engineer to manage our IT infrastructure, handle Cisco switches and routers, and lead a small team of technicians..."
+                      className="w-full px-3 py-2.5 text-sm border border-violet-200 bg-white rounded-xl focus:outline-none focus:ring-2 focus:ring-violet-400 resize-none"
+                    />
+                    <button
+                      type="button"
+                      onClick={generateWithAI}
+                      disabled={aiLoading || !aiPrompt.trim()}
+                      className="w-full flex items-center justify-center gap-2 py-2.5 bg-violet-600 hover:bg-violet-700 disabled:opacity-60 text-white rounded-xl font-bold text-sm transition-colors"
+                    >
+                      {aiLoading
+                        ? <><Loader2 className="w-4 h-4 animate-spin" /> Generating...</>
+                        : <><Sparkles className="w-4 h-4" /> Generate Job Posting</>}
+                    </button>
+                  </div>
+                )}
+              </div>
+
               {error && (
                 <div className="bg-red-50 border border-red-200 text-red-700 rounded-xl p-3 text-sm flex items-start gap-2">
                   <span className="flex-1">{error}</span>

@@ -17,6 +17,9 @@ export async function GET(
       onboardingTokenExpiry: true,
       onboardingDocuments: true,
       onboardingApproved: true,
+      offerLetterContent: true,
+      offerLetterSignature: true,
+      offerLetterSignedAt: true,
       job: { select: { title: true } },
     },
   })

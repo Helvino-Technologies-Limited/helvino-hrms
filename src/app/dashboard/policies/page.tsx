@@ -1,8 +1,8 @@
 'use client'
-import { useEffect, useState } from 'react'
+import { useEffect, useState, useRef } from 'react'
 import { useSession } from 'next-auth/react'
 import Link from 'next/link'
-import { ScrollText, Plus, X, CheckCircle, Clock, Eye } from 'lucide-react'
+import { ScrollText, Plus, X, CheckCircle, Clock, Eye, Sparkles, Loader2, RefreshCw } from 'lucide-react'
 import toast from 'react-hot-toast'
 import { formatDate } from '@/lib/utils'
 
@@ -33,6 +33,10 @@ export default function PoliciesPage() {
   const [statusFilter, setStatusFilter] = useState('')
   const [form, setForm] = useState({ title: '', description: '', policyType: 'GENERAL', status: 'DRAFT' })
   const [saving, setSaving] = useState(false)
+  const [aiContent, setAiContent] = useState('')
+  const [aiContext, setAiContext] = useState('')
+  const [aiGenerating, setAiGenerating] = useState(false)
+  const abortRef = useRef<AbortController | null>(null)
 
   const role = session?.user?.role || ''
   const isAdmin = ADMIN_ROLES.includes(role)
@@ -53,6 +57,40 @@ export default function PoliciesPage() {
 
   useEffect(() => { loadPolicies() }, [statusFilter, session])
 
+  async function generatePolicy() {
+    setAiGenerating(true)
+    setAiContent('')
+    abortRef.current = new AbortController()
+    try {
+      const res = await fetch('/api/ai/generate-policy', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        signal: abortRef.current.signal,
+        body: JSON.stringify({
+          policyType: form.policyType,
+          title: form.title || undefined,
+          context: aiContext || undefined,
+        }),
+      })
+      if (!res.ok) {
+        const msg = await res.text()
+        throw new Error(msg || 'Failed to generate policy')
+      }
+      const reader = res.body!.getReader()
+      const decoder = new TextDecoder()
+      let full = ''
+      while (true) {
+        const { done, value } = await reader.read()
+        if (done) break
+        full += decoder.decode(value, { stream: true })
+        setAiContent(full)
+      }
+    } catch (e: any) {
+      if (e.name !== 'AbortError') toast.error(e.message || 'Failed to generate policy')
+    }
+    setAiGenerating(false)
+  }
+
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault()
     setSaving(true)
@@ -60,12 +98,14 @@ export default function PoliciesPage() {
       const res = await fetch('/api/policies', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(form),
+        body: JSON.stringify({ ...form, initialContent: aiContent || undefined }),
       })
       if (!res.ok) throw new Error()
       toast.success('Policy created')
       setShowModal(false)
       setForm({ title: '', description: '', policyType: 'GENERAL', status: 'DRAFT' })
+      setAiContent('')
+      setAiContext('')
       loadPolicies()
     } catch {
       toast.error('Failed to create policy')
@@ -198,47 +238,118 @@ export default function PoliciesPage() {
       {/* Create Policy Modal (admin only) */}
       {showModal && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm p-4">
-          <div className="bg-white rounded-2xl shadow-2xl w-full max-w-md">
-            <div className="flex items-center justify-between px-6 py-4 border-b border-slate-100">
-              <h2 className="text-lg font-bold text-slate-900">Create Policy</h2>
-              <button onClick={() => setShowModal(false)} className="text-slate-400 hover:text-slate-600"><X className="w-5 h-5" /></button>
+          <div className="bg-white rounded-3xl shadow-2xl w-full max-w-2xl max-h-[90vh] flex flex-col overflow-hidden">
+            <div className="flex items-center justify-between px-6 py-4 border-b border-slate-100 flex-shrink-0">
+              <h2 className="text-lg font-bold text-slate-900">Create New Policy</h2>
+              <button onClick={() => { setShowModal(false); abortRef.current?.abort(); setAiContent(''); setAiContext('') }}
+                className="text-slate-400 hover:text-slate-600"><X className="w-5 h-5" /></button>
             </div>
-            <form onSubmit={handleSubmit} className="p-6 space-y-4">
-              <div>
-                <label className="block text-sm font-semibold text-slate-700 mb-1">Policy Title *</label>
-                <input required value={form.title} onChange={e => setForm(f => ({ ...f, title: e.target.value }))}
-                  placeholder="e.g. Code of Conduct" className="w-full border border-slate-200 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" />
-              </div>
-              <div className="grid grid-cols-2 gap-3">
-                <div>
-                  <label className="block text-sm font-semibold text-slate-700 mb-1">Type</label>
-                  <select value={form.policyType} onChange={e => setForm(f => ({ ...f, policyType: e.target.value }))}
-                    className="w-full border border-slate-200 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500">
-                    {POLICY_TYPES.map(t => <option key={t} value={t}>{t}</option>)}
-                  </select>
+            <div className="overflow-y-auto flex-1">
+              <form onSubmit={handleSubmit} className="p-6 space-y-4">
+                <div className="grid grid-cols-2 gap-3">
+                  <div>
+                    <label className="block text-sm font-semibold text-slate-700 mb-1">Policy Title *</label>
+                    <input required value={form.title} onChange={e => setForm(f => ({ ...f, title: e.target.value }))}
+                      placeholder="e.g. Code of Conduct" className="w-full border border-slate-200 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-semibold text-slate-700 mb-1">Type</label>
+                    <select value={form.policyType} onChange={e => setForm(f => ({ ...f, policyType: e.target.value }))}
+                      className="w-full border border-slate-200 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500">
+                      {POLICY_TYPES.map(t => <option key={t} value={t}>{t}</option>)}
+                    </select>
+                  </div>
                 </div>
-                <div>
-                  <label className="block text-sm font-semibold text-slate-700 mb-1">Status</label>
-                  <select value={form.status} onChange={e => setForm(f => ({ ...f, status: e.target.value }))}
-                    className="w-full border border-slate-200 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500">
-                    <option value="DRAFT">Draft</option>
-                    <option value="ACTIVE">Active</option>
-                  </select>
+                <div className="grid grid-cols-2 gap-3">
+                  <div>
+                    <label className="block text-sm font-semibold text-slate-700 mb-1">Status</label>
+                    <select value={form.status} onChange={e => setForm(f => ({ ...f, status: e.target.value }))}
+                      className="w-full border border-slate-200 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500">
+                      <option value="DRAFT">Draft</option>
+                      <option value="ACTIVE">Active</option>
+                    </select>
+                  </div>
+                  <div>
+                    <label className="block text-sm font-semibold text-slate-700 mb-1">Description <span className="font-normal text-slate-400">(optional)</span></label>
+                    <input value={form.description} onChange={e => setForm(f => ({ ...f, description: e.target.value }))}
+                      placeholder="Brief summary of this policy"
+                      className="w-full border border-slate-200 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" />
+                  </div>
                 </div>
-              </div>
-              <div>
-                <label className="block text-sm font-semibold text-slate-700 mb-1">Description</label>
-                <textarea value={form.description} onChange={e => setForm(f => ({ ...f, description: e.target.value }))}
-                  placeholder="Brief description of this policy" rows={3}
-                  className="w-full border border-slate-200 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 resize-none" />
-              </div>
-              <div className="flex gap-3 pt-2">
-                <button type="button" onClick={() => setShowModal(false)} className="flex-1 border border-slate-200 text-slate-700 py-2.5 rounded-xl font-semibold text-sm hover:bg-slate-50">Cancel</button>
-                <button type="submit" disabled={saving} className="flex-1 bg-blue-600 hover:bg-blue-700 text-white py-2.5 rounded-xl font-semibold text-sm disabled:opacity-50">
-                  {saving ? 'Creating...' : 'Create Policy'}
-                </button>
-              </div>
-            </form>
+
+                {/* AI Generator */}
+                <div className="bg-violet-50 rounded-2xl p-4 border border-violet-100 space-y-3">
+                  <div className="flex items-center gap-2">
+                    <Sparkles className="w-4 h-4 text-violet-600" />
+                    <p className="text-xs font-semibold text-violet-800 uppercase tracking-wide">AI Policy Generator</p>
+                    <span className="text-xs bg-violet-100 text-violet-600 px-2 py-0.5 rounded-full">Claude</span>
+                  </div>
+                  <p className="text-xs text-violet-700">
+                    AI will write a comprehensive, professionally structured policy for Helvino Technologies based on the selected type.
+                    The generated content will automatically become the first version of this policy.
+                  </p>
+                  <textarea
+                    value={aiContext}
+                    onChange={e => setAiContext(e.target.value)}
+                    rows={2}
+                    placeholder="Optional: add specific instructions — e.g. 'Include remote work provisions' or 'Focus on data protection under Kenyan law'"
+                    className="w-full px-3 py-2 text-sm border border-violet-200 bg-white rounded-xl focus:outline-none focus:ring-2 focus:ring-violet-400 resize-none"
+                  />
+                  <div className="flex gap-2">
+                    {aiGenerating ? (
+                      <button type="button" onClick={() => { abortRef.current?.abort(); setAiGenerating(false) }}
+                        className="flex items-center gap-2 px-4 py-2 bg-red-500 hover:bg-red-600 text-white rounded-xl text-sm font-semibold transition-colors">
+                        <X className="w-4 h-4" /> Stop
+                      </button>
+                    ) : (
+                      <button type="button" onClick={generatePolicy}
+                        className="flex items-center gap-2 px-4 py-2 bg-violet-600 hover:bg-violet-700 text-white rounded-xl text-sm font-semibold transition-colors">
+                        <Sparkles className="w-4 h-4" />
+                        {aiContent ? 'Regenerate Policy' : 'Generate Policy with AI'}
+                      </button>
+                    )}
+                    {aiContent && !aiGenerating && (
+                      <button type="button" onClick={generatePolicy}
+                        className="flex items-center gap-2 px-3 py-2 border border-violet-200 text-violet-600 hover:bg-violet-100 bg-white rounded-xl text-sm font-semibold transition-colors">
+                        <RefreshCw className="w-3.5 h-3.5" />
+                      </button>
+                    )}
+                  </div>
+                </div>
+
+                {/* Generated content preview / editable */}
+                {(aiContent || aiGenerating) && (
+                  <div>
+                    <div className="flex items-center justify-between mb-1.5">
+                      <label className="text-sm font-semibold text-slate-700">Policy Content</label>
+                      {aiGenerating && (
+                        <span className="flex items-center gap-1.5 text-violet-600 text-xs font-medium">
+                          <Loader2 className="w-3.5 h-3.5 animate-spin" /> Writing policy...
+                        </span>
+                      )}
+                    </div>
+                    <textarea
+                      value={aiContent}
+                      onChange={e => setAiContent(e.target.value)}
+                      rows={16}
+                      className="w-full px-4 py-3 text-sm border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 resize-none leading-relaxed font-mono"
+                      placeholder={aiGenerating ? '' : 'Policy content...'}
+                    />
+                    <p className="text-xs text-slate-400 mt-1">You can edit this content before saving. It will be saved as Version 1.0 of this policy.</p>
+                  </div>
+                )}
+
+                <div className="flex gap-3 pt-2">
+                  <button type="button" onClick={() => { setShowModal(false); abortRef.current?.abort(); setAiContent(''); setAiContext('') }}
+                    className="flex-1 border border-slate-200 text-slate-700 py-2.5 rounded-xl font-semibold text-sm hover:bg-slate-50">
+                    Cancel
+                  </button>
+                  <button type="submit" disabled={saving || aiGenerating} className="flex-1 bg-blue-600 hover:bg-blue-700 text-white py-2.5 rounded-xl font-semibold text-sm disabled:opacity-50 flex items-center justify-center gap-2">
+                    {saving ? <><Loader2 className="w-4 h-4 animate-spin" /> Creating...</> : 'Create Policy'}
+                  </button>
+                </div>
+              </form>
+            </div>
           </div>
         </div>
       )}

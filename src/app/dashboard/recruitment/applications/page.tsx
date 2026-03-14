@@ -5,7 +5,7 @@ import {
   Search, Users, ChevronDown, ExternalLink, Star,
   Filter, Check, X, Layers, Eye,
   Mail, Send, Sparkles, Loader2, RefreshCw,
-  CalendarCheck, FileText, UserX, ChevronRight,
+  CalendarCheck, FileText, UserX, ChevronRight, PenLine,
 } from 'lucide-react'
 import toast from 'react-hot-toast'
 import { formatDate } from '@/lib/utils'
@@ -128,6 +128,9 @@ export default function ApplicationsPage() {
     interviewerName: '', deadline: '',
   })
   const [rejectionStage, setRejectionStage] = useState<'BEFORE' | 'AFTER'>('BEFORE')
+  const [offerLetterContent, setOfferLetterContent] = useState('')
+  const [offerLetterGenerating, setOfferLetterGenerating] = useState(false)
+  const offerAbortRef = useRef<AbortController | null>(null)
   const abortRef = useRef<AbortController | null>(null)
 
   async function loadData() {
@@ -245,16 +248,53 @@ export default function ApplicationsPage() {
     setEmailType(type)
     setEmailBody('')
     setAiContext('')
+    setOfferLetterContent('')
     setInterviewDetails({ date: '', time: '', format: 'Physical', location: '', meetingLink: '', interviewerName: '', deadline: '' })
     setRejectionStage(app.interviews?.length > 0 ? 'AFTER' : 'BEFORE')
   }
 
   function closeEmail() {
     abortRef.current?.abort()
+    offerAbortRef.current?.abort()
     setEmailTarget(null)
     setEmailType(null)
     setEmailBody('')
+    setOfferLetterContent('')
     setAiGenerating(false)
+    setOfferLetterGenerating(false)
+  }
+
+  async function generateOfferLetter() {
+    if (!emailTarget) return
+    setOfferLetterGenerating(true)
+    setOfferLetterContent('')
+    offerAbortRef.current = new AbortController()
+    try {
+      const res = await fetch('/api/ai/generate-email', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        signal: offerAbortRef.current.signal,
+        body: JSON.stringify({
+          type: 'OFFER_LETTER',
+          candidateName: `${emailTarget.firstName} ${emailTarget.lastName}`,
+          jobTitle: emailTarget.job?.title || 'the position',
+        }),
+      })
+      if (!res.ok) {
+        const msg = await res.text()
+        throw new Error(msg || 'Failed to generate offer letter')
+      }
+      const reader = res.body!.getReader()
+      const decoder = new TextDecoder()
+      while (true) {
+        const { done, value } = await reader.read()
+        if (done) break
+        setOfferLetterContent(prev => prev + decoder.decode(value))
+      }
+    } catch (e: any) {
+      if (e.name !== 'AbortError') setOfferLetterContent('[Error: ' + (e.message || 'Failed to generate offer letter') + ']')
+    }
+    setOfferLetterGenerating(false)
   }
 
   async function generateAI() {
@@ -314,6 +354,7 @@ export default function ApplicationsPage() {
           type: emailType,
           emailBody,
           interviewDetails: emailType === 'INTERVIEW_INVITE' || emailType === 'ONBOARDING_REQUEST' ? interviewDetails : undefined,
+          offerLetterContent: emailType === 'ONBOARDING_REQUEST' ? offerLetterContent : undefined,
         }),
       })
       const data = await res.json()
@@ -726,6 +767,63 @@ export default function ApplicationsPage() {
                   <input type="date" value={interviewDetails.deadline}
                     onChange={e => setInterviewDetails(p => ({ ...p, deadline: e.target.value }))}
                     className="w-full px-3 py-2 text-sm border border-green-200 rounded-xl bg-white focus:outline-none focus:ring-2 focus:ring-green-400 max-w-xs" />
+                </div>
+              )}
+
+              {/* Offer Letter — only for ONBOARDING_REQUEST */}
+              {emailType === 'ONBOARDING_REQUEST' && (
+                <div className="bg-amber-50 rounded-2xl p-4 border border-amber-100 space-y-3">
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-2">
+                      <PenLine className="w-4 h-4 text-amber-600" />
+                      <p className="text-xs font-semibold text-amber-800 uppercase tracking-wide">Employment Offer Letter</p>
+                      <span className="text-xs bg-amber-100 text-amber-600 px-2 py-0.5 rounded-full">Claude</span>
+                    </div>
+                    <span className="text-xs text-amber-600">(optional — candidate will sign digitally)</span>
+                  </div>
+                  <p className="text-xs text-amber-700">
+                    Generate an AI-written employment offer letter. The candidate will read and sign it digitally through the upload portal before submitting their documents.
+                  </p>
+                  <div className="flex gap-2">
+                    {offerLetterGenerating ? (
+                      <button onClick={() => { offerAbortRef.current?.abort(); setOfferLetterGenerating(false) }}
+                        className="flex items-center gap-2 px-4 py-2 bg-red-500 hover:bg-red-600 text-white rounded-xl text-sm font-semibold transition-colors">
+                        <X className="w-4 h-4" /> Stop
+                      </button>
+                    ) : (
+                      <button onClick={generateOfferLetter}
+                        className="flex items-center gap-2 px-4 py-2 bg-amber-600 hover:bg-amber-700 text-white rounded-xl text-sm font-semibold transition-colors">
+                        <Sparkles className="w-4 h-4" />
+                        {offerLetterContent ? 'Regenerate' : 'Generate Offer Letter'}
+                      </button>
+                    )}
+                    {offerLetterContent && !offerLetterGenerating && (
+                      <button onClick={generateOfferLetter}
+                        className="flex items-center gap-2 px-3 py-2 border border-amber-200 text-amber-600 hover:bg-amber-100 bg-white rounded-xl text-sm font-semibold transition-colors">
+                        <RefreshCw className="w-3.5 h-3.5" />
+                      </button>
+                    )}
+                  </div>
+                  {(offerLetterContent || offerLetterGenerating) && (
+                    <div className="relative">
+                      <textarea
+                        value={offerLetterContent}
+                        onChange={e => setOfferLetterContent(e.target.value)}
+                        rows={12}
+                        placeholder={offerLetterGenerating ? '' : 'Offer letter content will appear here...'}
+                        className="w-full px-4 py-3 text-sm border border-amber-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-amber-400 resize-none leading-relaxed bg-white"
+                      />
+                      {offerLetterGenerating && (
+                        <div className="absolute bottom-3 right-3 flex items-center gap-2 text-amber-600 bg-amber-50 px-3 py-1.5 rounded-lg text-xs font-medium border border-amber-200">
+                          <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                          Writing...
+                        </div>
+                      )}
+                    </div>
+                  )}
+                  {!offerLetterContent && !offerLetterGenerating && (
+                    <p className="text-xs text-amber-600 italic">No offer letter — leave blank to skip this step for the candidate.</p>
+                  )}
                 </div>
               )}
 

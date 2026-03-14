@@ -73,6 +73,23 @@ export async function POST(req: NextRequest) {
       },
     })
 
+    // If initial content was provided (from AI generation), create version 1.0 automatically
+    if (body.initialContent?.trim()) {
+      await prisma.policyVersion.create({
+        data: {
+          policyId: policy.id,
+          versionNumber: '1.0',
+          content: body.initialContent.trim(),
+          effectiveDate: new Date(),
+          isLatest: true,
+        },
+      })
+      // Auto-activate if it was set to ACTIVE
+      if (body.status === 'ACTIVE') {
+        await prisma.policy.update({ where: { id: policy.id }, data: { status: 'ACTIVE' } })
+      }
+    }
+
     return NextResponse.json(policy, { status: 201 })
   } catch (error) {
     console.error(error)

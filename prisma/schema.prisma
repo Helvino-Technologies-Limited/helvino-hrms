@@ -472,6 +472,9 @@ model Applicant {
   onboardingDocuments      Json?
   onboardingApproved       Boolean   @default(false)
   onboardingApprovedAt     DateTime?
+  offerLetterContent       String?
+  offerLetterSignature     String?
+  offerLetterSignedAt      DateTime?
   interviews      Interview[]
   offer           JobOffer?
   notesList       RecruitmentNote[]

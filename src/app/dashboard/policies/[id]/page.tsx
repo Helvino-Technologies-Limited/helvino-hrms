@@ -2,8 +2,9 @@
 import { useEffect, useState } from 'react'
 import { useSession } from 'next-auth/react'
 import { useParams, useRouter } from 'next/navigation'
+import { useRef } from 'react'
 import Link from 'next/link'
-import { ArrowLeft, Plus, X, CheckCircle, Clock, FileText } from 'lucide-react'
+import { ArrowLeft, Plus, X, CheckCircle, Clock, FileText, Sparkles, Loader2, RefreshCw } from 'lucide-react'
 import toast from 'react-hot-toast'
 import { formatDate } from '@/lib/utils'
 
@@ -24,6 +25,9 @@ export default function PolicyDetailPage() {
   const [versionForm, setVersionForm] = useState({
     versionNumber: '1.0', content: '', effectiveDate: new Date().toISOString().split('T')[0], fileUrl: '',
   })
+  const [aiGenerating, setAiGenerating] = useState(false)
+  const [aiContext, setAiContext] = useState('')
+  const abortRef = useRef<AbortController | null>(null)
   const [editForm, setEditForm] = useState({ title: '', description: '', policyType: 'GENERAL', status: 'DRAFT' })
 
   const role = session?.user?.role || ''
@@ -68,6 +72,40 @@ export default function PolicyDetailPage() {
       toast.error(err.message || 'Failed to accept policy')
     }
     setAccepting(false)
+  }
+
+  async function generateVersion() {
+    setAiGenerating(true)
+    setVersionForm(f => ({ ...f, content: '' }))
+    abortRef.current = new AbortController()
+    try {
+      const res = await fetch('/api/ai/generate-policy', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        signal: abortRef.current.signal,
+        body: JSON.stringify({
+          policyType: policy?.policyType || 'GENERAL',
+          title: policy?.title,
+          context: aiContext || undefined,
+        }),
+      })
+      if (!res.ok) {
+        const msg = await res.text()
+        throw new Error(msg || 'Failed to generate')
+      }
+      const reader = res.body!.getReader()
+      const decoder = new TextDecoder()
+      let full = ''
+      while (true) {
+        const { done, value } = await reader.read()
+        if (done) break
+        full += decoder.decode(value, { stream: true })
+        setVersionForm(f => ({ ...f, content: full }))
+      }
+    } catch (e: any) {
+      if (e.name !== 'AbortError') toast.error(e.message || 'Failed to generate policy')
+    }
+    setAiGenerating(false)
   }
 
   async function handleAddVersion(e: React.FormEvent) {
@@ -271,42 +309,93 @@ export default function PolicyDetailPage() {
       {/* Add Version Modal */}
       {showVersionModal && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm p-4">
-          <div className="bg-white rounded-2xl shadow-2xl w-full max-w-2xl max-h-[90vh] overflow-y-auto">
-            <div className="flex items-center justify-between px-6 py-4 border-b border-slate-100">
+          <div className="bg-white rounded-3xl shadow-2xl w-full max-w-2xl max-h-[90vh] flex flex-col overflow-hidden">
+            <div className="flex items-center justify-between px-6 py-4 border-b border-slate-100 flex-shrink-0">
               <h2 className="text-lg font-bold text-slate-900">Add Policy Version</h2>
-              <button onClick={() => setShowVersionModal(false)} className="text-slate-400 hover:text-slate-600"><X className="w-5 h-5" /></button>
+              <button onClick={() => { setShowVersionModal(false); abortRef.current?.abort() }}
+                className="text-slate-400 hover:text-slate-600"><X className="w-5 h-5" /></button>
             </div>
-            <form onSubmit={handleAddVersion} className="p-6 space-y-4">
-              <div className="grid grid-cols-2 gap-3">
+            <div className="overflow-y-auto flex-1">
+              <form onSubmit={handleAddVersion} className="p-6 space-y-4">
+                <div className="grid grid-cols-2 gap-3">
+                  <div>
+                    <label className="block text-sm font-semibold text-slate-700 mb-1">Version Number *</label>
+                    <input required value={versionForm.versionNumber} onChange={e => setVersionForm(f => ({ ...f, versionNumber: e.target.value }))}
+                      placeholder="e.g. 1.0, 1.1, 2.0" className="w-full border border-slate-200 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-semibold text-slate-700 mb-1">Effective Date *</label>
+                    <input required type="date" value={versionForm.effectiveDate} onChange={e => setVersionForm(f => ({ ...f, effectiveDate: e.target.value }))}
+                      className="w-full border border-slate-200 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" />
+                  </div>
+                </div>
+
+                {/* AI Generator */}
+                <div className="bg-violet-50 rounded-2xl p-4 border border-violet-100 space-y-3">
+                  <div className="flex items-center gap-2">
+                    <Sparkles className="w-4 h-4 text-violet-600" />
+                    <p className="text-xs font-semibold text-violet-800 uppercase tracking-wide">Generate with AI</p>
+                    <span className="text-xs bg-violet-100 text-violet-600 px-2 py-0.5 rounded-full">Claude</span>
+                  </div>
+                  <textarea
+                    value={aiContext}
+                    onChange={e => setAiContext(e.target.value)}
+                    rows={2}
+                    placeholder="Optional: specific instructions — e.g. 'Updated to reflect 2025 data protection regulations' or 'Add remote work provisions'"
+                    className="w-full px-3 py-2 text-sm border border-violet-200 bg-white rounded-xl focus:outline-none focus:ring-2 focus:ring-violet-400 resize-none"
+                  />
+                  <div className="flex gap-2">
+                    {aiGenerating ? (
+                      <button type="button" onClick={() => { abortRef.current?.abort(); setAiGenerating(false) }}
+                        className="flex items-center gap-2 px-4 py-2 bg-red-500 hover:bg-red-600 text-white rounded-xl text-sm font-semibold transition-colors">
+                        <X className="w-4 h-4" /> Stop
+                      </button>
+                    ) : (
+                      <button type="button" onClick={generateVersion}
+                        className="flex items-center gap-2 px-4 py-2 bg-violet-600 hover:bg-violet-700 text-white rounded-xl text-sm font-semibold transition-colors">
+                        <Sparkles className="w-4 h-4" />
+                        {versionForm.content ? 'Regenerate' : 'Generate Policy Content'}
+                      </button>
+                    )}
+                    {versionForm.content && !aiGenerating && (
+                      <button type="button" onClick={generateVersion}
+                        className="flex items-center gap-2 px-3 py-2 border border-violet-200 text-violet-600 hover:bg-violet-100 bg-white rounded-xl text-sm font-semibold transition-colors">
+                        <RefreshCw className="w-3.5 h-3.5" />
+                      </button>
+                    )}
+                  </div>
+                </div>
+
                 <div>
-                  <label className="block text-sm font-semibold text-slate-700 mb-1">Version Number *</label>
-                  <input required value={versionForm.versionNumber} onChange={e => setVersionForm(f => ({ ...f, versionNumber: e.target.value }))}
-                    placeholder="e.g. 1.0, 1.1, 2.0" className="w-full border border-slate-200 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" />
+                  <div className="flex items-center justify-between mb-1.5">
+                    <label className="block text-sm font-semibold text-slate-700">Policy Content *</label>
+                    {aiGenerating && (
+                      <span className="flex items-center gap-1.5 text-violet-600 text-xs font-medium">
+                        <Loader2 className="w-3.5 h-3.5 animate-spin" /> Writing...
+                      </span>
+                    )}
+                  </div>
+                  <textarea required value={versionForm.content} onChange={e => setVersionForm(f => ({ ...f, content: e.target.value }))}
+                    placeholder="Click 'Generate with AI' or write the full policy content here..." rows={14}
+                    className="w-full border border-slate-200 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 resize-none font-mono" />
                 </div>
                 <div>
-                  <label className="block text-sm font-semibold text-slate-700 mb-1">Effective Date *</label>
-                  <input required type="date" value={versionForm.effectiveDate} onChange={e => setVersionForm(f => ({ ...f, effectiveDate: e.target.value }))}
-                    className="w-full border border-slate-200 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" />
+                  <label className="block text-sm font-semibold text-slate-700 mb-1">File URL <span className="font-normal text-slate-400">(optional)</span></label>
+                  <input value={versionForm.fileUrl} onChange={e => setVersionForm(f => ({ ...f, fileUrl: e.target.value }))}
+                    placeholder="https://... (link to PDF version)" className="w-full border border-slate-200 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" />
                 </div>
-              </div>
-              <div>
-                <label className="block text-sm font-semibold text-slate-700 mb-1">Policy Content *</label>
-                <textarea required value={versionForm.content} onChange={e => setVersionForm(f => ({ ...f, content: e.target.value }))}
-                  placeholder="Write the full policy content here..." rows={12}
-                  className="w-full border border-slate-200 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 resize-none font-mono" />
-              </div>
-              <div>
-                <label className="block text-sm font-semibold text-slate-700 mb-1">File URL (optional)</label>
-                <input value={versionForm.fileUrl} onChange={e => setVersionForm(f => ({ ...f, fileUrl: e.target.value }))}
-                  placeholder="https://... (link to PDF version)" className="w-full border border-slate-200 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" />
-              </div>
-              <div className="flex gap-3 pt-2">
-                <button type="button" onClick={() => setShowVersionModal(false)} className="flex-1 border border-slate-200 text-slate-700 py-2.5 rounded-xl font-semibold text-sm hover:bg-slate-50">Cancel</button>
-                <button type="submit" disabled={saving} className="flex-1 bg-blue-600 hover:bg-blue-700 text-white py-2.5 rounded-xl font-semibold text-sm disabled:opacity-50">
-                  {saving ? 'Publishing...' : 'Publish Version'}
-                </button>
-              </div>
-            </form>
+                <div className="flex gap-3 pt-2">
+                  <button type="button" onClick={() => { setShowVersionModal(false); abortRef.current?.abort() }}
+                    className="flex-1 border border-slate-200 text-slate-700 py-2.5 rounded-xl font-semibold text-sm hover:bg-slate-50">
+                    Cancel
+                  </button>
+                  <button type="submit" disabled={saving || aiGenerating}
+                    className="flex-1 bg-blue-600 hover:bg-blue-700 text-white py-2.5 rounded-xl font-semibold text-sm disabled:opacity-50 flex items-center justify-center gap-2">
+                    {saving ? <><Loader2 className="w-4 h-4 animate-spin" /> Publishing...</> : 'Publish Version'}
+                  </button>
+                </div>
+              </form>
+            </div>
           </div>
         </div>
       )}

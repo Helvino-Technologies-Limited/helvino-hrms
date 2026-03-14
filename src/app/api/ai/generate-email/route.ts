@@ -30,6 +30,20 @@ The candidate was interviewed but was not selected for the role.
 Acknowledge their time and effort, deliver the decision professionally, and leave the door open for future applications.
 Do NOT include the email subject, greeting, or sign-off.
 2-3 paragraphs. Empathetic and professional tone.`,
+
+  OFFER_LETTER: `You are an HR professional drafting a formal employment offer/acceptance letter for Helvino Technologies Ltd, a technology company based in Siaya, Kenya.
+
+Write a professional, formal offer letter body. Include:
+- A warm congratulatory opening
+- The job title and department
+- A note that the start date will be communicated separately
+- Brief mention of probation period (3 months standard in Kenya)
+- A paragraph about expected conduct, confidentiality, and company values
+- A paragraph explaining this is a conditional offer pending submission of required onboarding documents
+- A closing asking the candidate to sign and return this letter as acceptance of the offer
+
+Do NOT include letterhead, date, address, subject line, greeting ("Dear..."), or sign-off/signatory — only the body paragraphs.
+Keep it professional, formal, and legally sound under Kenyan employment law. 4-6 paragraphs.`,
 }
 
 export async function POST(req: NextRequest) {
@@ -52,6 +66,10 @@ ${context ? `Additional Context: ${context}` : ''}
 
 Write only the body paragraphs (no greeting, no sign-off, no subject line).`
 
+  if (!process.env.ANTHROPIC_API_KEY) {
+    return new Response('AI service not configured. Please add ANTHROPIC_API_KEY to your environment variables.', { status: 503 })
+  }
+
   const client = new Anthropic()
   const encoder = new TextEncoder()
 
@@ -60,7 +78,7 @@ Write only the body paragraphs (no greeting, no sign-off, no subject line).`
       try {
         const response = client.messages.stream({
           model: 'claude-opus-4-6',
-          max_tokens: 800,
+          max_tokens: type === 'OFFER_LETTER' ? 2048 : 800,
           thinking: { type: 'adaptive' },
           system: systemPrompt,
           messages: [{ role: 'user', content: userMessage }],

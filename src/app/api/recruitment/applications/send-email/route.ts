@@ -21,7 +21,7 @@ export async function POST(req: NextRequest) {
 
   try {
     const body = await req.json()
-    const { applicantId, type, emailBody, interviewDetails } = body
+    const { applicantId, type, emailBody, interviewDetails, offerLetterContent } = body
 
     if (!applicantId || !type || !emailBody) {
       return NextResponse.json({ error: 'applicantId, type, emailBody required' }, { status: 400 })
@@ -60,9 +60,16 @@ export async function POST(req: NextRequest) {
       // Generate a unique secure token for this candidate's upload link
       const token = crypto.randomBytes(32).toString('hex')
       const expiry = new Date(Date.now() + 14 * 24 * 60 * 60 * 1000) // 14 days
+      const tokenUpdateData: Record<string, unknown> = {
+        onboardingToken: token,
+        onboardingTokenExpiry: expiry,
+      }
+      if (offerLetterContent?.trim()) {
+        tokenUpdateData.offerLetterContent = offerLetterContent.trim()
+      }
       await prisma.applicant.update({
         where: { id: applicantId },
-        data: { onboardingToken: token, onboardingTokenExpiry: expiry },
+        data: tokenUpdateData,
       })
       const uploadLink = `${appUrl}/onboarding/${token}`
       subject = `Onboarding Documents — ${jobTitle} | Helvino Technologies Ltd`
@@ -72,6 +79,7 @@ export async function POST(req: NextRequest) {
         bodyText: emailBody,
         uploadLink,
         deadline: interviewDetails?.deadline,
+        hasOfferLetter: !!(offerLetterContent?.trim()),
       })
       updateData.onboardingRequestSentAt = new Date()
 

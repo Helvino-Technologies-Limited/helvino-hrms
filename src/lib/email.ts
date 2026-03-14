@@ -407,27 +407,34 @@ export function onboardingRequestEmailHtml(params: {
   bodyText: string
   uploadLink: string
   deadline?: string
+  hasOfferLetter?: boolean
 }): string {
-  const { candidateName, jobTitle, bodyText, uploadLink, deadline } = params
+  const { candidateName, jobTitle, bodyText, uploadLink, deadline, hasOfferLetter } = params
   return emailTemplate(
     `Onboarding Documents Request — ${jobTitle}`,
     `<p>Dear <strong>${candidateName}</strong>,</p>
     <div style="white-space:pre-line;color:#374151;line-height:1.7;">${bodyText}</div>
+    ${hasOfferLetter ? `
+    <div style="background:#fffbeb;border:1px solid #fde68a;border-radius:12px;padding:16px 20px;margin:20px 0;">
+      <p style="margin:0;color:#92400e;font-size:14px;"><strong>📄 Employment Offer Letter Included</strong><br>
+      Your official employment offer letter is available through the link below. Please review it carefully, sign it digitally, and submit it along with your onboarding documents.</p>
+    </div>` : ''}
     <div style="background:#f0fdf4;border:1px solid #bbf7d0;border-radius:12px;padding:20px;margin:20px 0;">
       <h3 style="margin:0 0 12px;color:#15803d;font-size:14px;text-transform:uppercase;letter-spacing:0.5px;">Required Documents</h3>
       <ul style="margin:0;padding-left:18px;color:#374151;line-height:1.9;">
         <li>National ID / Passport (both sides)</li>
-        <li>Academic & Professional Certificates</li>
+        <li>Academic &amp; Professional Certificates</li>
         <li>Recent Passport-size Photograph</li>
         <li>KRA PIN Certificate</li>
         <li>NSSF / NHIF Card (if available)</li>
         <li>Bank Account Details / M-Pesa Statement</li>
         <li>Certificate of Good Conduct (where applicable)</li>
+        ${hasOfferLetter ? '<li><strong>Signed Employment Offer Letter</strong> (sign through the portal link)</li>' : ''}
       </ul>
     </div>
     <div style="text-align:center;margin:28px 0;">
       <a href="${uploadLink}" style="background:#16a34a;color:white;padding:14px 32px;border-radius:10px;text-decoration:none;display:inline-block;font-weight:bold;font-size:15px;">
-        Upload My Documents →
+        ${hasOfferLetter ? 'Review Offer Letter &amp; Upload Documents →' : 'Upload My Documents →'}
       </a>
     </div>
     ${deadline ? `<p style="color:#dc2626;font-size:13px;text-align:center;"><strong>⏰ Please submit your documents by ${deadline}.</strong></p>` : ''}
