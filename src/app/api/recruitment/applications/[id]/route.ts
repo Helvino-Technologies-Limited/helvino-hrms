@@ -88,6 +88,7 @@ export async function PATCH(
       source,
       interviewDate,
       jobId,
+      offerLetterContent,
     } = body
 
     const data: Record<string, unknown> = {}
@@ -117,6 +118,7 @@ export async function PATCH(
     if (interviewDate !== undefined)
       data.interviewDate = interviewDate ? new Date(interviewDate) : null
     if (jobId !== undefined) data.jobId = jobId || null
+    if (offerLetterContent !== undefined) data.offerLetterContent = offerLetterContent || null
 
     const applicant = await prisma.applicant.update({
       where: { id },

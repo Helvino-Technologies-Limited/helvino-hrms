@@ -5,7 +5,7 @@ import {
   Search, Users, ChevronDown, ExternalLink, Star,
   Filter, Check, X, Layers, Eye,
   Mail, Send, Sparkles, Loader2, RefreshCw,
-  CalendarCheck, FileText, UserX, ChevronRight, PenLine,
+  CalendarCheck, FileText, UserX, ChevronRight, PenLine, Printer,
 } from 'lucide-react'
 import toast from 'react-hot-toast'
 import { formatDate } from '@/lib/utils'
@@ -646,6 +646,17 @@ export default function ApplicationsPage() {
                               <Eye className="w-4 h-4" />
                             </Link>
                           )}
+                          <Link
+                            href={`/dashboard/recruitment/applications/${app.id}/offer-letter`}
+                            className={`p-1.5 rounded-lg transition-colors ${
+                              app.offerLetterContent
+                                ? 'text-blue-600 bg-blue-50 hover:bg-blue-100'
+                                : 'text-slate-400 hover:text-blue-600 hover:bg-blue-50'
+                            }`}
+                            title={app.offerLetterContent ? 'View / Print Offer Letter' : 'Create Offer Letter PDF'}
+                          >
+                            <Printer className="w-4 h-4" />
+                          </Link>
                           <button
                             onClick={() => { setTalentPoolTarget(app); setTalentPoolCategory('FUTURE_PROSPECT') }}
                             className="p-1.5 text-slate-400 hover:text-purple-600 hover:bg-purple-50 rounded-lg transition-colors"

@@ -9,7 +9,7 @@ const REQUIRED_DOCS = [
   { key: 'certificates', label: 'Academic & Professional Certificates', required: true },
   { key: 'passport_photo', label: 'Recent Passport-size Photograph', required: true },
   { key: 'kra_pin', label: 'KRA PIN Certificate', required: true },
-  { key: 'nssf_nhif', label: 'NSSF / NHIF Card', required: false },
+  { key: 'nssf_nhif', label: 'NSSF / SHA (Social Health Authority) Card', required: false },
   { key: 'bank_details', label: 'Bank Account Details / M-Pesa Statement', required: true },
   { key: 'good_conduct', label: 'Certificate of Good Conduct', required: false },
 ]
