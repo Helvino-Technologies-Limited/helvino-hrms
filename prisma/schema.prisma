@@ -810,6 +810,12 @@ model Portfolio {
   testimonial   String?
   caseStudy     String?
   isPublished   Boolean   @default(false)
+  // Product catalog fields
+  demoUrl       String?
+  isProduct     Boolean   @default(false)
+  productStatus String    @default("AVAILABLE")
+  pricing       String?
+  features      String[]
   createdAt     DateTime  @default(now())
   updatedAt     DateTime  @updatedAt
 }

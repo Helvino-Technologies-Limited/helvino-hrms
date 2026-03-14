@@ -3,7 +3,7 @@ import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
 import { prisma } from '@/lib/prisma'
 
-export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
+async function updateItem(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   try {
     const session = await getServerSession(authOptions)
     if (!session) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
@@ -12,7 +12,6 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
     const body = await req.json()
 
     const updateData: any = {}
-
     if (body.clientName !== undefined) updateData.clientName = body.clientName
     if (body.industry !== undefined) updateData.industry = body.industry
     if (body.serviceType !== undefined) updateData.serviceType = body.serviceType
@@ -22,18 +21,28 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
     if (body.testimonial !== undefined) updateData.testimonial = body.testimonial
     if (body.caseStudy !== undefined) updateData.caseStudy = body.caseStudy
     if (body.isPublished !== undefined) updateData.isPublished = body.isPublished
+    if (body.published !== undefined) updateData.isPublished = body.published
+    if (body.demoUrl !== undefined) updateData.demoUrl = body.demoUrl || null
+    if (body.isProduct !== undefined) updateData.isProduct = body.isProduct
+    if (body.productStatus !== undefined) updateData.productStatus = body.productStatus
+    if (body.pricing !== undefined) updateData.pricing = body.pricing || null
+    if (body.features !== undefined) updateData.features = body.features
 
-    const item = await prisma.portfolio.update({
-      where: { id },
-      data: updateData,
-    })
-
+    const item = await prisma.portfolio.update({ where: { id }, data: updateData })
     return NextResponse.json(item)
   } catch (error: any) {
     console.error(error)
-    if (error.code === 'P2025') return NextResponse.json({ error: 'Portfolio item not found' }, { status: 404 })
-    return NextResponse.json({ error: 'Failed to update portfolio item' }, { status: 500 })
+    if (error.code === 'P2025') return NextResponse.json({ error: 'Not found' }, { status: 404 })
+    return NextResponse.json({ error: 'Failed to update' }, { status: 500 })
   }
+}
+
+export async function PUT(req: NextRequest, ctx: { params: Promise<{ id: string }> }) {
+  return updateItem(req, ctx)
+}
+
+export async function PATCH(req: NextRequest, ctx: { params: Promise<{ id: string }> }) {
+  return updateItem(req, ctx)
 }
 
 export async function DELETE(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
@@ -43,17 +52,15 @@ export async function DELETE(req: NextRequest, { params }: { params: Promise<{ i
 
     const role = (session.user as any).role
     if (role !== 'SUPER_ADMIN') {
-      return NextResponse.json({ error: 'Forbidden: SUPER_ADMIN access required' }, { status: 403 })
+      return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
     }
 
     const { id } = await params
-
     await prisma.portfolio.delete({ where: { id } })
-
-    return NextResponse.json({ message: 'Portfolio item deleted successfully' })
+    return NextResponse.json({ message: 'Deleted successfully' })
   } catch (error: any) {
     console.error(error)
-    if (error.code === 'P2025') return NextResponse.json({ error: 'Portfolio item not found' }, { status: 404 })
-    return NextResponse.json({ error: 'Failed to delete portfolio item' }, { status: 500 })
+    if (error.code === 'P2025') return NextResponse.json({ error: 'Not found' }, { status: 404 })
+    return NextResponse.json({ error: 'Failed to delete' }, { status: 500 })
   }
 }
