@@ -285,6 +285,10 @@ model Employee {
   kraPin           String?
   shaNumber        String?
   nssfNumber       String?
+  secretCodeHash     String?
+  loginAttempts      Int       @default(0)
+  accountLockedUntil DateTime?
+  authLogs           EmployeeAuthLog[]
   managerId        String?
   manager          Employee?           @relation("Reports", fields: [managerId], references: [id])
   directReports    Employee[]          @relation("Reports")
@@ -1281,4 +1285,16 @@ model ClientNotification {
   isRead    Boolean  @default(false)
   link      String?
   createdAt DateTime @default(now())
+}
+
+model EmployeeAuthLog {
+  id         String    @id @default(cuid())
+  employeeId String?
+  employee   Employee? @relation(fields: [employeeId], references: [id])
+  nationalId String
+  status     String    // "success" | "failed"
+  reason     String?
+  ipAddress  String?
+  userAgent  String?
+  createdAt  DateTime  @default(now())
 }

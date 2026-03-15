@@ -11,7 +11,7 @@ import {
   TrendingUp, Target, FileText, Users2, RotateCcw, FolderOpen, Package, ListTodo,
   Video, Database, ShieldCheck,
   BookOpen, CreditCard, Receipt, Truck, Landmark, Percent, PiggyBank, ScrollText, ClipboardCheck,
-  LifeBuoy, Mail, IdCard
+  LifeBuoy, Mail, IdCard, KeyRound
 } from 'lucide-react'
 import { getInitials } from '@/lib/utils'
 
@@ -24,6 +24,8 @@ const hrNavItems = [
   { href: '/dashboard', icon: LayoutDashboard, label: 'Dashboard', exact: true,
     roles: ['SUPER_ADMIN', 'HR_MANAGER', 'DEPARTMENT_HEAD', 'FINANCE_OFFICER', 'EMPLOYEE'] },
   { href: '/dashboard/employees', icon: Users, label: 'Employees',
+    roles: ['SUPER_ADMIN', 'HR_MANAGER'] },
+  { href: '/dashboard/hr/auth-credentials', icon: KeyRound, label: 'Auth Credentials',
     roles: ['SUPER_ADMIN', 'HR_MANAGER'] },
   { href: '/dashboard/departments', icon: Building2, label: 'Departments',
     roles: ['SUPER_ADMIN'] },
