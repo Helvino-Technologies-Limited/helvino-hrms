@@ -6,7 +6,7 @@ import { signOut, useSession } from 'next-auth/react'
 import {
   LayoutDashboard, Package, FolderOpen, FileText, Receipt,
   RotateCcw, LifeBuoy, Files, UserCircle, LogOut, Menu, X,
-  Building2, Bell, ChevronRight, Globe
+  Building2, Bell, ChevronRight, Globe, HelpCircle
 } from 'lucide-react'
 
 const navItems = [
@@ -19,6 +19,7 @@ const navItems = [
   { href: '/client-portal/tickets', icon: LifeBuoy, label: 'Support Tickets' },
   { href: '/client-portal/documents', icon: Files, label: 'Documents' },
   { href: '/client-portal/profile', icon: UserCircle, label: 'My Profile' },
+  { href: '/client-portal/help', icon: HelpCircle, label: 'Help & Guide' },
 ]
 
 export default function ClientPortalLayout({ children }: { children: React.ReactNode }) {
