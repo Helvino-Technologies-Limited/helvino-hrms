@@ -30,6 +30,8 @@ export async function GET(req: NextRequest) {
     const today = new Date(now.getFullYear(), now.getMonth(), now.getDate())
     const tomorrow = new Date(today.getTime() + 24 * 60 * 60 * 1000)
     const in30Days = new Date(now.getTime() + 30 * 24 * 60 * 60 * 1000)
+    const monthStart = new Date(now.getFullYear(), now.getMonth(), 1)
+    const monthEnd = new Date(now.getFullYear(), now.getMonth() + 1, 1)
 
     // Build month buckets for last 6 months
     const monthBuckets: { label: string; start: Date; end: Date }[] = []
@@ -51,11 +53,15 @@ export async function GET(req: NextRequest) {
       totalQuotations,
       pendingQuotations,
       approvedQuotations,
+      totalTasks,
       revenueAgg,
       expiringSubscriptions,
       expiredSubscriptions,
       todayTasks,
       overdueTasks,
+      leadsThisMonth,
+      clientsThisMonth,
+      quotationsThisMonth,
       recentLeads,
       recentClients,
       leadsByStatusRaw,
@@ -71,6 +77,7 @@ export async function GET(req: NextRequest) {
       prisma.quotation.count({ where: quotationFilter }),
       prisma.quotation.count({ where: { ...quotationFilter, status: { in: ['DRAFT', 'SENT'] } } }),
       prisma.quotation.count({ where: { ...quotationFilter, status: 'APPROVED' } }),
+      prisma.salesTask.count({ where: taskFilter }),
       prisma.quotation.aggregate({
         where: { ...quotationFilter, status: 'APPROVED' },
         _sum: { totalAmount: true },
@@ -96,6 +103,15 @@ export async function GET(req: NextRequest) {
           deadline: { lt: today },
           status: { notIn: ['DONE', 'CANCELLED'] },
         },
+      }),
+      prisma.lead.count({
+        where: { ...leadFilter, createdAt: { gte: monthStart, lt: monthEnd } },
+      }),
+      prisma.client.count({
+        where: { ...clientFilter, createdAt: { gte: monthStart, lt: monthEnd } },
+      }),
+      prisma.quotation.count({
+        where: { ...quotationFilter, createdAt: { gte: monthStart, lt: monthEnd } },
       }),
       prisma.lead.findMany({
         take: 5,
@@ -145,6 +161,8 @@ export async function GET(req: NextRequest) {
       count: monthlyLeadCounts[i] as number,
     }))
 
+    const CLIENT_MONTHLY_TARGET = 5
+
     return NextResponse.json({
       totalLeads,
       newLeads,
@@ -155,11 +173,17 @@ export async function GET(req: NextRequest) {
       totalQuotations,
       pendingQuotations,
       approvedQuotations,
+      totalTasks,
       totalRevenue: revenueAgg._sum.totalAmount ?? 0,
       expiringSubscriptions,
       expiredSubscriptions,
       todayTasks,
       overdueTasks,
+      leadsThisMonth,
+      clientsThisMonth,
+      quotationsThisMonth,
+      clientMonthlyTarget: CLIENT_MONTHLY_TARGET,
+      clientsRemainingThisMonth: Math.max(0, CLIENT_MONTHLY_TARGET - clientsThisMonth),
       recentLeads,
       recentClients,
       leadsByStatus,

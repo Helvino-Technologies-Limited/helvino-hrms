@@ -277,12 +277,50 @@ export default function DashboardPage() {
       {/* ── SALES MANAGER / SALES AGENT VIEW ── */}
       {isSales && (
         <>
+          {/* Monthly Target Tracker */}
+          {(() => {
+            const target = salesData?.clientMonthlyTarget || 5
+            const achieved = salesData?.clientsThisMonth || 0
+            const remaining = salesData?.clientsRemainingThisMonth ?? Math.max(0, target - achieved)
+            const pct = Math.min(100, Math.round((achieved / target) * 100))
+            const done = achieved >= target
+            return (
+              <div className={`rounded-2xl p-6 shadow-sm border ${done ? 'bg-gradient-to-r from-green-600 to-emerald-600 text-white border-green-500' : 'bg-white border-slate-100'}`}>
+                <div className="flex items-center justify-between flex-wrap gap-3 mb-4">
+                  <div>
+                    <div className={`text-xs font-bold uppercase tracking-wider mb-1 ${done ? 'text-green-200' : 'text-slate-500'}`}>
+                      {new Date().toLocaleString('default', { month: 'long', year: 'numeric' })} · Client Acquisition Target
+                    </div>
+                    <div className={`text-2xl font-black ${done ? 'text-white' : 'text-slate-900'}`}>
+                      {done ? '🎯 Target Achieved!' : remaining === 1 ? '1 client away from your target!' : `${remaining} more clients needed`}
+                    </div>
+                    <div className={`text-sm mt-1 ${done ? 'text-green-200' : 'text-slate-500'}`}>
+                      {achieved} of {target} clients added this month
+                    </div>
+                  </div>
+                  <Link href="/dashboard/sales/clients"
+                    className={`px-5 py-2.5 rounded-xl font-semibold text-sm transition-colors flex items-center gap-2 ${done ? 'bg-white/20 hover:bg-white/30 text-white border border-white/30' : 'bg-emerald-600 hover:bg-emerald-700 text-white'}`}>
+                    <UserCheck className="w-4 h-4" /> Add Client
+                  </Link>
+                </div>
+                <div className={`w-full rounded-full h-3 ${done ? 'bg-green-500/40' : 'bg-slate-100'}`}>
+                  <div
+                    className={`h-3 rounded-full transition-all duration-500 ${done ? 'bg-white' : pct >= 80 ? 'bg-green-500' : pct >= 50 ? 'bg-blue-500' : 'bg-amber-500'}`}
+                    style={{ width: `${pct}%` }}
+                  />
+                </div>
+                <div className={`text-xs mt-1.5 font-semibold ${done ? 'text-green-200' : 'text-slate-400'}`}>{pct}% of monthly target</div>
+              </div>
+            )
+          })()}
+
+          {/* KPI Cards */}
           <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
             {[
-              { label: 'My Leads', value: salesData?.stats?.totalLeads || 0, sub: `${salesData?.stats?.newLeadsThisMonth || 0} this month`, icon: Target, color: 'from-blue-500 to-blue-600', href: '/dashboard/sales/leads' },
-              { label: 'My Quotations', value: salesData?.stats?.totalQuotations || 0, sub: `${salesData?.stats?.pendingQuotations || 0} pending`, icon: FileText, color: 'from-purple-500 to-purple-600', href: '/dashboard/sales/quotations' },
-              { label: 'My Clients', value: salesData?.stats?.totalClients || 0, sub: `${salesData?.stats?.activeClients || 0} active`, icon: UserCheck, color: 'from-emerald-500 to-emerald-600', href: '/dashboard/sales/clients' },
-              { label: 'My Tasks', value: salesData?.stats?.totalTasks || 0, sub: `${salesData?.stats?.overdueTasks || 0} overdue`, icon: ClipboardList, color: 'from-amber-500 to-orange-500', href: '/dashboard/sales/tasks' },
+              { label: 'My Leads', value: salesData?.totalLeads || 0, sub: `${salesData?.leadsThisMonth || 0} added this month`, icon: Target, color: 'from-blue-500 to-blue-600', href: '/dashboard/sales/leads' },
+              { label: 'My Quotations', value: salesData?.totalQuotations || 0, sub: `${salesData?.quotationsThisMonth || 0} this month`, icon: FileText, color: 'from-purple-500 to-purple-600', href: '/dashboard/sales/quotations' },
+              { label: 'My Clients', value: salesData?.totalClients || 0, sub: `${salesData?.clientsThisMonth || 0} added this month`, icon: UserCheck, color: 'from-emerald-500 to-emerald-600', href: '/dashboard/sales/clients' },
+              { label: 'My Tasks', value: salesData?.totalTasks || 0, sub: `${salesData?.overdueTasks || 0} overdue`, icon: ClipboardList, color: 'from-amber-500 to-orange-500', href: '/dashboard/sales/tasks' },
             ].map(kpi => (
               <Link key={kpi.label} href={kpi.href}
                 className="bg-white rounded-2xl p-5 shadow-sm border border-slate-100 hover:shadow-md hover:border-blue-200 transition-all group">
@@ -321,17 +359,17 @@ export default function DashboardPage() {
             </div>
           </div>
 
-          {/* Revenue chart */}
-          {salesData?.revenueChart?.length > 0 && (
+          {/* Monthly leads activity chart */}
+          {(salesData?.monthlyLeads || []).length > 0 && (
             <div className="bg-white rounded-2xl p-6 shadow-sm border border-slate-100">
-              <h3 className="font-bold text-slate-900 mb-5">Revenue — Last 6 Months</h3>
-              <ResponsiveContainer width="100%" height={200}>
-                <BarChart data={salesData.revenueChart} barSize={32}>
+              <h3 className="font-bold text-slate-900 mb-5">Lead Activity — Last 6 Months</h3>
+              <ResponsiveContainer width="100%" height={180}>
+                <BarChart data={salesData.monthlyLeads} barSize={32}>
                   <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" />
                   <XAxis dataKey="month" tick={{ fontSize: 11 }} />
-                  <YAxis tick={{ fontSize: 11 }} tickFormatter={v => `${(v / 1000).toFixed(0)}K`} />
-                  <Tooltip contentStyle={{ borderRadius: '12px', border: '1px solid #e2e8f0' }} formatter={(v: any) => [formatCurrency(v), 'Revenue']} />
-                  <Bar dataKey="revenue" fill="#3b82f6" radius={[6, 6, 0, 0]} />
+                  <YAxis tick={{ fontSize: 11 }} allowDecimals={false} />
+                  <Tooltip contentStyle={{ borderRadius: '12px', border: '1px solid #e2e8f0' }} />
+                  <Bar dataKey="count" fill="#3b82f6" radius={[6, 6, 0, 0]} name="Leads" />
                 </BarChart>
               </ResponsiveContainer>
             </div>
@@ -345,7 +383,7 @@ export default function DashboardPage() {
                 <Link href="/dashboard/sales/leads" className="text-blue-600 text-xs font-semibold hover:underline">View all →</Link>
               </div>
               {(salesData?.recentLeads || []).length === 0 ? (
-                <div className="text-center py-8 text-slate-400"><Target className="w-10 h-10 mx-auto mb-2 text-slate-200" /><p>No leads yet</p></div>
+                <div className="text-center py-8 text-slate-400"><Target className="w-10 h-10 mx-auto mb-2 text-slate-200" /><p>No leads yet. <Link href="/dashboard/sales/leads" className="text-blue-500 font-semibold">Add your first lead →</Link></p></div>
               ) : (
                 <div className="space-y-3">
                   {(salesData.recentLeads || []).slice(0, 5).map((lead: any) => (
@@ -356,10 +394,11 @@ export default function DashboardPage() {
                         <div className="text-slate-500 text-xs">{lead.company || lead.email}</div>
                       </div>
                       <span className={`text-xs font-bold px-2 py-1 rounded-full ${
-                        lead.stage === 'WON' ? 'bg-green-100 text-green-700' :
-                        lead.stage === 'LOST' ? 'bg-red-100 text-red-700' :
-                        'bg-blue-100 text-blue-700'
-                      }`}>{lead.stage}</span>
+                        lead.status === 'WON' ? 'bg-green-100 text-green-700' :
+                        lead.status === 'LOST' ? 'bg-red-100 text-red-700' :
+                        lead.status === 'NEW' ? 'bg-blue-100 text-blue-700' :
+                        'bg-slate-100 text-slate-700'
+                      }`}>{lead.status}</span>
                     </Link>
                   ))}
                 </div>
