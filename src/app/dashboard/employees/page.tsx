@@ -1228,6 +1228,8 @@ function EmployeeFormModal({ employee, departments, employees, onClose, onSave }
                   form={form} set={set} />
                 <FormField label="System Role" name="role" opts={[
                   {value:'EMPLOYEE',label:'Employee (Self-Service)'},
+                  {value:'SALES_AGENT',label:'Sales Agent'},
+                  {value:'SALES_MANAGER',label:'Sales Manager'},
                   {value:'DEPARTMENT_HEAD',label:'Department Head'},
                   {value:'HR_MANAGER',label:'HR Manager'},
                   {value:'FINANCE_OFFICER',label:'Finance Officer'},
