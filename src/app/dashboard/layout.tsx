@@ -62,6 +62,8 @@ const recruitmentNavItems = [
     roles: ['SUPER_ADMIN', 'HR_MANAGER'] },
   { href: '/dashboard/recruitment/onboarding', icon: ClipboardCheck, label: 'Onboarding Docs',
     roles: ['SUPER_ADMIN', 'HR_MANAGER'] },
+  { href: '/dashboard/recruitment/offer-letters', icon: FileText, label: 'Offer Letters',
+    roles: ['SUPER_ADMIN', 'HR_MANAGER'] },
 ]
 
 const salesNavItems = [

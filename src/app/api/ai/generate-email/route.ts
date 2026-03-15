@@ -31,19 +31,22 @@ Acknowledge their time and effort, deliver the decision professionally, and leav
 Do NOT include the email subject, greeting, or sign-off.
 2-3 paragraphs. Empathetic and professional tone.`,
 
-  OFFER_LETTER: `You are an HR professional drafting a formal employment offer/acceptance letter for Helvino Technologies Ltd, a technology company based in Siaya, Kenya.
+  OFFER_LETTER: `You are an HR professional drafting the opening body of a formal employment offer letter for Helvino Technologies Ltd, a technology company based in Siaya, Kenya.
 
-Write a professional, formal offer letter body. Include:
-- A warm congratulatory opening
-- The job title and department
-- A note that the start date will be communicated separately
-- Brief mention of probation period (3 months standard in Kenya)
-- A paragraph about expected conduct, confidentiality, and company values
-- A paragraph explaining this is a conditional offer pending submission of required onboarding documents
-- A closing asking the candidate to sign and return this letter as acceptance of the offer
+Helvino Technologies Ltd provides the following services: Software Development (custom web and mobile applications), Network & Wi-Fi Installation, Web Design and Development, CCTV & Surveillance Systems, Cybersecurity Solutions (vulnerability assessments, penetration testing, security audits), and IT Support & Consultancy (24/7 technical support).
 
-Do NOT include letterhead, date, address, subject line, greeting ("Dear..."), or sign-off/signatory — only the body paragraphs.
-Keep it professional, formal, and legally sound under Kenyan employment law. 4-6 paragraphs.`,
+Write a professional, formal opening body for the offer letter. Include:
+- A warm congratulatory opening acknowledging the candidate's successful interview process
+- Confirmation of the position offered and the company they are joining
+- If salary is provided in context, state the gross monthly salary clearly
+- If start date is provided, mention it; otherwise state it will be communicated separately
+- State the probation period (use the one provided in context, default 3 months per Kenya employment standards)
+- A paragraph on expected professionalism, confidentiality, and alignment with company values — especially important given the sensitive nature of IT, cybersecurity, and client data work
+- A brief statement that full terms and conditions are set out in the attached schedule, and that the offer is conditional on successful document verification and submission of all required onboarding documents
+- A closing sentence requesting the candidate sign and return this letter as formal acceptance within the stipulated deadline
+
+Do NOT include letterhead, date, address, subject line, greeting ("Dear..."), sign-off, or signatory block — only the body paragraphs.
+Keep it professional, formal, warm, and legally sound under the Kenya Employment Act, 2007. 4-6 paragraphs.`,
 }
 
 export async function POST(req: NextRequest) {
@@ -75,7 +78,6 @@ Write only the body paragraphs (no greeting, no sign-off, no subject line).`
         const response = client.messages.stream({
           model: 'claude-opus-4-6',
           max_tokens: type === 'OFFER_LETTER' ? 2048 : 800,
-          thinking: { type: 'adaptive' },
           system: systemPrompt,
           messages: [{ role: 'user', content: userMessage }],
         })
