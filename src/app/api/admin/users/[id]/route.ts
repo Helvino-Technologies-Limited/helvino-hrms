@@ -40,10 +40,21 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
       auditChanges.email = body.email
     }
 
-    if (body.password) {
-      updateData.password = await bcrypt.hash(body.password, 10)
-      updateData.rawPassword = body.password   // store plain text for admin viewing
-      auditChanges.passwordReset = true
+    let secretCode: string | null = null
+    if (body.regenerateCode) {
+      // Regenerate secret code for the linked employee
+      const targetUser = await prisma.user.findUnique({ where: { id }, select: { employeeId: true } })
+      if (targetUser?.employeeId) {
+        const { generateSecretCode } = await import('@/lib/secret-code')
+        const plainCode = generateSecretCode()
+        const hash = await bcrypt.hash(plainCode, 12)
+        await prisma.employee.update({
+          where: { id: targetUser.employeeId },
+          data: { secretCodeHash: hash, loginAttempts: 0, accountLockedUntil: null },
+        })
+        secretCode = plainCode
+        auditChanges.secretCodeReset = true
+      }
     }
 
     const user = await prisma.user.update({
@@ -70,7 +81,7 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
       },
     })
 
-    return NextResponse.json(user)
+    return NextResponse.json({ ...user, secretCode })
   } catch (error: any) {
     if (error.code === 'P2002') return NextResponse.json({ error: 'Email already in use' }, { status: 400 })
     console.error('PATCH /api/admin/users/[id] error:', error)

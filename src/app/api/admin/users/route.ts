@@ -55,39 +55,77 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
     }
 
-    const { name, email, password, role } = await req.json()
-    if (!email || !password) {
-      return NextResponse.json({ error: 'Email and password are required' }, { status: 400 })
+    const { employeeId, role } = await req.json()
+    if (!employeeId || !role) {
+      return NextResponse.json({ error: 'Employee and role are required' }, { status: 400 })
+    }
+    if (role === 'SUPER_ADMIN' || role === 'CLIENT') {
+      return NextResponse.json({ error: 'Invalid role for identity-based account' }, { status: 400 })
     }
 
-    const hashed = await bcrypt.hash(password, 10)
-    const user = await prisma.user.create({
-      data: {
-        name: name || null,
-        email,
-        password: hashed,
-        rawPassword: password,
-        role: role || 'EMPLOYEE',
-        isActive: true,
-      },
-      select: {
-        id: true, email: true, name: true, role: true, isActive: true, createdAt: true,
-      },
+    const employee = await prisma.employee.findUnique({
+      where: { id: employeeId },
+      include: { user: true },
     })
+    if (!employee) return NextResponse.json({ error: 'Employee not found' }, { status: 404 })
+    if (!employee.nationalId || !employee.dateOfBirth) {
+      return NextResponse.json(
+        { error: 'Employee must have National ID and Date of Birth set before creating an account.' },
+        { status: 400 }
+      )
+    }
+
+    // Generate secret code and hash it
+    const { generateSecretCode } = await import('@/lib/secret-code')
+    const plainCode = generateSecretCode()
+    const secretHash = await bcrypt.hash(plainCode, 12)
+
+    // Store secret code on the employee
+    await prisma.employee.update({
+      where: { id: employeeId },
+      data: { secretCodeHash: secretHash, loginAttempts: 0, accountLockedUntil: null },
+    })
+
+    // Create or update User linked to this employee
+    const email = employee.email || `${employee.employeeCode}@helvino.internal`
+    const tempPassword = await bcrypt.hash(Math.random().toString(36) + Date.now(), 10)
+    const fullName = `${employee.firstName} ${employee.lastName}`
+
+    let user
+    if (employee.user) {
+      user = await prisma.user.update({
+        where: { id: employee.user.id },
+        data: { role, isActive: true, name: fullName, rawPassword: null },
+        select: { id: true, email: true, name: true, role: true, isActive: true, createdAt: true },
+      })
+    } else {
+      user = await prisma.user.create({
+        data: {
+          name: fullName,
+          email,
+          password: tempPassword,
+          rawPassword: null,
+          role,
+          isActive: true,
+          employeeId,
+        },
+        select: { id: true, email: true, name: true, role: true, isActive: true, createdAt: true },
+      })
+    }
 
     await prisma.auditLog.create({
       data: {
         action: 'CREATE_USER',
         entity: 'User',
         entityId: user.id,
-        newValues: { email, name, role: role || 'EMPLOYEE' },
+        newValues: { employeeId, role, name: fullName },
       },
     })
 
-    return NextResponse.json(user, { status: 201 })
+    return NextResponse.json({ ...user, secretCode: plainCode }, { status: 201 })
   } catch (error: any) {
     if (error.code === 'P2002') {
-      return NextResponse.json({ error: 'Email already exists' }, { status: 400 })
+      return NextResponse.json({ error: 'A user account already exists for this email' }, { status: 400 })
     }
     console.error('POST /api/admin/users error:', error)
     return NextResponse.json({ error: 'Failed to create user' }, { status: 500 })

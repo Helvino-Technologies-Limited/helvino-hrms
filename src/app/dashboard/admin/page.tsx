@@ -4,8 +4,8 @@ import { useSession } from 'next-auth/react'
 import { useRouter } from 'next/navigation'
 import {
   Users, ShieldCheck, Plus, Eye, EyeOff, Edit2, Power, PowerOff,
-  Key, Search, Filter, RefreshCw, Activity, ChevronLeft, ChevronRight,
-  CheckCircle, XCircle, Clock, User, AlertTriangle,
+  Key, Search, RefreshCw, Activity, ChevronLeft, ChevronRight,
+  CheckCircle, XCircle, Clock, User, AlertTriangle, KeyRound, Copy, IdCard,
 } from 'lucide-react'
 import { formatDate } from '@/lib/utils'
 import toast from 'react-hot-toast'
@@ -32,6 +32,7 @@ const ACTION_COLORS: Record<string, string> = {
 }
 
 const ROLES = ['SUPER_ADMIN','HR_MANAGER','DEPARTMENT_HEAD','FINANCE_OFFICER','SALES_MANAGER','SALES_AGENT','EMPLOYEE']
+const IDENTITY_ROLES = ['HR_MANAGER','DEPARTMENT_HEAD','FINANCE_OFFICER','SALES_MANAGER','SALES_AGENT','EMPLOYEE']
 
 export default function AdminPage() {
   const { data: session } = useSession()
@@ -83,6 +84,7 @@ function UsersPanel() {
   const [showCreate, setShowCreate] = useState(false)
   const [editing, setEditing] = useState<any>(null)
   const [viewPwdId, setViewPwdId] = useState<string|null>(null)
+  const [regenResult, setRegenResult] = useState<Record<string, string>>({})
 
   const load = useCallback(async () => {
     setLoading(true)
@@ -156,7 +158,7 @@ function UsersPanel() {
             <table className="w-full">
               <thead className="bg-slate-50 border-b border-slate-200">
                 <tr>
-                  {['User','Company Email','Role','Linked Employee','Password','Status','Actions'].map(h => (
+                  {['User','Company Email','Role','Linked Employee','Auth','Status','Actions'].map(h => (
                     <th key={h} className="text-left px-5 py-3.5 text-xs font-semibold text-slate-500 uppercase tracking-wider whitespace-nowrap">{h}</th>
                   ))}
                 </tr>
@@ -196,18 +198,29 @@ function UsersPanel() {
                       ) : <span className="text-slate-400 text-xs italic">Standalone account</span>}
                     </td>
                     <td className="px-5 py-4">
-                      {u.rawPassword ? (
-                        <div className="flex items-center gap-2">
-                          <span className="font-mono text-sm text-slate-700 bg-slate-100 px-2 py-1 rounded-lg">
-                            {viewPwdId === u.id ? u.rawPassword : '••••••••'}
+                      {u.role === 'SUPER_ADMIN' ? (
+                        <span className="inline-flex items-center gap-1 text-xs bg-amber-100 text-amber-700 px-2 py-1 rounded-full font-medium">
+                          <Key className="w-3 h-3" /> Email/Password
+                        </span>
+                      ) : u.employee ? (
+                        <div className="space-y-1">
+                          <span className="inline-flex items-center gap-1 text-xs bg-blue-100 text-blue-700 px-2 py-1 rounded-full font-medium">
+                            <IdCard className="w-3 h-3" /> Identity
                           </span>
-                          <button onClick={() => setViewPwdId(viewPwdId === u.id ? null : u.id)}
-                            className="p-1 text-slate-400 hover:text-slate-600 rounded">
-                            {viewPwdId === u.id ? <EyeOff className="w-3.5 h-3.5" /> : <Eye className="w-3.5 h-3.5" />}
-                          </button>
+                          {regenResult[u.id] && (
+                            <div className="flex items-center gap-1 bg-green-50 border border-green-200 rounded-lg px-2 py-1">
+                              <code className={`text-xs font-mono text-green-800 ${viewPwdId === u.id ? '' : 'blur-sm'}`}>
+                                {regenResult[u.id]}
+                              </code>
+                              <button onClick={() => setViewPwdId(viewPwdId === u.id ? null : u.id)}
+                                className="text-green-600"><Eye className="w-3 h-3" /></button>
+                              <button onClick={() => navigator.clipboard.writeText(regenResult[u.id])}
+                                className="text-green-600"><Copy className="w-3 h-3" /></button>
+                            </div>
+                          )}
                         </div>
                       ) : (
-                        <span className="text-xs text-slate-400 italic">User-defined</span>
+                        <span className="text-xs text-slate-400 italic">—</span>
                       )}
                     </td>
                     <td className="px-5 py-4">
@@ -218,10 +231,30 @@ function UsersPanel() {
                     </td>
                     <td className="px-5 py-4">
                       <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
-                        <button onClick={() => { setEditing(u); setShowCreate(true) }} title="Edit"
+                        <button onClick={() => { setEditing(u); setShowCreate(true) }} title="Edit role"
                           className="p-1.5 text-slate-400 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-colors">
                           <Edit2 className="w-4 h-4" />
                         </button>
+                        {u.role !== 'SUPER_ADMIN' && u.employee && (
+                          <button
+                            onClick={async () => {
+                              const res = await fetch(`/api/admin/users/${u.id}`, {
+                                method: 'PATCH',
+                                headers: { 'Content-Type': 'application/json' },
+                                body: JSON.stringify({ regenerateCode: true }),
+                              })
+                              const data = await res.json()
+                              if (data.secretCode) {
+                                setRegenResult(prev => ({ ...prev, [u.id]: data.secretCode }))
+                                setViewPwdId(u.id)
+                                toast.success('New secret code generated')
+                              }
+                            }}
+                            title="Regenerate secret code"
+                            className="p-1.5 text-slate-400 hover:text-purple-600 hover:bg-purple-50 rounded-lg transition-colors">
+                            <KeyRound className="w-4 h-4" />
+                          </button>
+                        )}
                         <button onClick={() => toggleActive(u)} title={u.isActive ? 'Deactivate' : 'Activate'}
                           className={`p-1.5 rounded-lg transition-colors ${u.isActive ? 'text-slate-400 hover:text-red-600 hover:bg-red-50' : 'text-slate-400 hover:text-green-600 hover:bg-green-50'}`}>
                           {u.isActive ? <PowerOff className="w-4 h-4" /> : <Power className="w-4 h-4" />}
@@ -265,33 +298,53 @@ function UsersPanel() {
 
 /* ─── USER MODAL ───────────────────────────────────────────────── */
 function UserModal({ user, onClose, onSave }: any) {
-  const [form, setForm] = useState({
-    name: user?.name || '',
-    email: user?.email || '',
-    password: '',
-    role: user?.role || 'EMPLOYEE',
-  })
-  const [showPwd, setShowPwd] = useState(false)
+  const isEdit = !!user
+  const [role, setRole] = useState(user?.role || 'EMPLOYEE')
+  const [employeeId, setEmployeeId] = useState(user?.employeeId || '')
+  const [employees, setEmployees] = useState<any[]>([])
+  const [empSearch, setEmpSearch] = useState('')
   const [loading, setLoading] = useState(false)
+  const [empLoading, setEmpLoading] = useState(false)
   const [error, setError] = useState('')
+  const [secretCode, setSecretCode] = useState<string | null>(null)
+  const [showCode, setShowCode] = useState(false)
+  const [done, setDone] = useState(false)
 
-  const set = (k: string, v: string) => setForm(p => ({ ...p, [k]: v }))
+  useEffect(() => {
+    if (!isEdit) {
+      setEmpLoading(true)
+      fetch('/api/admin/employees-without-account')
+        .then(r => r.json())
+        .then(data => setEmployees(Array.isArray(data) ? data : []))
+        .finally(() => setEmpLoading(false))
+    }
+  }, [isEdit])
+
+  const selectedEmployee = employees.find(e => e.id === employeeId)
+  const filteredEmps = employees.filter(e =>
+    `${e.firstName} ${e.lastName} ${e.employeeCode} ${e.nationalId || ''}`
+      .toLowerCase().includes(empSearch.toLowerCase())
+  )
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault()
     setLoading(true)
     setError('')
     try {
-      const payload: any = { name: form.name, email: form.email, role: form.role }
-      if (form.password) payload.password = form.password
-      const res = await fetch(user ? `/api/admin/users/${user.id}` : '/api/admin/users', {
-        method: user ? 'PATCH' : 'POST',
+      const res = await fetch(isEdit ? `/api/admin/users/${user.id}` : '/api/admin/users', {
+        method: isEdit ? 'PATCH' : 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(payload),
+        body: JSON.stringify(isEdit ? { role } : { employeeId, role }),
       })
       const data = await res.json()
       if (!res.ok) throw new Error(data.error)
-      onSave()
+      if (data.secretCode) {
+        setSecretCode(data.secretCode)
+        setShowCode(true)
+        setDone(true)
+      } else {
+        onSave()
+      }
     } catch (err: any) {
       setError(err.message)
     } finally {
@@ -299,63 +352,173 @@ function UserModal({ user, onClose, onSave }: any) {
     }
   }
 
+  if (done && secretCode) {
+    return (
+      <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4">
+        <div className="bg-white rounded-3xl w-full max-w-md shadow-2xl p-6 space-y-5">
+          <div className="text-center">
+            <div className="w-14 h-14 bg-green-100 rounded-2xl flex items-center justify-center mx-auto mb-3">
+              <CheckCircle className="w-7 h-7 text-green-600" />
+            </div>
+            <h2 className="text-lg font-bold text-slate-900">Account Created</h2>
+            <p className="text-slate-500 text-sm mt-1">
+              Share the secret code below with the employee securely.
+            </p>
+          </div>
+
+          <div className="bg-blue-50 border border-blue-200 rounded-2xl p-4 space-y-3">
+            <p className="text-xs font-semibold text-blue-700 uppercase tracking-wider">Login Credentials</p>
+            <div className="space-y-2 text-sm">
+              <div className="flex justify-between">
+                <span className="text-slate-500">National ID</span>
+                <span className="font-mono font-medium text-slate-800">
+                  {selectedEmployee?.nationalId || employees.find(e => e.id === employeeId)?.nationalId || '—'}
+                </span>
+              </div>
+              <div className="flex justify-between">
+                <span className="text-slate-500">Date of Birth</span>
+                <span className="font-mono font-medium text-slate-800">
+                  {(() => {
+                    const emp = selectedEmployee || employees.find(e => e.id === employeeId)
+                    return emp?.dateOfBirth ? new Date(emp.dateOfBirth).toLocaleDateString() : '—'
+                  })()}
+                </span>
+              </div>
+              <div className="flex items-center justify-between">
+                <span className="text-slate-500">Secret Code</span>
+                <div className="flex items-center gap-2">
+                  <code className={`font-mono font-bold text-blue-800 text-base tracking-widest ${showCode ? '' : 'blur-sm'}`}>
+                    {secretCode}
+                  </code>
+                  <button onClick={() => setShowCode(p => !p)} className="text-blue-500">
+                    {showCode ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                  </button>
+                  <button onClick={() => navigator.clipboard.writeText(secretCode)} className="text-blue-500">
+                    <Copy className="w-4 h-4" />
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <p className="text-xs text-amber-700 bg-amber-50 border border-amber-200 rounded-xl p-3">
+            This secret code will not be shown again. Copy and deliver it securely to the employee.
+          </p>
+
+          <button onClick={onSave}
+            className="w-full bg-slate-900 text-white py-3 rounded-xl font-bold text-sm">
+            Done
+          </button>
+        </div>
+      </div>
+    )
+  }
+
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4">
       <div className="bg-white rounded-3xl w-full max-w-md shadow-2xl">
         <div className="flex items-center justify-between px-6 py-5 border-b border-slate-100">
           <div>
-            <h2 className="font-bold text-slate-900 text-lg">{user ? 'Edit User' : 'Create User Account'}</h2>
-            <p className="text-slate-500 text-xs mt-0.5">{user ? `Editing ${user.email}` : 'Create a standalone system login'}</p>
+            <h2 className="font-bold text-slate-900 text-lg flex items-center gap-2">
+              <IdCard className="w-5 h-5 text-blue-600" />
+              {isEdit ? 'Edit User Account' : 'Create User Account'}
+            </h2>
+            <p className="text-slate-500 text-xs mt-0.5">
+              {isEdit ? `Editing ${user.name || user.email}` : 'Select an employee and assign a role'}
+            </p>
           </div>
           <button onClick={onClose} className="text-slate-400 hover:text-slate-600 w-8 h-8 flex items-center justify-center rounded-lg hover:bg-slate-100">✕</button>
         </div>
         <form onSubmit={handleSubmit} className="p-6 space-y-4">
           {error && <div className="bg-red-50 border border-red-200 text-red-700 rounded-xl p-3 text-sm">{error}</div>}
 
-          <div>
-            <label className="block text-xs font-semibold text-slate-500 mb-1.5">Full Name</label>
-            <input value={form.name} onChange={e => set('name', e.target.value)}
-              className="w-full px-3 py-2.5 text-sm border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500" />
-          </div>
-          <div>
-            <label className="block text-xs font-semibold text-slate-500 mb-1.5">
-              Company Email (Login) <span className="text-red-500">*</span>
-            </label>
-            <input type="email" value={form.email} onChange={e => set('email', e.target.value)} required
-              placeholder="name@helvinocrm.org"
-              className="w-full px-3 py-2.5 text-sm border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 font-mono" />
-          </div>
-          <div>
-            <label className="block text-xs font-semibold text-slate-500 mb-1.5">
-              {user ? 'New Password (leave blank to keep current)' : 'Password'} {!user && <span className="text-red-500">*</span>}
-            </label>
-            <div className="relative">
-              <input type={showPwd ? 'text' : 'password'} value={form.password}
-                onChange={e => set('password', e.target.value)} required={!user}
-                placeholder={user ? 'Enter new password to change...' : 'Set login password'}
-                className="w-full px-3 py-2.5 pr-10 text-sm border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 font-mono" />
-              <button type="button" onClick={() => setShowPwd(p => !p)}
-                className="absolute right-3 top-2.5 text-slate-400 hover:text-slate-600">
-                {showPwd ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
-              </button>
+          {!isEdit && (
+            <div>
+              <label className="block text-xs font-semibold text-slate-500 mb-1.5">
+                Select Employee <span className="text-red-500">*</span>
+              </label>
+              {empLoading ? (
+                <p className="text-sm text-slate-400">Loading employees...</p>
+              ) : (
+                <>
+                  <input
+                    type="text"
+                    value={empSearch}
+                    onChange={e => setEmpSearch(e.target.value)}
+                    placeholder="Search by name, code, or National ID..."
+                    className="w-full px-3 py-2 text-sm border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 mb-2"
+                  />
+                  <div className="border border-slate-200 rounded-xl max-h-44 overflow-y-auto divide-y divide-slate-50">
+                    {filteredEmps.length === 0 ? (
+                      <p className="text-sm text-slate-400 p-3 text-center">
+                        {employees.length === 0 ? 'All employees already have accounts' : 'No match found'}
+                      </p>
+                    ) : filteredEmps.map(emp => (
+                      <button
+                        key={emp.id}
+                        type="button"
+                        onClick={() => setEmployeeId(emp.id)}
+                        className={`w-full text-left px-3 py-2.5 hover:bg-blue-50 transition-colors flex items-start justify-between gap-2 ${employeeId === emp.id ? 'bg-blue-50 border-l-2 border-blue-600' : ''}`}
+                      >
+                        <div>
+                          <div className="text-sm font-medium text-slate-800">{emp.firstName} {emp.lastName}</div>
+                          <div className="text-xs text-slate-400">{emp.employeeCode} · {emp.jobTitle}</div>
+                        </div>
+                        <div className="text-right text-xs text-slate-400 flex-shrink-0">
+                          {emp.nationalId ? (
+                            <span className="text-green-600 font-medium">✓ ID set</span>
+                          ) : (
+                            <span className="text-amber-600">No ID</span>
+                          )}
+                        </div>
+                      </button>
+                    ))}
+                  </div>
+                </>
+              )}
+              {selectedEmployee && (
+                <div className="mt-2 p-3 bg-slate-50 rounded-xl text-xs space-y-1 text-slate-600">
+                  <div className="flex justify-between">
+                    <span>National ID</span>
+                    <span className="font-mono">{selectedEmployee.nationalId || <span className="text-red-500">Not set — required</span>}</span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span>Date of Birth</span>
+                    <span className="font-mono">{selectedEmployee.dateOfBirth ? new Date(selectedEmployee.dateOfBirth).toLocaleDateString() : <span className="text-red-500">Not set — required</span>}</span>
+                  </div>
+                </div>
+              )}
             </div>
-          </div>
+          )}
+
           <div>
-            <label className="block text-xs font-semibold text-slate-500 mb-1.5">System Role</label>
-            <select value={form.role} onChange={e => set('role', e.target.value)}
+            <label className="block text-xs font-semibold text-slate-500 mb-1.5">System Role <span className="text-red-500">*</span></label>
+            <select value={role} onChange={e => setRole(e.target.value)} required
               className="w-full px-3 py-2.5 text-sm border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white">
-              {ROLES.map(r => <option key={r} value={r}>{r.replace(/_/g, ' ')}</option>)}
+              {IDENTITY_ROLES.map(r => <option key={r} value={r}>{r.replace(/_/g, ' ')}</option>)}
             </select>
           </div>
+
+          {!isEdit && (
+            <div className="bg-blue-50 border border-blue-200 rounded-xl p-3 text-xs text-blue-700 flex items-start gap-2">
+              <KeyRound className="w-4 h-4 flex-shrink-0 mt-0.5" />
+              <span>
+                A unique secret code (<strong>HVN-XXXXX</strong>) will be automatically generated and displayed after creation.
+                The employee will log in using their <strong>National ID</strong>, <strong>Date of Birth</strong>, and this code.
+              </span>
+            </div>
+          )}
 
           <div className="flex gap-3 pt-2">
             <button type="button" onClick={onClose}
               className="px-4 py-2.5 border border-slate-200 text-slate-700 rounded-xl font-semibold text-sm hover:bg-slate-50">
               Cancel
             </button>
-            <button type="submit" disabled={loading}
-              className="flex-1 bg-blue-600 hover:bg-blue-700 text-white py-2.5 rounded-xl font-bold text-sm flex items-center justify-center gap-2">
-              {loading ? <><div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />Saving...</> : user ? '💾 Save Changes' : '✅ Create User'}
+            <button type="submit" disabled={loading || (!isEdit && !employeeId)}
+              className="flex-1 bg-blue-600 hover:bg-blue-700 disabled:bg-blue-300 text-white py-2.5 rounded-xl font-bold text-sm flex items-center justify-center gap-2">
+              {loading
+                ? <><div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />Saving...</>
+                : isEdit ? 'Save Changes' : 'Create Account & Generate Code'}
             </button>
           </div>
         </form>
