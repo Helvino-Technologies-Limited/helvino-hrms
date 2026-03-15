@@ -55,109 +55,114 @@ export const authOptions: NextAuthOptions = {
           throw new Error('All three identity fields are required')
         }
 
-        const ipAddress = (req as any)?.headers?.['x-forwarded-for'] ||
-                          (req as any)?.headers?.['x-real-ip'] || 'unknown'
-        const userAgent = (req as any)?.headers?.['user-agent'] || ''
+        try {
+          const ipAddress = (req as any)?.headers?.['x-forwarded-for'] ||
+                            (req as any)?.headers?.['x-real-ip'] || 'unknown'
+          const userAgent = (req as any)?.headers?.['user-agent'] || ''
 
-        // Find employee by National ID
-        const employee = await prisma.employee.findFirst({
-          where: { nationalId: credentials.nationalId },
-          include: {
-            user: { include: { clientRecord: true } },
-            department: true,
-          },
-        })
-
-        // Non-fatal: log auth attempt but never let logging errors cause a 500
-        async function logAttempt(status: string, reason?: string) {
-          try {
-            await prisma.employeeAuthLog.create({
-              data: {
-                employeeId: employee?.id,
-                nationalId: credentials!.nationalId,
-                status,
-                reason,
-                ipAddress: String(ipAddress),
-                userAgent: String(userAgent),
-              },
-            })
-          } catch {
-            // Logging failure should not block authentication
-          }
-        }
-
-        if (!employee) {
-          await logAttempt('failed', 'National ID not found')
-          throw new Error('Invalid credentials. Please check your details.')
-        }
-
-        // Check lockout
-        if (employee.accountLockedUntil && employee.accountLockedUntil > new Date()) {
-          const unlockAt = employee.accountLockedUntil.toLocaleTimeString()
-          await logAttempt('failed', 'Account locked')
-          throw new Error(`Account is temporarily locked. Try again after ${unlockAt}.`)
-        }
-
-        // Verify Date of Birth (compare date only, ignore time)
-        if (!employee.dateOfBirth) {
-          await logAttempt('failed', 'DOB not configured')
-          throw new Error('Identity credentials not fully configured. Contact HR.')
-        }
-        const empDOB = employee.dateOfBirth.toISOString().split('T')[0]
-        const inputDOB = new Date(credentials.dateOfBirth).toISOString().split('T')[0]
-        if (empDOB !== inputDOB) {
-          await incrementFailures(employee.id, logAttempt)
-          throw new Error('Invalid credentials. Please check your details.')
-        }
-
-        // Verify secret code
-        if (!employee.secretCodeHash) {
-          await logAttempt('failed', 'Secret code not set')
-          throw new Error('Identity credentials not configured. Contact HR.')
-        }
-        const codeValid = await bcrypt.compare(credentials.secretCode, employee.secretCodeHash)
-        if (!codeValid) {
-          await incrementFailures(employee.id, logAttempt)
-          throw new Error('Invalid credentials. Please check your details.')
-        }
-
-        // Success — reset failures
-        await prisma.employee.update({
-          where: { id: employee.id },
-          data: { loginAttempts: 0, accountLockedUntil: null },
-        })
-        await logAttempt('success')
-
-        // Get or create linked User record
-        let user = employee.user
-        if (!user) {
-          const email = employee.email || `${employee.employeeCode}@helvino.internal`
-          const tempPassword = await bcrypt.hash(Math.random().toString(36), 10)
-          // Use upsert to handle cases where a User row already exists for this employee
-          user = await prisma.user.upsert({
-            where: { employeeId: employee.id },
-            update: {},
-            create: {
-              email,
-              name: `${employee.firstName} ${employee.lastName}`,
-              password: tempPassword,
-              role: 'EMPLOYEE',
-              isActive: true,
-              employeeId: employee.id,
+          // Find employee by National ID
+          const employee = await prisma.employee.findFirst({
+            where: { nationalId: credentials.nationalId },
+            include: {
+              user: { include: { clientRecord: true } },
+              department: true,
             },
-            include: { clientRecord: true },
-          }) as any
-        }
+          })
 
-        return {
-          id: user!.id,
-          email: user!.email,
-          name: user!.name,
-          role: user!.role,
-          employeeId: employee.id,
-          employee: { ...employee, user: undefined },
-          clientId: null,
-          client: null,
+          // Non-fatal: log auth attempt but never let logging errors cause a 500
+          async function logAttempt(status: string, reason?: string) {
+            try {
+              await prisma.employeeAuthLog.create({
+                data: {
+                  employeeId: employee?.id,
+                  nationalId: credentials!.nationalId,
+                  status,
+                  reason,
+                  ipAddress: String(ipAddress),
+                  userAgent: String(userAgent),
+                },
+              })
+            } catch {
+              // Logging failure should not block authentication
+            }
+          }
+
+          if (!employee) {
+            await logAttempt('failed', 'National ID not found')
+            throw new Error('Invalid credentials. Please check your details.')
+          }
+
+          // Check lockout
+          if (employee.accountLockedUntil && employee.accountLockedUntil > new Date()) {
+            const unlockAt = employee.accountLockedUntil.toLocaleTimeString()
+            await logAttempt('failed', 'Account locked')
+            throw new Error(`Account is temporarily locked. Try again after ${unlockAt}.`)
+          }
+
+          // Verify Date of Birth (compare date only, ignore time)
+          if (!employee.dateOfBirth) {
+            await logAttempt('failed', 'DOB not configured')
+            throw new Error('Identity credentials not fully configured. Contact HR.')
+          }
+          const empDOB = employee.dateOfBirth.toISOString().split('T')[0]
+          const inputDOB = new Date(credentials.dateOfBirth).toISOString().split('T')[0]
+          if (empDOB !== inputDOB) {
+            await incrementFailures(employee.id, logAttempt)
+            throw new Error('Invalid credentials. Please check your details.')
+          }
+
+          // Verify secret code
+          if (!employee.secretCodeHash) {
+            await logAttempt('failed', 'Secret code not set')
+            throw new Error('Identity credentials not configured. Contact HR.')
+          }
+          const codeValid = await bcrypt.compare(credentials.secretCode, employee.secretCodeHash)
+          if (!codeValid) {
+            await incrementFailures(employee.id, logAttempt)
+            throw new Error('Invalid credentials. Please check your details.')
+          }
+
+          // Success — reset failures
+          await prisma.employee.update({
+            where: { id: employee.id },
+            data: { loginAttempts: 0, accountLockedUntil: null },
+          })
+          await logAttempt('success')
+
+          // Get or create linked User record
+          let user = employee.user
+          if (!user) {
+            const email = employee.email || `${employee.employeeCode}@helvino.internal`
+            const tempPassword = await bcrypt.hash(Math.random().toString(36), 10)
+            user = await prisma.user.upsert({
+              where: { employeeId: employee.id },
+              update: {},
+              create: {
+                email,
+                name: `${employee.firstName} ${employee.lastName}`,
+                password: tempPassword,
+                role: 'EMPLOYEE',
+                isActive: true,
+                employeeId: employee.id,
+              },
+              include: { clientRecord: true },
+            }) as any
+          }
+
+          return {
+            id: user!.id,
+            email: user!.email,
+            name: user!.name,
+            role: user!.role,
+            employeeId: employee.id,
+            employee: { ...employee, user: undefined },
+            clientId: null,
+            client: null,
+          }
+        } catch (err: any) {
+          // Re-throw known auth errors as-is; wrap unexpected errors
+          if (err?.message) throw err
+          throw new Error('Authentication failed. Please try again.')
         }
       },
     }),
