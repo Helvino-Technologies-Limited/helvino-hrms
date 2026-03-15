@@ -68,17 +68,22 @@ export const authOptions: NextAuthOptions = {
           },
         })
 
+        // Non-fatal: log auth attempt but never let logging errors cause a 500
         async function logAttempt(status: string, reason?: string) {
-          await prisma.employeeAuthLog.create({
-            data: {
-              employeeId: employee?.id,
-              nationalId: credentials!.nationalId,
-              status,
-              reason,
-              ipAddress: String(ipAddress),
-              userAgent: String(userAgent),
-            },
-          })
+          try {
+            await prisma.employeeAuthLog.create({
+              data: {
+                employeeId: employee?.id,
+                nationalId: credentials!.nationalId,
+                status,
+                reason,
+                ipAddress: String(ipAddress),
+                userAgent: String(userAgent),
+              },
+            })
+          } catch {
+            // Logging failure should not block authentication
+          }
         }
 
         if (!employee) {
@@ -128,8 +133,11 @@ export const authOptions: NextAuthOptions = {
         if (!user) {
           const email = employee.email || `${employee.employeeCode}@helvino.internal`
           const tempPassword = await bcrypt.hash(Math.random().toString(36), 10)
-          user = await prisma.user.create({
-            data: {
+          // Use upsert to handle cases where a User row already exists for this employee
+          user = await prisma.user.upsert({
+            where: { employeeId: employee.id },
+            update: {},
+            create: {
               email,
               name: `${employee.firstName} ${employee.lastName}`,
               password: tempPassword,
