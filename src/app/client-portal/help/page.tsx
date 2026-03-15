@@ -14,7 +14,7 @@ const chapters: Chapter[] = [
       {
         heading: 'Logging In',
         body: [
-          'Open your browser and go to https://helvino-hrms.onrender.com/login.',
+          'Open your browser and go to https://www.helvinocrm.org/login.',
           'Click the "Client Portal" tab.',
           'Enter your email address and password provided by Helvino Technologies Ltd.',
           'Click Sign In. You will land on your Client Portal dashboard.',
@@ -211,7 +211,7 @@ const chapters: Chapter[] = [
           'For billing queries, contact accounts@helvino.org.',
           'For general inquiries, call Helvino Technologies Ltd: 0703 445 756.',
           'Business hours: Monday–Friday 8:00 AM – 6:00 PM (EAT).',
-          'Website: helvinocrm.org',
+          'Website: www.helvinocrm.org',
         ],
       },
     ],

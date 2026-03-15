@@ -22,7 +22,7 @@ const STARTED: Chapter = {
     {
       heading: 'Accessing the System',
       body: [
-        'Open your browser and navigate to https://helvino-hrms.onrender.com/login.',
+        'Open your browser and navigate to https://www.helvinocrm.org/login.',
         'Staff members (HR, Finance, Department Heads, Employees, Sales) log in using the "Staff Identity Login" tab: enter your National ID, Date of Birth (DD/MM/YYYY), and the Secret Code provided by HR.',
         'Administrators log in using the "Admin / Staff Login" tab: enter your email address and password.',
         'If you enter incorrect credentials 5 times in a row, your account will be locked for 30 minutes. Contact HR or your system administrator to unlock it sooner.',

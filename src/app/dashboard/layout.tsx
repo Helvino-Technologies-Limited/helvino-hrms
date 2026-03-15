@@ -459,7 +459,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
           </div>
 
           <div className="flex items-center gap-2">
-            <Link href="/" target="_blank"
+            <Link href="https://www.helvinocrm.org" target="_blank"
               className="hidden md:flex items-center gap-1.5 text-xs text-slate-500 hover:text-blue-600 border border-slate-200 rounded-lg px-3 py-1.5 hover:border-blue-300 transition-colors">
               <Building className="w-3.5 h-3.5" />
               helvinocrm.org
