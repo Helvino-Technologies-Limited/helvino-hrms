@@ -172,9 +172,16 @@ export const authOptions: NextAuthOptions = {
       if (user) {
         token.role = (user as any).role
         token.employeeId = (user as any).employeeId
-        token.employee = (user as any).employee
         token.clientId = (user as any).clientId
-        token.client = (user as any).client
+        // Only store minimal employee fields to keep JWT small & serializable
+        const emp = (user as any).employee
+        token.employee = emp
+          ? { id: emp.id, firstName: emp.firstName, lastName: emp.lastName, departmentId: emp.departmentId }
+          : null
+        const client = (user as any).client
+        token.client = client
+          ? { id: client.id, name: client.name, email: client.email, contactPerson: client.contactPerson }
+          : null
       }
       return token
     },
