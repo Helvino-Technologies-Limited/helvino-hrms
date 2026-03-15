@@ -22,7 +22,7 @@ const adminNavItems = [
 
 const hrNavItems = [
   { href: '/dashboard', icon: LayoutDashboard, label: 'Dashboard', exact: true,
-    roles: ['SUPER_ADMIN', 'HR_MANAGER', 'DEPARTMENT_HEAD', 'FINANCE_OFFICER', 'EMPLOYEE'] },
+    roles: ['SUPER_ADMIN', 'HR_MANAGER', 'DEPARTMENT_HEAD', 'FINANCE_OFFICER', 'EMPLOYEE', 'SALES_MANAGER', 'SALES_AGENT'] },
   { href: '/dashboard/employees', icon: Users, label: 'Employees',
     roles: ['SUPER_ADMIN', 'HR_MANAGER'] },
   { href: '/dashboard/hr/auth-credentials', icon: KeyRound, label: 'Auth Credentials',
@@ -38,11 +38,11 @@ const hrNavItems = [
   { href: '/dashboard/performance', icon: Star, label: 'Performance',
     roles: ['SUPER_ADMIN', 'HR_MANAGER', 'DEPARTMENT_HEAD', 'EMPLOYEE'] },
   { href: '/dashboard/announcements', icon: Megaphone, label: 'Announcements',
-    roles: ['SUPER_ADMIN', 'HR_MANAGER', 'DEPARTMENT_HEAD', 'FINANCE_OFFICER', 'EMPLOYEE'] },
+    roles: ['SUPER_ADMIN', 'HR_MANAGER', 'DEPARTMENT_HEAD', 'FINANCE_OFFICER', 'EMPLOYEE', 'SALES_MANAGER', 'SALES_AGENT'] },
   { href: '/dashboard/analytics', icon: BarChart3, label: 'Analytics',
     roles: ['SUPER_ADMIN', 'HR_MANAGER', 'DEPARTMENT_HEAD'] },
   { href: '/dashboard/profile', icon: UserCircle, label: 'My Profile',
-    roles: ['SUPER_ADMIN', 'HR_MANAGER', 'DEPARTMENT_HEAD', 'FINANCE_OFFICER', 'EMPLOYEE'] },
+    roles: ['SUPER_ADMIN', 'HR_MANAGER', 'DEPARTMENT_HEAD', 'FINANCE_OFFICER', 'EMPLOYEE', 'SALES_MANAGER', 'SALES_AGENT'] },
   { href: '/dashboard/business-card', icon: IdCard, label: 'My Business Card',
     roles: ['SUPER_ADMIN', 'HR_MANAGER', 'DEPARTMENT_HEAD', 'FINANCE_OFFICER', 'EMPLOYEE', 'SALES_MANAGER', 'SALES_AGENT'] },
 ]
