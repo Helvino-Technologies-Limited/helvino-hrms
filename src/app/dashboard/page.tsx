@@ -130,7 +130,7 @@ export default function DashboardPage() {
           </div>
           <div className="hidden md:block text-right">
             <div className="text-white font-bold">Helvino Technologies Ltd</div>
-            <div className="text-blue-300 text-sm">helvinocrm.org · 0703445756</div>
+            <div className="text-blue-300 text-sm">helvinocrm.org · 0110421320</div>
           </div>
         </div>
       </div>

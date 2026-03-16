@@ -84,7 +84,7 @@ const SUPPORT_CHAPTER: Chapter = {
         'Locked account: contact HR or your administrator — they can unlock via HR → Auth Credentials.',
         'Forgot secret code: contact HR to generate a new one. Your old code becomes invalid.',
         'Cannot see a module: your role may not have access. Contact your administrator.',
-        'For urgent issues, call Helvino Technologies Ltd: 0703 445 756.',
+        'For urgent issues, call Helvino Technologies Ltd: 0110 421 320.',
       ],
     },
   ],

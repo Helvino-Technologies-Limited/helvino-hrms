@@ -163,7 +163,7 @@ const chapters: Chapter[] = [
         heading: 'Following Up',
         body: [
           'Open your ticket to see the reply thread. You can add more messages at any time.',
-          'If your issue is urgent, set priority to "Urgent" when creating the ticket, or call 0703 445 756.',
+          'If your issue is urgent, set priority to "Urgent" when creating the ticket, or call 0110 421 320.',
           'Once your issue is resolved, click "Close Ticket". You can re-open it if the issue returns.',
         ],
       },
@@ -209,7 +209,7 @@ const chapters: Chapter[] = [
         body: [
           'For technical issues with the portal, raise a Support Ticket.',
           'For billing queries, contact accounts@helvino.org.',
-          'For general inquiries, call Helvino Technologies Ltd: 0703 445 756.',
+          'For general inquiries, call Helvino Technologies Ltd: 0110 421 320.',
           'Business hours: Monday–Friday 8:00 AM – 6:00 PM (EAT).',
           'Website: www.helvinocrm.org',
         ],

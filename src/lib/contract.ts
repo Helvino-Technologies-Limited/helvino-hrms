@@ -178,7 +178,7 @@ export function generateContractHtml(data: {
   </div>
 
   <div class="footer">
-    <p>© ${year} Helvino Technologies Limited | Siaya, Kenya | hr@helvino.org | 0703445756 | helvinocrm.org</p>
+    <p>© ${year} Helvino Technologies Limited | Siaya, Kenya | hr@helvino.org | 0110421320 | helvinocrm.org</p>
     <p style="margin-top:4px">Digital signatures on this document are legally binding under the Kenya Information and Communications Act.</p>
   </div>
 </body>
