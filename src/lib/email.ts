@@ -30,6 +30,13 @@ export async function sendEmail({
   subject: string
   html: string
 }) {
+  // Emails are disabled by default. Set EMAIL_ENABLED=true in your
+  // environment variables (Render dashboard) to allow sending.
+  if (process.env.EMAIL_ENABLED !== 'true') {
+    console.log(`[Email disabled] Skipped — to: ${to} | subject: ${subject}`)
+    return
+  }
+
   try {
     const transporter = getTransporter()
     await transporter.sendMail({
