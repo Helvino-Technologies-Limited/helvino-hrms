@@ -937,9 +937,9 @@ function FormField({ label, name, type = 'text', required = false, opts, form, s
 
 const INPUT_CLS = 'w-full px-3 py-2.5 text-sm border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white text-slate-900'
 
-function SearchableDropdown({ label, value, onChange, options, placeholder }: {
+function SearchableDropdown({ label, value, onChange, options, placeholder, allowCustom }: {
   label: string; value: string; onChange: (v: string) => void
-  options: string[]; placeholder: string
+  options: string[]; placeholder: string; allowCustom?: boolean
 }) {
   const [query, setQuery] = useState('')
   const [open, setOpen] = useState(false)
@@ -951,11 +951,14 @@ function SearchableDropdown({ label, value, onChange, options, placeholder }: {
 
   useEffect(() => {
     function onClick(e: MouseEvent) {
-      if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false)
+      if (ref.current && !ref.current.contains(e.target as Node)) {
+        if (allowCustom && query.trim()) onChange(query.trim())
+        setOpen(false)
+      }
     }
     document.addEventListener('mousedown', onClick)
     return () => document.removeEventListener('mousedown', onClick)
-  }, [])
+  }, [allowCustom, query, onChange])
 
   function select(opt: string) {
     onChange(opt)
@@ -970,17 +973,26 @@ function SearchableDropdown({ label, value, onChange, options, placeholder }: {
         type="text"
         value={open ? query : value}
         onChange={e => { setQuery(e.target.value); setOpen(true) }}
-        onFocus={() => { setQuery(''); setOpen(true) }}
+        onFocus={() => { setQuery(value); setOpen(true) }}
+        onKeyDown={e => {
+          if (allowCustom && e.key === 'Enter' && query.trim()) {
+            e.preventDefault()
+            select(query.trim())
+          }
+        }}
         placeholder={value || placeholder}
         className={INPUT_CLS}
         autoComplete="off"
       />
-      {value && !open && (
-        <div className="absolute right-3 top-1/2 -translate-y-1/2 mt-0.5 text-slate-400 text-xs pointer-events-none">{value}</div>
-      )}
       {open && (
         <div className="absolute z-50 mt-1 w-full bg-white border border-slate-200 rounded-xl shadow-lg max-h-56 overflow-y-auto">
-          {filtered.length === 0 ? (
+          {allowCustom && query.trim() && !options.some(o => o.toLowerCase() === query.toLowerCase()) && (
+            <button type="button" onMouseDown={() => select(query.trim())}
+              className="w-full text-left px-3 py-2 text-sm text-blue-600 hover:bg-blue-50 border-b border-slate-100 italic">
+              Use &quot;{query.trim()}&quot;
+            </button>
+          )}
+          {filtered.length === 0 && !(allowCustom && query.trim()) ? (
             <div className="px-3 py-2 text-sm text-slate-400">No results</div>
           ) : filtered.map(opt => (
             <button key={opt} type="button" onMouseDown={() => select(opt)}
@@ -997,7 +1009,7 @@ function SearchableDropdown({ label, value, onChange, options, placeholder }: {
 function BankBranchSelector({ form, set }: { form: any; set: (k: string, v: string) => void }) {
   const allBanks = Object.keys(KENYA_BANK_BRANCHES)
   const branches: BranchInfo[] = KENYA_BANK_BRANCHES[form.bankName] ?? []
-  const branchNames = [...branches.map(b => b.name), 'Other (type manually)']
+  const branchNames = branches.map(b => b.name)
 
   function onBankChange(bank: string) {
     set('bankName', bank)
@@ -1006,11 +1018,6 @@ function BankBranchSelector({ form, set }: { form: any; set: (k: string, v: stri
   }
 
   function onBranchSelect(value: string) {
-    if (value === 'Other (type manually)') {
-      set('bankBranch', '')
-      set('bankCode', '')
-      return
-    }
     const found = branches.find(b => b.name === value)
     set('bankBranch', value)
     set('bankCode', found?.code ?? '')
@@ -1029,26 +1036,14 @@ function BankBranchSelector({ form, set }: { form: any; set: (k: string, v: stri
 
       {/* Branch */}
       <div>
-        {branches.length > 0 ? (
-          <SearchableDropdown
-            label="Bank Branch"
-            value={form.bankBranch}
-            onChange={onBranchSelect}
-            options={branchNames}
-            placeholder="Search branch..."
-          />
-        ) : (
-          <div>
-            <label className="block text-xs font-semibold text-slate-500 mb-1.5">Bank Branch</label>
-            <input
-              type="text"
-              value={form.bankBranch}
-              onChange={e => set('bankBranch', e.target.value)}
-              placeholder="Type branch name"
-              className={INPUT_CLS}
-            />
-          </div>
-        )}
+        <SearchableDropdown
+          label="Bank Branch"
+          value={form.bankBranch}
+          onChange={onBranchSelect}
+          options={branchNames}
+          placeholder="Search or type branch..."
+          allowCustom
+        />
       </div>
 
       {/* Branch Code — auto-filled but editable */}
