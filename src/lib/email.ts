@@ -462,6 +462,112 @@ export function rejectionEmailHtml(params: {
   )
 }
 
+export function employeeOfferLetterEmailHtml(params: {
+  employeeName: string
+  position: string
+  salary: string
+  startDate: string
+  probation: number
+  letterBody: string
+  signatoryName?: string
+  signatoryTitle?: string
+  deadline?: string
+  refNumber: string
+}): string {
+  const { employeeName, position, salary, startDate, probation, letterBody, signatoryName, signatoryTitle, deadline, refNumber } = params
+  return `<!DOCTYPE html>
+<html>
+<head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"></head>
+<body style="margin:0;padding:0;background:#f8fafc;font-family:Arial,sans-serif;">
+<div style="max-width:680px;margin:0 auto;padding:20px;">
+
+  <!-- Letterhead -->
+  <div style="background:linear-gradient(135deg,#0f172a,#1e40af);padding:32px 36px;border-radius:16px 16px 0 0;">
+    <table width="100%" cellpadding="0" cellspacing="0">
+      <tr>
+        <td>
+          <div style="color:white;font-size:22px;font-weight:900;letter-spacing:-0.5px;">HELVINO TECHNOLOGIES LTD</div>
+          <div style="color:#93c5fd;font-size:13px;margin-top:4px;">P.O Box 12345-40600, Siaya, Kenya</div>
+          <div style="color:#93c5fd;font-size:13px;">helvinotechltd@gmail.com · 0110421320 · helvino.org</div>
+          <div style="color:#60a5fa;font-size:11px;margin-top:4px;">Software Development · Network &amp; Wi-Fi · Cybersecurity · CCTV · IT Support</div>
+        </td>
+        <td style="text-align:right;vertical-align:top;">
+          <img src="https://helvino.org/images/logo.png" alt="Helvino" width="72" style="border-radius:12px;"/>
+        </td>
+      </tr>
+    </table>
+  </div>
+
+  <!-- Body -->
+  <div style="background:white;padding:36px;border:1px solid #e2e8f0;border-top:none;border-radius:0 0 16px 16px;">
+
+    <!-- Meta -->
+    <table width="100%" cellpadding="0" cellspacing="0" style="margin-bottom:24px;">
+      <tr>
+        <td style="font-size:14px;color:#374151;">
+          <strong style="color:#111827;">${employeeName}</strong>
+        </td>
+        <td style="text-align:right;font-size:12px;color:#6b7280;">
+          <div>Ref: ${refNumber}</div>
+          <div>Date: ${new Date().toLocaleDateString('en-KE',{day:'numeric',month:'long',year:'numeric'})}</div>
+        </td>
+      </tr>
+    </table>
+
+    <!-- Subject -->
+    <div style="text-align:center;border-top:1px solid #e2e8f0;border-bottom:1px solid #e2e8f0;padding:12px;margin-bottom:24px;">
+      <div style="font-weight:900;font-size:15px;color:#111827;text-transform:uppercase;letter-spacing:0.5px;">Letter of Employment Offer</div>
+      <div style="font-size:13px;color:#6b7280;margin-top:2px;">${position}</div>
+    </div>
+
+    <p style="font-size:14px;color:#374151;margin:0 0 16px;">Dear <strong>${employeeName}</strong>,</p>
+
+    <!-- Body text -->
+    <div style="font-size:14px;color:#374151;line-height:1.8;white-space:pre-line;margin-bottom:20px;">${letterBody}</div>
+
+    <!-- Offer Summary -->
+    <div style="background:#eff6ff;border:1px solid #bfdbfe;border-radius:12px;padding:20px;margin:24px 0;">
+      <div style="font-weight:700;font-size:12px;color:#1e40af;text-transform:uppercase;letter-spacing:0.5px;margin-bottom:12px;">Offer Summary</div>
+      <table width="100%" cellpadding="6" cellspacing="0" style="font-size:13px;color:#374151;">
+        <tr>
+          <td style="color:#6b7280;">Position</td>
+          <td style="font-weight:600;color:#111827;">${position}</td>
+          <td style="color:#6b7280;">Gross Salary</td>
+          <td style="font-weight:700;color:#1e40af;">${salary}/month</td>
+        </tr>
+        <tr>
+          <td style="color:#6b7280;">Start Date</td>
+          <td style="font-weight:600;color:#111827;">${startDate}</td>
+          <td style="color:#6b7280;">Probation</td>
+          <td style="font-weight:600;color:#111827;">${probation} months</td>
+        </tr>
+      </table>
+    </div>
+
+    ${deadline ? `<p style="color:#dc2626;font-size:13px;text-align:center;background:#fef2f2;border:1px solid #fecaca;border-radius:8px;padding:10px;"><strong>⏰ Response Deadline: ${deadline}</strong></p>` : ''}
+
+    <!-- Signatory -->
+    <div style="margin-top:32px;padding-top:20px;border-top:1px solid #e2e8f0;">
+      <p style="font-size:14px;color:#374151;">Yours sincerely,</p>
+      <div style="margin-top:16px;">
+        <div style="font-weight:700;color:#111827;font-size:14px;">${signatoryName || '___________________________'}</div>
+        <div style="color:#6b7280;font-size:13px;">${signatoryTitle || 'Authorised Signatory'}</div>
+        <div style="font-weight:600;color:#374151;font-size:13px;margin-top:2px;">Helvino Technologies Ltd</div>
+      </div>
+    </div>
+
+    <hr style="border:none;border-top:1px solid #e2e8f0;margin:24px 0;">
+    <p style="color:#94a3b8;font-size:11px;margin:0;text-align:center;">
+      © ${new Date().getFullYear()} Helvino Technologies Limited &nbsp;|&nbsp;
+      helvinotechltd@gmail.com &nbsp;|&nbsp; 0110421320 &nbsp;|&nbsp; helvino.org &nbsp;|&nbsp;
+      Ref: ${refNumber}
+    </p>
+  </div>
+</div>
+</body>
+</html>`
+}
+
 export function onboardingApprovedEmailHtml(params: {
   candidateName: string
   jobTitle: string
