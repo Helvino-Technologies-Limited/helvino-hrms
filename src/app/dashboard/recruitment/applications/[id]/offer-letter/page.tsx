@@ -5,6 +5,7 @@ import Link from 'next/link'
 import {
   ArrowLeft, Printer, Sparkles, Loader2, X, RefreshCw, Save, CheckCircle,
   MessageCircle, DollarSign, Calendar, Clock, Edit2, Check, AlertCircle, Download,
+  UserSearch,
 } from 'lucide-react'
 
 // ─── Onboarding document checklist ──────────────────────────────────────────
@@ -111,6 +112,15 @@ export default function OfferLetterPage() {
   const abortRef = useRef<AbortController | null>(null)
   const letterRef = useRef<HTMLDivElement>(null)
 
+  // Signatory employee search
+  const [signatoryName, setSignatoryName] = useState('')
+  const [signatoryTitle, setSignatoryTitle] = useState('')
+  const [signatoryQuery, setSignatoryQuery] = useState('')
+  const [signatoryResults, setSignatoryResults] = useState<any[]>([])
+  const [signatorySearching, setSignatorySearching] = useState(false)
+  const [signatoryOpen, setSignatoryOpen] = useState(false)
+  const signatoryDebounce = useRef<ReturnType<typeof setTimeout> | null>(null)
+
   // Offer details form
   const [showOfferForm, setShowOfferForm] = useState(false)
   const [offerSalary, setOfferSalary] = useState('')
@@ -119,6 +129,30 @@ export default function OfferLetterPage() {
   const [offerNotes, setOfferNotes] = useState('')
   const [savingOffer, setSavingOffer] = useState(false)
   const [offerSaved, setOfferSaved] = useState(false)
+
+  function searchSignatory(q: string) {
+    setSignatoryQuery(q)
+    setSignatoryOpen(true)
+    if (signatoryDebounce.current) clearTimeout(signatoryDebounce.current)
+    if (!q.trim()) { setSignatoryResults([]); return }
+    signatoryDebounce.current = setTimeout(async () => {
+      setSignatorySearching(true)
+      try {
+        const res = await fetch(`/api/employees?search=${encodeURIComponent(q)}`)
+        const data = await res.json()
+        setSignatoryResults(Array.isArray(data) ? data.slice(0, 8) : [])
+      } catch { setSignatoryResults([]) }
+      setSignatorySearching(false)
+    }, 300)
+  }
+
+  function selectSignatory(emp: any) {
+    setSignatoryName(`${emp.firstName} ${emp.lastName}`)
+    setSignatoryTitle(emp.jobTitle || '')
+    setSignatoryQuery(`${emp.firstName} ${emp.lastName}`)
+    setSignatoryResults([])
+    setSignatoryOpen(false)
+  }
 
   function loadApplicant() {
     setLoading(true)
@@ -568,6 +602,62 @@ export default function OfferLetterPage() {
         </div>
       </div>
 
+      {/* ── Signatory Picker (no-print) ───────────────────────────────────── */}
+      <div className="no-print bg-slate-50 border-b border-slate-200 px-6 py-4">
+        <div className="max-w-3xl mx-auto">
+          <label className="block text-xs font-semibold text-slate-500 mb-2 uppercase tracking-wide flex items-center gap-1.5">
+            <UserSearch className="w-3.5 h-3.5" />
+            Authorised Signatory
+            <span className="normal-case font-normal ml-1 text-slate-400">— search employee to auto-fill name &amp; designation</span>
+          </label>
+          <div className="flex flex-wrap gap-3 items-start">
+            {/* Employee search */}
+            <div className="relative flex-1 min-w-[200px]">
+              <input
+                type="text"
+                value={signatoryQuery}
+                onChange={e => searchSignatory(e.target.value)}
+                onFocus={() => signatoryQuery && setSignatoryOpen(true)}
+                onBlur={() => setTimeout(() => setSignatoryOpen(false), 150)}
+                placeholder="Search employee name…"
+                autoComplete="off"
+                className="w-full px-3 py-2 text-sm border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-400 bg-white"
+              />
+              {signatoryOpen && (signatorySearching || signatoryResults.length > 0) && (
+                <div className="absolute z-50 mt-1 w-full bg-white border border-slate-200 rounded-xl shadow-lg max-h-52 overflow-y-auto">
+                  {signatorySearching ? (
+                    <div className="flex items-center gap-2 px-3 py-2 text-sm text-slate-400">
+                      <Loader2 className="w-3.5 h-3.5 animate-spin" /> Searching…
+                    </div>
+                  ) : signatoryResults.map(emp => (
+                    <button key={emp.id} type="button" onMouseDown={() => selectSignatory(emp)}
+                      className="w-full text-left px-3 py-2 text-sm hover:bg-blue-50 hover:text-blue-700 transition-colors border-b border-slate-50 last:border-0">
+                      <span className="font-medium">{emp.firstName} {emp.lastName}</span>
+                      {emp.jobTitle && <span className="text-slate-400 text-xs ml-2">— {emp.jobTitle}</span>}
+                    </button>
+                  ))}
+                </div>
+              )}
+            </div>
+            {/* Manual override fields */}
+            <input
+              type="text"
+              value={signatoryName}
+              onChange={e => setSignatoryName(e.target.value)}
+              placeholder="Full name"
+              className="px-3 py-2 text-sm border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-400 bg-white w-44"
+            />
+            <input
+              type="text"
+              value={signatoryTitle}
+              onChange={e => setSignatoryTitle(e.target.value)}
+              placeholder="Designation / Title"
+              className="px-3 py-2 text-sm border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-400 bg-white w-48"
+            />
+          </div>
+        </div>
+      </div>
+
       {/* ── Printable Letter ──────────────────────────────────────────────── */}
       <div className="letter-wrap bg-slate-100 min-h-screen py-8 px-4">
         <div ref={letterRef} className="letter-card max-w-3xl mx-auto bg-white shadow-xl rounded-2xl overflow-hidden border border-slate-200">
@@ -583,9 +673,13 @@ export default function OfferLetterPage() {
                   Software Development · Network & Wi-Fi · Web Design · CCTV & Surveillance · Cybersecurity · IT Support
                 </div>
               </div>
-              <div className="w-14 h-14 bg-blue-600 rounded-2xl flex items-center justify-center font-black text-2xl flex-shrink-0">
-                H
-              </div>
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img
+                src="https://helvino.org/images/logo.png"
+                alt="Helvino Technologies Ltd"
+                crossOrigin="anonymous"
+                className="w-20 h-20 object-contain flex-shrink-0"
+              />
             </div>
           </div>
 
@@ -725,8 +819,13 @@ export default function OfferLetterPage() {
                 <p className="text-xs text-slate-400 mb-6">For and on behalf of:</p>
                 <div className="border-b border-slate-400 w-44 mb-1" />
                 <p className="text-xs text-slate-500">Authorised Signatory</p>
-                <div className="border-b border-slate-400 w-44 mt-4 mb-1" />
-                <p className="text-xs text-slate-500">Name &amp; Title</p>
+                <div className="mt-4 mb-1">
+                  {signatoryName
+                    ? <p className="text-sm font-semibold text-slate-800">{signatoryName}</p>
+                    : <div className="border-b border-slate-400 w-44" />
+                  }
+                </div>
+                <p className="text-xs text-slate-500">{signatoryTitle || 'Name & Title'}</p>
                 <div className="border-b border-slate-400 w-44 mt-4 mb-1" />
                 <p className="text-xs text-slate-500">Date</p>
               </div>
@@ -791,7 +890,9 @@ export default function OfferLetterPage() {
                 </div>
                 <div>
                   <div className="border-b border-slate-400 w-44 mb-1" />
-                  <p className="text-xs text-slate-500">HR Manager Signature</p>
+                  <p className="text-xs text-slate-500">
+                    {signatoryName ? `${signatoryName} — ` : ''}{signatoryTitle || 'HR Manager'} Signature
+                  </p>
                   <div className="border-b border-slate-400 w-44 mt-5 mb-1" />
                   <p className="text-xs text-slate-500">Name &amp; Title</p>
                   <div className="border-b border-slate-400 w-44 mt-5 mb-1" />
