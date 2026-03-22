@@ -96,6 +96,11 @@ export default function SalesDashboardPage() {
   const leadSources: { source: string; count: number }[] = data?.leadSources ?? []
   const recentClients: any[] = data?.recentClients ?? []
   const target = data?.target ?? null
+  const teamPerformance: Array<{
+    id: string; name: string
+    clientsThisMonth: number; revenueThisMonth: number
+    clientTarget: number; revenueTarget: number
+  }> = data?.teamPerformance ?? []
 
   const maxStatusCount = statusBreakdown.reduce((m, s) => Math.max(m, s.count), 1)
   const maxSourceCount = leadSources.reduce((m, s) => Math.max(m, s.count), 1)
@@ -277,6 +282,87 @@ export default function SalesDashboardPage() {
               </div>
             </div>
           </div>
+        </div>
+      )}
+
+      {/* Team Performance — SALES_MANAGER only */}
+      {!loading && session?.user?.role === 'SALES_MANAGER' && teamPerformance.length > 0 && (
+        <div className="bg-white rounded-2xl shadow-sm border border-slate-100 overflow-hidden">
+          <div className="px-5 py-4 border-b border-slate-100 flex items-center gap-2">
+            <Users className="w-5 h-5 text-blue-600" />
+            <h3 className="font-bold text-slate-900">Team Performance This Month</h3>
+            <span className="ml-auto text-xs text-slate-400 font-medium">Agent target: 5 clients · KSh 250,000</span>
+          </div>
+          <div className="overflow-x-auto">
+            <table className="w-full text-sm">
+              <thead className="bg-slate-50 border-b border-slate-100">
+                <tr>
+                  {['Agent', 'Clients This Month', 'Client Progress', 'Revenue This Month', 'Revenue Progress'].map(h => (
+                    <th key={h} className="text-left px-4 py-3 text-xs font-semibold text-slate-500 uppercase whitespace-nowrap">{h}</th>
+                  ))}
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-slate-50">
+                {teamPerformance.map((agent) => {
+                  const clientPct = Math.min(100, Math.round((agent.clientsThisMonth / agent.clientTarget) * 100))
+                  const revPct = Math.min(100, Math.round((agent.revenueThisMonth / agent.revenueTarget) * 100))
+                  return (
+                    <tr key={agent.id} className="hover:bg-slate-50 transition-colors">
+                      <td className="px-4 py-3 whitespace-nowrap">
+                        <div className="flex items-center gap-2">
+                          <div className="w-7 h-7 bg-blue-100 rounded-full flex items-center justify-center text-xs font-bold text-blue-700">
+                            {agent.name.charAt(0)}
+                          </div>
+                          <span className="font-semibold text-slate-800 text-xs">{agent.name}</span>
+                        </div>
+                      </td>
+                      <td className="px-4 py-3 whitespace-nowrap">
+                        <span className={`font-black text-base ${agent.clientsThisMonth >= agent.clientTarget ? 'text-green-600' : 'text-slate-900'}`}>
+                          {agent.clientsThisMonth}
+                        </span>
+                        <span className="text-slate-400 text-xs"> / {agent.clientTarget}</span>
+                      </td>
+                      <td className="px-4 py-3 min-w-[120px]">
+                        <div className="flex items-center gap-2">
+                          <div className="flex-1 h-2 bg-slate-100 rounded-full overflow-hidden">
+                            <div
+                              className={`h-full rounded-full transition-all ${clientPct >= 100 ? 'bg-green-500' : 'bg-blue-500'}`}
+                              style={{ width: `${clientPct}%` }}
+                            />
+                          </div>
+                          <span className="text-xs font-semibold text-slate-500 w-8 text-right">{clientPct}%</span>
+                        </div>
+                      </td>
+                      <td className="px-4 py-3 whitespace-nowrap">
+                        <span className={`font-bold text-sm ${agent.revenueThisMonth >= agent.revenueTarget ? 'text-green-600' : 'text-slate-900'}`}>
+                          {formatCurrency(agent.revenueThisMonth)}
+                        </span>
+                        <div className="text-xs text-slate-400">of {formatCurrency(agent.revenueTarget)}</div>
+                      </td>
+                      <td className="px-4 py-3 min-w-[120px]">
+                        <div className="flex items-center gap-2">
+                          <div className="flex-1 h-2 bg-slate-100 rounded-full overflow-hidden">
+                            <div
+                              className={`h-full rounded-full transition-all ${revPct >= 100 ? 'bg-green-500' : 'bg-amber-400'}`}
+                              style={{ width: `${revPct}%` }}
+                            />
+                          </div>
+                          <span className="text-xs font-semibold text-slate-500 w-8 text-right">{revPct}%</span>
+                        </div>
+                      </td>
+                    </tr>
+                  )
+                })}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      )}
+      {!loading && session?.user?.role === 'SALES_MANAGER' && teamPerformance.length === 0 && (
+        <div className="bg-white rounded-2xl shadow-sm border border-slate-100 p-6 text-center">
+          <Users className="w-10 h-10 mx-auto mb-2 text-slate-200" />
+          <p className="text-slate-500 text-sm font-medium">No agents assigned to your team yet.</p>
+          <p className="text-slate-400 text-xs mt-1">Assign sales agents to yourself via Employee management.</p>
         </div>
       )}
 

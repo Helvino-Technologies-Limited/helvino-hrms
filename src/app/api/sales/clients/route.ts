@@ -2,33 +2,43 @@ import { NextRequest, NextResponse } from 'next/server'
 import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
 import { prisma } from '@/lib/prisma'
+import { getSalesScope, buildOwnerFilter } from '@/lib/sales-scope'
+
+const ALLOWED_ROLES = ['SUPER_ADMIN', 'HR_MANAGER', 'SALES_MANAGER', 'SALES_AGENT', 'FINANCE_OFFICER']
 
 export async function GET(req: NextRequest) {
   try {
     const session = await getServerSession(authOptions)
     if (!session) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+    if (!ALLOWED_ROLES.includes(session.user.role)) {
+      return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
+    }
+
+    const scope = await getSalesScope(session.user.id)
+    const ownerFilter = buildOwnerFilter(scope)
 
     const { searchParams } = new URL(req.url)
     const category = searchParams.get('category')
     const isActive = searchParams.get('isActive')
     const search = searchParams.get('search')
 
-    const VIEW_ALL = ['SUPER_ADMIN', 'HR_MANAGER', 'SALES_MANAGER']
-    const empId = (session.user as any).employeeId as string | undefined
-    const where: any = {}
-    if (!VIEW_ALL.includes(session.user.role) && empId) {
-      where.OR = [{ assignedToId: empId }, { createdById: empId }]
-    }
+    const where: any = { ...ownerFilter }
     if (category) where.category = category
     if (isActive !== null && isActive !== undefined && isActive !== '') {
       where.isActive = isActive === 'true'
     }
     if (search) {
-      where.OR = [
+      const searchOr = [
         { companyName: { contains: search, mode: 'insensitive' } },
         { contactPerson: { contains: search, mode: 'insensitive' } },
         { email: { contains: search, mode: 'insensitive' } },
       ]
+      if (ownerFilter.OR) {
+        where.AND = [{ OR: ownerFilter.OR }, { OR: searchOr }]
+        delete where.OR
+      } else {
+        where.OR = searchOr
+      }
     }
 
     const clients = await prisma.client.findMany({
@@ -53,8 +63,8 @@ export async function POST(req: NextRequest) {
     const session = await getServerSession(authOptions)
     if (!session) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 
+    const scope = await getSalesScope(session.user.id)
     const body = await req.json()
-    const createdById = (session.user as any).employeeId
 
     const count = await prisma.client.count()
     const clientNumber = `CLT-${String(count + 1).padStart(4, '0')}`
@@ -76,7 +86,7 @@ export async function POST(req: NextRequest) {
         website: body.website || null,
         notes: body.notes || null,
         assignedToId: body.assignedToId || null,
-        createdById: createdById || null,
+        createdById: scope.empId || null,
       },
     })
 

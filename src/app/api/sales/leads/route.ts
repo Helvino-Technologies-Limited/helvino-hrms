@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
 import { prisma } from '@/lib/prisma'
+import { getSalesScope, buildOwnerFilter } from '@/lib/sales-scope'
 
 const ALLOWED_ROLES = ['SUPER_ADMIN', 'HR_MANAGER', 'SALES_MANAGER', 'SALES_AGENT', 'FINANCE_OFFICER']
 
@@ -13,6 +14,9 @@ export async function GET(req: NextRequest) {
       return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
     }
 
+    const scope = await getSalesScope(session.user.id)
+    const ownerFilter = buildOwnerFilter(scope)
+
     const { searchParams } = new URL(req.url)
     const status = searchParams.get('status')
     const priority = searchParams.get('priority')
@@ -20,12 +24,7 @@ export async function GET(req: NextRequest) {
     const assignedToId = searchParams.get('assignedToId')
     const search = searchParams.get('search')
 
-    const VIEW_ALL = ['SUPER_ADMIN', 'HR_MANAGER', 'SALES_MANAGER']
-    const empId = (session.user as any).employeeId as string | undefined
-    const where: any = {}
-    if (!VIEW_ALL.includes(session.user.role) && empId) {
-      where.OR = [{ assignedToId: empId }, { createdById: empId }]
-    }
+    const where: any = { ...ownerFilter }
     if (status) where.status = status
     if (priority) where.priority = priority
     if (source) where.source = source
@@ -65,6 +64,7 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
     }
 
+    const scope = await getSalesScope(session.user.id)
     const body = await req.json()
 
     const count = await prisma.lead.count()
@@ -88,7 +88,7 @@ export async function POST(req: NextRequest) {
         expectedValue: body.expectedValue ? parseFloat(body.expectedValue) : null,
         expectedCloseDate: body.expectedCloseDate ? new Date(body.expectedCloseDate) : null,
         assignedToId: body.assignedToId || null,
-        createdById: session.user.employeeId || null,
+        createdById: scope.empId || null,
       },
     })
 

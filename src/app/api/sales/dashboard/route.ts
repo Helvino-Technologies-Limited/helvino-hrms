@@ -30,13 +30,15 @@ export async function GET(req: NextRequest) {
     const subscriptionFilter: any = {}
 
     let teamEmpIds: string[] = []
+    let teamAgents: { id: string; firstName: string; lastName: string }[] = []
 
     if (IS_MANAGER && empId) {
       // Manager sees own + all agents assigned to them
       const agents = await prisma.employee.findMany({
         where: { managerId: empId },
-        select: { id: true },
+        select: { id: true, firstName: true, lastName: true },
       })
+      teamAgents = agents
       teamEmpIds = [empId, ...agents.map((a) => a.id)]
       leadFilter.OR = [
         { assignedToId: { in: teamEmpIds } },
@@ -217,6 +219,44 @@ export async function GET(req: NextRequest) {
     const revenueThisMonth = revenueThisMonthAgg._sum.totalAmount ?? 0
     const totalRevenue = revenueAgg._sum.totalAmount ?? 0
 
+    // Per-agent team performance (SALES_MANAGER only)
+    let teamPerformance: Array<{
+      id: string
+      name: string
+      clientsThisMonth: number
+      revenueThisMonth: number
+      clientTarget: number
+      revenueTarget: number
+    }> = []
+
+    if (IS_MANAGER && teamAgents.length > 0) {
+      const agentIds = teamAgents.map((a) => a.id)
+      const [agentClientCounts, agentRevenueSums] = await Promise.all([
+        prisma.client.groupBy({
+          by: ['createdById'],
+          where: { createdById: { in: agentIds }, createdAt: { gte: monthStart, lt: monthEnd } },
+          _count: { id: true },
+        }),
+        prisma.quotation.groupBy({
+          by: ['createdById'],
+          where: { createdById: { in: agentIds }, status: 'APPROVED', createdAt: { gte: monthStart, lt: monthEnd } },
+          _sum: { totalAmount: true },
+        }),
+      ])
+
+      const clientCountMap = new Map(agentClientCounts.map((r) => [r.createdById, r._count.id]))
+      const revenueMap = new Map(agentRevenueSums.map((r) => [r.createdById, r._sum.totalAmount ?? 0]))
+
+      teamPerformance = teamAgents.map((agent) => ({
+        id: agent.id,
+        name: `${agent.firstName} ${agent.lastName}`,
+        clientsThisMonth: clientCountMap.get(agent.id) ?? 0,
+        revenueThisMonth: Number(revenueMap.get(agent.id) ?? 0),
+        clientTarget: 5,
+        revenueTarget: 250000,
+      }))
+    }
+
     return NextResponse.json({
       stats: {
         totalLeads,
@@ -240,6 +280,7 @@ export async function GET(req: NextRequest) {
             teamSize: IS_MANAGER ? teamEmpIds.length : undefined,
           }
         : null,
+      teamPerformance: IS_MANAGER ? teamPerformance : undefined,
       recentLeads,
       recentClients,
       statusBreakdown,

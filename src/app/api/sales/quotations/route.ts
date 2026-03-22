@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
 import { prisma } from '@/lib/prisma'
+import { getSalesScope, buildCreatorFilter } from '@/lib/sales-scope'
 
 const ALLOWED_ROLES = ['SUPER_ADMIN', 'HR_MANAGER', 'SALES_MANAGER', 'SALES_AGENT', 'FINANCE_OFFICER']
 
@@ -13,18 +14,16 @@ export async function GET(req: NextRequest) {
       return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
     }
 
+    const scope = await getSalesScope(session.user.id)
+    const creatorFilter = buildCreatorFilter(scope)
+
     const { searchParams } = new URL(req.url)
     const status = searchParams.get('status')
     const clientId = searchParams.get('clientId')
     const leadId = searchParams.get('leadId')
     const search = searchParams.get('search')
 
-    const VIEW_ALL = ['SUPER_ADMIN', 'HR_MANAGER', 'SALES_MANAGER']
-    const empId = (session.user as any).employeeId as string | undefined
-    const where: any = {}
-    if (!VIEW_ALL.includes(session.user.role) && empId) {
-      where.createdById = empId
-    }
+    const where: any = { ...creatorFilter }
     if (status) where.status = status
     if (clientId) where.clientId = clientId
     if (leadId) where.leadId = leadId
@@ -63,6 +62,7 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
     }
 
+    const scope = await getSalesScope(session.user.id)
     const body = await req.json()
 
     const year = new Date().getFullYear()
@@ -114,7 +114,7 @@ export async function POST(req: NextRequest) {
           taxAmount,
           subtotal,
           totalAmount,
-          createdById: session.user.employeeId || null,
+          createdById: scope.empId || null,
         },
       })
 

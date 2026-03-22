@@ -2,11 +2,15 @@ import { NextRequest, NextResponse } from 'next/server'
 import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
 import { prisma } from '@/lib/prisma'
+import { getSalesScope, buildAssigneeFilter } from '@/lib/sales-scope'
 
 export async function GET(req: NextRequest) {
   try {
     const session = await getServerSession(authOptions)
     if (!session) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+
+    const scope = await getSalesScope(session.user.id)
+    const assigneeFilter = buildAssigneeFilter(scope)
 
     const { searchParams } = new URL(req.url)
     const status = searchParams.get('status')
@@ -14,12 +18,7 @@ export async function GET(req: NextRequest) {
     const assignedToId = searchParams.get('assignedToId')
     const clientId = searchParams.get('clientId')
 
-    const VIEW_ALL = ['SUPER_ADMIN', 'HR_MANAGER', 'SALES_MANAGER']
-    const empId = (session.user as any).employeeId as string | undefined
-    const where: any = {}
-    if (!VIEW_ALL.includes(session.user.role) && empId) {
-      where.assignedToId = empId
-    }
+    const where: any = { ...assigneeFilter }
     if (status) where.status = status
     if (priority) where.priority = priority
     if (assignedToId) where.assignedToId = assignedToId
@@ -50,8 +49,8 @@ export async function POST(req: NextRequest) {
     const session = await getServerSession(authOptions)
     if (!session) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 
+    const scope = await getSalesScope(session.user.id)
     const body = await req.json()
-    const createdById = (session.user as any).employeeId
 
     const task = await prisma.salesTask.create({
       data: {
@@ -60,7 +59,7 @@ export async function POST(req: NextRequest) {
         clientId: body.clientId || null,
         clientServiceId: body.clientServiceId || null,
         assignedToId: body.assignedToId || null,
-        createdById: createdById || null,
+        createdById: scope.empId || null,
         deadline: body.deadline ? new Date(body.deadline) : null,
         priority: body.priority || 'MEDIUM',
         status: body.status || 'TODO',
