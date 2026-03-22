@@ -10,11 +10,12 @@ export async function GET(req: NextRequest) {
   try {
     const session = await getServerSession(authOptions)
     if (!session) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
-    if (!ALLOWED_ROLES.includes(session.user.role)) {
+
+    const scope = await getSalesScope(session.user.id)
+    if (!ALLOWED_ROLES.includes(scope.role)) {
       return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
     }
 
-    const scope = await getSalesScope(session.user.id)
     const ownerFilter = buildOwnerFilter(scope)
 
     const { searchParams } = new URL(req.url)
@@ -60,11 +61,12 @@ export async function POST(req: NextRequest) {
   try {
     const session = await getServerSession(authOptions)
     if (!session) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
-    if (!ALLOWED_ROLES.includes(session.user.role)) {
+
+    const scope = await getSalesScope(session.user.id)
+    if (!ALLOWED_ROLES.includes(scope.role)) {
       return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
     }
 
-    const scope = await getSalesScope(session.user.id)
     const body = await req.json()
 
     const count = await prisma.lead.count()

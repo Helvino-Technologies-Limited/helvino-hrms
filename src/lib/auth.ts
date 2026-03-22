@@ -170,10 +170,10 @@ export const authOptions: NextAuthOptions = {
   callbacks: {
     async jwt({ token, user }) {
       if (user) {
+        // On sign-in: store all fields from the authorise() return value
         token.role = (user as any).role
         token.employeeId = (user as any).employeeId
         token.clientId = (user as any).clientId
-        // Only store minimal employee fields to keep JWT small & serializable
         const emp = (user as any).employee
         token.employee = emp
           ? { id: emp.id, firstName: emp.firstName, lastName: emp.lastName, departmentId: emp.departmentId }
@@ -182,6 +182,22 @@ export const authOptions: NextAuthOptions = {
         token.client = client
           ? { id: client.id, name: client.name, email: client.email, contactPerson: client.contactPerson }
           : null
+      } else if (token.sub) {
+        // On every subsequent session check: refresh role + employeeId from the DB
+        // so that role changes (e.g. EMPLOYEE → SALES_MANAGER) take effect immediately
+        // without requiring the user to log out and back in.
+        try {
+          const freshUser = await prisma.user.findUnique({
+            where: { id: token.sub },
+            select: { role: true, employeeId: true, isActive: true },
+          })
+          if (freshUser) {
+            token.role = freshUser.role
+            if (freshUser.employeeId) token.employeeId = freshUser.employeeId
+          }
+        } catch {
+          // If the DB is unreachable keep the cached token values
+        }
       }
       return token
     },
