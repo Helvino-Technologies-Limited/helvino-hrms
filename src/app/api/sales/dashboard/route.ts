@@ -8,8 +8,18 @@ export async function GET(req: NextRequest) {
     const session = await getServerSession(authOptions)
     if (!session) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 
-    const role = session.user.role
     const empId = (session.user as any).employeeId as string | undefined
+
+    // Always read the current role from the DB so stale JWT tokens don't
+    // cause the wrong target to be shown after a role change.
+    let role = session.user.role
+    if (empId) {
+      const freshUser = await prisma.user.findFirst({
+        where: { employeeId: empId },
+        select: { role: true },
+      })
+      if (freshUser) role = freshUser.role as string
+    }
 
     const VIEW_ALL = ['SUPER_ADMIN', 'HR_MANAGER']
     const IS_MANAGER = role === 'SALES_MANAGER'
