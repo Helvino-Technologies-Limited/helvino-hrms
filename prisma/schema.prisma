@@ -335,6 +335,12 @@ model Employee {
   // Policy relations
   policyAcceptances      EmployeePolicyAcceptance[]
   policyNotifications    PolicyNotification[]  @relation("PolicyNotifications")
+  // Sales team relations
+  salesApplicants  Applicant[]         @relation("SalesManagerApplicants")
+  recruitmentLink  SalesManagerRecruitmentLink?
+  teamMeetings     SalesTeamMeeting[]  @relation("MeetingOrganizer")
+  teamTasksCreated SalesTeamTask[]     @relation("TeamTaskCreator")
+  teamTasksAssigned SalesTeamTask[]    @relation("TeamTaskAssignee")
   createdAt        DateTime            @default(now())
   updatedAt        DateTime            @updatedAt
 }
@@ -479,6 +485,8 @@ model Applicant {
   offerLetterContent       String?
   offerLetterSignature     String?
   offerLetterSignedAt      DateTime?
+  salesManagerId  String?
+  salesManager    Employee?       @relation("SalesManagerApplicants", fields: [salesManagerId], references: [id])
   interviews      Interview[]
   offer           JobOffer?
   notesList       RecruitmentNote[]
@@ -1297,4 +1305,50 @@ model EmployeeAuthLog {
   ipAddress  String?
   userAgent  String?
   createdAt  DateTime  @default(now())
+}
+
+// ─── Sales Team Models ────────────────────────────────────────────────────────
+
+model SalesManagerRecruitmentLink {
+  id         String   @id @default(cuid())
+  managerId  String   @unique
+  manager    Employee @relation(fields: [managerId], references: [id])
+  token      String   @unique @default(cuid())
+  isActive   Boolean  @default(true)
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+}
+
+model SalesTeamMeeting {
+  id          String   @id @default(cuid())
+  managerId   String
+  manager     Employee @relation("MeetingOrganizer", fields: [managerId], references: [id])
+  title       String
+  agenda      String?
+  meetingDate DateTime
+  startTime   String   // e.g. "09:00"
+  endTime     String?  // e.g. "10:00"
+  type        String   @default("ONLINE") // ONLINE | IN_PERSON
+  meetingLink String?
+  location    String?
+  status      String   @default("SCHEDULED") // SCHEDULED | COMPLETED | CANCELLED
+  notes       String?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+}
+
+model SalesTeamTask {
+  id           String   @id @default(cuid())
+  managerId    String
+  manager      Employee @relation("TeamTaskCreator", fields: [managerId], references: [id])
+  assignedToId String
+  assignedTo   Employee @relation("TeamTaskAssignee", fields: [assignedToId], references: [id])
+  title        String
+  description  String?
+  deadline     DateTime?
+  priority     String   @default("MEDIUM") // LOW | MEDIUM | HIGH | URGENT
+  status       String   @default("TODO")   // TODO | IN_PROGRESS | DONE | CANCELLED
+  notes        String?
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
 }

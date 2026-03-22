@@ -17,7 +17,13 @@ export async function GET(request: NextRequest) {
     const search = searchParams.get('search')
     const talentPool = searchParams.get('talentPool')
 
+    const empId = (session.user as any).employeeId as string | undefined
     const where: Record<string, unknown> = {}
+
+    // SALES_MANAGER only sees applicants from their own recruitment link
+    if (session.user.role === 'SALES_MANAGER' && empId) {
+      where.salesManagerId = empId
+    }
 
     if (jobId) {
       where.jobId = jobId

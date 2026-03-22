@@ -89,6 +89,12 @@ const salesNavItems = [
     roles: ['SUPER_ADMIN', 'HR_MANAGER', 'SALES_MANAGER'] },
   { href: '/dashboard/sales/reports', icon: BarChart3, label: 'Sales Reports',
     roles: ['SUPER_ADMIN', 'HR_MANAGER', 'SALES_MANAGER', 'FINANCE_OFFICER'] },
+  { href: '/dashboard/sales/recruitment', icon: Users2, label: 'Team Recruitment',
+    roles: ['SUPER_ADMIN', 'HR_MANAGER', 'SALES_MANAGER'] },
+  { href: '/dashboard/sales/meetings', icon: Video, label: 'Team Meetings',
+    roles: ['SUPER_ADMIN', 'HR_MANAGER', 'SALES_MANAGER', 'SALES_AGENT'] },
+  { href: '/dashboard/sales/team-tasks', icon: ListTodo, label: 'Team Tasks',
+    roles: ['SUPER_ADMIN', 'HR_MANAGER', 'SALES_MANAGER', 'SALES_AGENT'] },
 ]
 
 const accountingNavItems = [
