@@ -39,6 +39,7 @@ export async function GET(req: NextRequest) {
       where,
       include: {
         department: true,
+        user: { select: { role: true } },
         manager: { select: { firstName: true, lastName: true, profilePhoto: true, jobTitle: true } },
         _count: { select: { directReports: true, leaves: true, attendances: true } },
       },

@@ -1096,7 +1096,7 @@ function EmployeeFormModal({ employee, departments, employees, onClose, onSave }
     nssfNumber: employee?.nssfNumber || '',
     emergencyContact: employee?.emergencyContact || '',
     emergencyPhone: employee?.emergencyPhone || '',
-    role: 'EMPLOYEE',
+    role: employee?.user?.role || 'EMPLOYEE',
     idFrontUrl: employee?.idFrontUrl || '',
     idBackUrl: employee?.idBackUrl || '',
     passportPhotoUrl: employee?.passportPhotoUrl || '',

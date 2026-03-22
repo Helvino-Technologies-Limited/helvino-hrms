@@ -12,6 +12,7 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ id: 
       where: { id },
       include: {
         department: true,
+        user: { select: { role: true } },
         manager: { select: { id: true, firstName: true, lastName: true, profilePhoto: true, jobTitle: true } },
         directReports: { select: { id: true, firstName: true, lastName: true, jobTitle: true, profilePhoto: true, employmentStatus: true } },
         leaves: { orderBy: { createdAt: 'desc' }, take: 20, include: { approver: { select: { firstName: true, lastName: true } } } },
