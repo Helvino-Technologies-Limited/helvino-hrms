@@ -40,22 +40,29 @@ export async function GET(req: NextRequest) {
       })
       teamAgents = agents
       teamEmpIds = [empId, ...agents.map((a) => a.id)]
-      leadFilter.OR = [
-        { assignedToId: { in: teamEmpIds } },
-        { createdById: { in: teamEmpIds } },
-      ]
-      quotationFilter.createdById = { in: teamEmpIds }
-      clientFilter.OR = [
-        { assignedToId: { in: teamEmpIds } },
-        { createdById: { in: teamEmpIds } },
-      ]
-      taskFilter.assignedToId = { in: teamEmpIds }
-      subscriptionFilter.client = {
-        OR: [
+
+      // If no agents are formally assigned yet, manager sees all sales data
+      // (same as SUPER_ADMIN/HR_MANAGER) so the dashboard is never empty.
+      // Once agents are linked via managerId the filter becomes team-scoped.
+      if (agents.length > 0) {
+        leadFilter.OR = [
           { assignedToId: { in: teamEmpIds } },
           { createdById: { in: teamEmpIds } },
-        ],
+        ]
+        quotationFilter.createdById = { in: teamEmpIds }
+        clientFilter.OR = [
+          { assignedToId: { in: teamEmpIds } },
+          { createdById: { in: teamEmpIds } },
+        ]
+        taskFilter.assignedToId = { in: teamEmpIds }
+        subscriptionFilter.client = {
+          OR: [
+            { assignedToId: { in: teamEmpIds } },
+            { createdById: { in: teamEmpIds } },
+          ],
+        }
       }
+      // else: no agents linked yet → leave filters empty → see all sales data
     } else if (IS_AGENT && empId) {
       leadFilter.OR = [{ assignedToId: empId }, { createdById: empId }]
       quotationFilter.createdById = empId
@@ -228,6 +235,15 @@ export async function GET(req: NextRequest) {
       clientTarget: number
       revenueTarget: number
     }> = []
+
+    // If no agents are formally assigned, show all SALES_AGENT employees as the team
+    if (IS_MANAGER && teamAgents.length === 0) {
+      const allAgents = await prisma.employee.findMany({
+        where: { user: { role: 'SALES_AGENT' } },
+        select: { id: true, firstName: true, lastName: true },
+      })
+      teamAgents = allAgents
+    }
 
     if (IS_MANAGER && teamAgents.length > 0) {
       const agentIds = teamAgents.map((a) => a.id)
