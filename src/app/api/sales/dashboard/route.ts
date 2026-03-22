@@ -258,18 +258,27 @@ export async function GET(req: NextRequest) {
     }
 
     return NextResponse.json({
+      role: IS_MANAGER ? 'SALES_MANAGER' : IS_AGENT ? 'SALES_AGENT' : role,
       stats: {
         totalLeads,
         wonDeals: wonLeads,
+        lostLeads,
+        activeLeads,
         activeClients: totalClients,
         expiringSubscriptions,
+        totalRevenue,
+        totalQuotations,
+        approvedQuotations,
       },
       quick: {
         todaysTasks: todayTasks,
         overdueTasks,
         pendingQuotations,
         newLeads,
-        totalRevenue,
+        leadsThisMonth,
+        clientsThisMonth,
+        quotationsThisMonth,
+        revenueThisMonth,
       },
       target: clientTarget > 0
         ? {
