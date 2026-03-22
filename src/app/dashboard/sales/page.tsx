@@ -5,7 +5,7 @@ import Link from 'next/link'
 import {
   TrendingUp, Trophy, Users, AlertTriangle,
   CheckSquare, FileText, UserPlus, DollarSign,
-  ArrowRight, Building2
+  ArrowRight, Building2, Target
 } from 'lucide-react'
 import toast from 'react-hot-toast'
 import { formatCurrency, formatDate } from '@/lib/utils'
@@ -95,6 +95,7 @@ export default function SalesDashboardPage() {
   const statusBreakdown: { status: string; count: number }[] = data?.statusBreakdown ?? []
   const leadSources: { source: string; count: number }[] = data?.leadSources ?? []
   const recentClients: any[] = data?.recentClients ?? []
+  const target = data?.target ?? null
 
   const maxStatusCount = statusBreakdown.reduce((m, s) => Math.max(m, s.count), 1)
   const maxSourceCount = leadSources.reduce((m, s) => Math.max(m, s.count), 1)
@@ -207,6 +208,74 @@ export default function SalesDashboardPage() {
             </div>
             <div className="text-lg font-black text-green-700 leading-tight">{formatCurrency(totalRevenue)}</div>
             <div className="text-slate-600 text-xs font-semibold mt-0.5">Total Revenue</div>
+          </div>
+        </div>
+      )}
+
+      {/* Monthly Target Progress — only for SALES_AGENT and SALES_MANAGER */}
+      {!loading && target && (
+        <div className="bg-gradient-to-br from-blue-600 to-blue-800 rounded-2xl p-5 text-white shadow-md">
+          <div className="flex items-center gap-2 mb-4">
+            <Target className="w-5 h-5 text-blue-200" />
+            <h3 className="font-bold text-lg">
+              Monthly Target — {session?.user?.role === 'SALES_MANAGER'
+                ? `Team (${target.teamSize} members)`
+                : 'Personal'}
+            </h3>
+          </div>
+          <div className="grid grid-cols-2 gap-4">
+            {/* Clients target */}
+            <div className="bg-white/10 rounded-xl p-4">
+              <div className="flex items-center justify-between mb-2">
+                <span className="text-blue-100 text-sm font-semibold">Clients This Month</span>
+                <span className="text-white font-black text-lg">
+                  {target.clientsThisMonth} / {target.clientTarget}
+                </span>
+              </div>
+              <div className="h-2.5 bg-white/20 rounded-full overflow-hidden">
+                <div
+                  className={`h-full rounded-full transition-all ${
+                    target.clientsThisMonth >= target.clientTarget ? 'bg-green-400' : 'bg-amber-300'
+                  }`}
+                  style={{ width: `${Math.min(100, Math.round((target.clientsThisMonth / target.clientTarget) * 100))}%` }}
+                />
+              </div>
+              <div className="flex items-center justify-between mt-1.5">
+                <span className="text-blue-200 text-xs">
+                  {target.clientsThisMonth >= target.clientTarget
+                    ? 'Target achieved!'
+                    : `${target.clientTarget - target.clientsThisMonth} more to go`}
+                </span>
+                <span className="text-blue-200 text-xs font-semibold">
+                  {Math.min(100, Math.round((target.clientsThisMonth / target.clientTarget) * 100))}%
+                </span>
+              </div>
+            </div>
+            {/* Revenue target */}
+            <div className="bg-white/10 rounded-xl p-4">
+              <div className="flex items-center justify-between mb-2">
+                <span className="text-blue-100 text-sm font-semibold">Revenue This Month</span>
+                <span className="text-white font-black text-base leading-tight">
+                  {formatCurrency(target.revenueThisMonth)}
+                </span>
+              </div>
+              <div className="h-2.5 bg-white/20 rounded-full overflow-hidden">
+                <div
+                  className={`h-full rounded-full transition-all ${
+                    target.revenueThisMonth >= target.revenueTarget ? 'bg-green-400' : 'bg-amber-300'
+                  }`}
+                  style={{ width: `${Math.min(100, Math.round((target.revenueThisMonth / target.revenueTarget) * 100))}%` }}
+                />
+              </div>
+              <div className="flex items-center justify-between mt-1.5">
+                <span className="text-blue-200 text-xs">
+                  Target: {formatCurrency(target.revenueTarget)}
+                </span>
+                <span className="text-blue-200 text-xs font-semibold">
+                  {Math.min(100, Math.round((target.revenueThisMonth / target.revenueTarget) * 100))}%
+                </span>
+              </div>
+            </div>
           </div>
         </div>
       )}

@@ -1107,6 +1107,14 @@ function EmployeeFormModal({ employee, departments, employees, onClose, onSave }
 
   const set = (k: string, v: string) => setForm(p => ({ ...p, [k]: v }))
 
+  const [salesManagers, setSalesManagers] = useState<any[]>([])
+  useEffect(() => {
+    fetch('/api/employees?userRole=SALES_MANAGER')
+      .then(r => r.json())
+      .then(d => setSalesManagers(Array.isArray(d) ? d : []))
+      .catch(() => {})
+  }, [])
+
   // For new employees: store locally in form state
   function setDocLocal(field: string, dataUrl: string) { set(field, dataUrl) }
   // For existing employees: DocUpload uploads directly; update local preview too
@@ -1218,8 +1226,14 @@ function EmployeeFormModal({ employee, departments, employees, onClose, onSave }
                 <FormField label="Employment Status" name="employmentStatus" opts={['ACTIVE','PROBATION','ON_LEAVE','SUSPENDED','RESIGNED','TERMINATED'].map(v => ({ value: v, label: v.replace('_', ' ') }))} form={form} set={set} />
                 <FormField label="Date Hired" name="dateHired" type="date" required form={form} set={set} />
                 <FormField label="Probation End Date" name="probationEndDate" type="date" form={form} set={set} />
-                <FormField label="Reporting Manager" name="managerId"
-                  opts={employees.filter((e: any) => e.id !== employee?.id).map((e: any) => ({ value: e.id, label: `${e.firstName} ${e.lastName} — ${e.jobTitle}` }))}
+                <FormField
+                  label={form.role === 'SALES_AGENT' ? 'Sales Manager' : 'Reporting Manager'}
+                  name="managerId"
+                  opts={
+                    form.role === 'SALES_AGENT'
+                      ? salesManagers.map((e: any) => ({ value: e.id, label: `${e.firstName} ${e.lastName} — ${e.jobTitle}` }))
+                      : employees.filter((e: any) => e.id !== employee?.id).map((e: any) => ({ value: e.id, label: `${e.firstName} ${e.lastName} — ${e.jobTitle}` }))
+                  }
                   form={form} set={set} />
                 <FormField label="System Role" name="role" opts={[
                   {value:'EMPLOYEE',label:'Employee (Self-Service)'},

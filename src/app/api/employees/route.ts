@@ -30,6 +30,11 @@ export async function GET(req: NextRequest) {
       ]
     }
 
+    const userRole = searchParams.get('userRole')
+    if (userRole) {
+      where.user = { role: userRole as any }
+    }
+
     const employees = await prisma.employee.findMany({
       where,
       include: {

@@ -8,8 +8,12 @@ export async function GET(req: NextRequest) {
     const session = await getServerSession(authOptions)
     if (!session) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 
-    const VIEW_ALL = ['SUPER_ADMIN', 'HR_MANAGER', 'SALES_MANAGER']
+    const role = session.user.role
     const empId = (session.user as any).employeeId as string | undefined
+
+    const VIEW_ALL = ['SUPER_ADMIN', 'HR_MANAGER']
+    const IS_MANAGER = role === 'SALES_MANAGER'
+    const IS_AGENT = role === 'SALES_AGENT'
 
     // Build scoped filters for each entity
     const leadFilter: any = {}
@@ -18,13 +22,39 @@ export async function GET(req: NextRequest) {
     const taskFilter: any = {}
     const subscriptionFilter: any = {}
 
-    if (!VIEW_ALL.includes(session.user.role) && empId) {
+    let teamEmpIds: string[] = []
+
+    if (IS_MANAGER && empId) {
+      // Manager sees own + all agents assigned to them
+      const agents = await prisma.employee.findMany({
+        where: { managerId: empId },
+        select: { id: true },
+      })
+      teamEmpIds = [empId, ...agents.map((a) => a.id)]
+      leadFilter.OR = [
+        { assignedToId: { in: teamEmpIds } },
+        { createdById: { in: teamEmpIds } },
+      ]
+      quotationFilter.createdById = { in: teamEmpIds }
+      clientFilter.OR = [
+        { assignedToId: { in: teamEmpIds } },
+        { createdById: { in: teamEmpIds } },
+      ]
+      taskFilter.assignedToId = { in: teamEmpIds }
+      subscriptionFilter.client = {
+        OR: [
+          { assignedToId: { in: teamEmpIds } },
+          { createdById: { in: teamEmpIds } },
+        ],
+      }
+    } else if (IS_AGENT && empId) {
       leadFilter.OR = [{ assignedToId: empId }, { createdById: empId }]
       quotationFilter.createdById = empId
       clientFilter.OR = [{ assignedToId: empId }, { createdById: empId }]
       taskFilter.assignedToId = empId
       subscriptionFilter.client = { OR: [{ assignedToId: empId }, { createdById: empId }] }
     }
+    // SUPER_ADMIN, HR_MANAGER, FINANCE_OFFICER see everything (no filters)
 
     const now = new Date()
     const today = new Date(now.getFullYear(), now.getMonth(), now.getDate())
@@ -55,6 +85,7 @@ export async function GET(req: NextRequest) {
       approvedQuotations,
       totalTasks,
       revenueAgg,
+      revenueThisMonthAgg,
       expiringSubscriptions,
       expiredSubscriptions,
       todayTasks,
@@ -80,6 +111,10 @@ export async function GET(req: NextRequest) {
       prisma.salesTask.count({ where: taskFilter }),
       prisma.quotation.aggregate({
         where: { ...quotationFilter, status: 'APPROVED' },
+        _sum: { totalAmount: true },
+      }),
+      prisma.quotation.aggregate({
+        where: { ...quotationFilter, status: 'APPROVED', createdAt: { gte: monthStart, lt: monthEnd } },
         _sum: { totalAmount: true },
       }),
       prisma.subscription.count({
@@ -146,12 +181,12 @@ export async function GET(req: NextRequest) {
       ),
     ])
 
-    const leadsByStatus = leadsByStatusRaw.map((row) => ({
+    const statusBreakdown = leadsByStatusRaw.map((row) => ({
       status: row.status,
       count: row._count.status,
     }))
 
-    const leadsBySource = leadsBySourceRaw.map((row) => ({
+    const leadSources = leadsBySourceRaw.map((row) => ({
       source: row.source,
       count: row._count.source,
     }))
@@ -161,33 +196,47 @@ export async function GET(req: NextRequest) {
       count: monthlyLeadCounts[i] as number,
     }))
 
-    const CLIENT_MONTHLY_TARGET = 5
+    // Targets per role
+    let clientTarget = 0
+    let revenueTarget = 0
+    if (IS_AGENT) {
+      clientTarget = 5
+      revenueTarget = 150000
+    } else if (IS_MANAGER) {
+      clientTarget = 10
+      revenueTarget = 500000
+    }
+
+    const revenueThisMonth = revenueThisMonthAgg._sum.totalAmount ?? 0
+    const totalRevenue = revenueAgg._sum.totalAmount ?? 0
 
     return NextResponse.json({
-      totalLeads,
-      newLeads,
-      activeLeads,
-      wonLeads,
-      lostLeads,
-      totalClients,
-      totalQuotations,
-      pendingQuotations,
-      approvedQuotations,
-      totalTasks,
-      totalRevenue: revenueAgg._sum.totalAmount ?? 0,
-      expiringSubscriptions,
-      expiredSubscriptions,
-      todayTasks,
-      overdueTasks,
-      leadsThisMonth,
-      clientsThisMonth,
-      quotationsThisMonth,
-      clientMonthlyTarget: CLIENT_MONTHLY_TARGET,
-      clientsRemainingThisMonth: Math.max(0, CLIENT_MONTHLY_TARGET - clientsThisMonth),
+      stats: {
+        totalLeads,
+        wonDeals: wonLeads,
+        activeClients: totalClients,
+        expiringSubscriptions,
+      },
+      quick: {
+        todaysTasks: todayTasks,
+        overdueTasks,
+        pendingQuotations,
+        newLeads,
+        totalRevenue,
+      },
+      target: clientTarget > 0
+        ? {
+            clientTarget,
+            revenueTarget,
+            clientsThisMonth,
+            revenueThisMonth,
+            teamSize: IS_MANAGER ? teamEmpIds.length : undefined,
+          }
+        : null,
       recentLeads,
       recentClients,
-      leadsByStatus,
-      leadsBySource,
+      statusBreakdown,
+      leadSources,
       monthlyLeads,
     })
   } catch (error) {
