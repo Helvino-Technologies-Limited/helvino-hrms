@@ -356,7 +356,13 @@ function ApplicantProfileModal({ applicant: initial, onClose }: any) {
                   <InfoItem icon={<User className="w-3.5 h-3.5" />} label="Education" value={applicant.educationLevel} />
                 )}
                 {applicant.source && (
-                  <InfoItem icon={<Globe className="w-3.5 h-3.5" />} label="Source" value={applicant.source} />
+                  <InfoItem icon={<Globe className="w-3.5 h-3.5" />} label="Source"
+                    value={
+                      applicant.source === 'MANAGER_REFERRAL' && (applicant as any).salesManager
+                        ? `${applicant.source} — ${(applicant as any).salesManager.firstName} ${(applicant as any).salesManager.lastName}`
+                        : applicant.source
+                    }
+                  />
                 )}
               </div>
             </section>

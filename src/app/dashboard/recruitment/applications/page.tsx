@@ -580,7 +580,14 @@ export default function ApplicationsPage() {
                       {/* Source */}
                       <td className="px-4 py-3.5">
                         {app.source ? (
-                          <span className="text-xs bg-slate-100 text-slate-600 px-2 py-0.5 rounded-lg font-medium">{app.source}</span>
+                          <div className="flex flex-col gap-0.5">
+                            <span className="text-xs bg-slate-100 text-slate-600 px-2 py-0.5 rounded-lg font-medium">{app.source}</span>
+                            {app.source === 'MANAGER_REFERRAL' && (app as any).salesManager && (
+                              <span className="text-xs text-blue-600 font-medium">
+                                {(app as any).salesManager.firstName} {(app as any).salesManager.lastName}
+                              </span>
+                            )}
+                          </div>
                         ) : (
                           <span className="text-slate-300 text-xs">—</span>
                         )}

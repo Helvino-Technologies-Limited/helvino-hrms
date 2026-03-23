@@ -19,6 +19,9 @@ export async function GET(
       where: { id },
       include: {
         job: true,
+        salesManager: {
+          select: { id: true, firstName: true, lastName: true },
+        },
         interviews: {
           include: {
             interviewer: {
@@ -125,6 +128,9 @@ export async function PATCH(
       data,
       include: {
         job: true,
+        salesManager: {
+          select: { id: true, firstName: true, lastName: true },
+        },
         interviews: {
           include: {
             interviewer: {

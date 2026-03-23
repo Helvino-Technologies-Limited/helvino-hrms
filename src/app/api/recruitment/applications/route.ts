@@ -52,6 +52,9 @@ export async function GET(request: NextRequest) {
         job: {
           select: { id: true, title: true, slug: true },
         },
+        salesManager: {
+          select: { id: true, firstName: true, lastName: true },
+        },
         interviews: {
           include: {
             evaluation: true,

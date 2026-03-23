@@ -300,7 +300,12 @@ export default function JobDetailPage() {
                               <span className="text-xs text-slate-500">{app.experienceYears}yr exp</span>
                             )}
                             {app.source && (
-                              <span className="text-xs bg-slate-100 text-slate-500 px-1.5 py-0.5 rounded-md truncate max-w-[80px]">
+                              <span
+                                className="text-xs bg-slate-100 text-slate-500 px-1.5 py-0.5 rounded-md truncate max-w-[80px]"
+                                title={app.source === 'MANAGER_REFERRAL' && (app as any).salesManager
+                                  ? `Referred by ${(app as any).salesManager.firstName} ${(app as any).salesManager.lastName}`
+                                  : app.source}
+                              >
                                 {app.source}
                               </span>
                             )}
@@ -592,9 +597,14 @@ function ApplicantDetailDrawer({
 
               {/* Source */}
               {applicant.source && (
-                <div className="flex items-center gap-2">
+                <div className="flex items-center gap-2 flex-wrap">
                   <span className="text-xs text-slate-400">Source:</span>
                   <span className="text-xs font-semibold bg-slate-100 text-slate-600 px-2 py-0.5 rounded-lg">{applicant.source}</span>
+                  {applicant.source === 'MANAGER_REFERRAL' && (applicant as any).salesManager && (
+                    <span className="text-xs text-blue-600 font-semibold">
+                      {(applicant as any).salesManager.firstName} {(applicant as any).salesManager.lastName}
+                    </span>
+                  )}
                 </div>
               )}
 
