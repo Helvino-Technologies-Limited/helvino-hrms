@@ -217,7 +217,7 @@ export async function GET(req: NextRequest) {
     let revenueTarget = 0
     if (IS_AGENT) {
       clientTarget = 5
-      revenueTarget = 150000
+      revenueTarget = 250000
     } else if (IS_MANAGER) {
       clientTarget = 10
       revenueTarget = 500000
@@ -225,6 +225,23 @@ export async function GET(req: NextRequest) {
 
     const revenueThisMonth = revenueThisMonthAgg._sum.totalAmount ?? 0
     const totalRevenue = revenueAgg._sum.totalAmount ?? 0
+
+    // Manager's personal target stats (their own contribution, separate from team)
+    let managerPersonalClients = 0
+    let managerPersonalRevenue = 0
+    if (IS_MANAGER && empId) {
+      const [mgClients, mgRevenue] = await Promise.all([
+        prisma.client.count({
+          where: { createdById: empId, createdAt: { gte: monthStart, lt: monthEnd } },
+        }),
+        prisma.quotation.aggregate({
+          where: { createdById: empId, status: 'APPROVED', createdAt: { gte: monthStart, lt: monthEnd } },
+          _sum: { totalAmount: true },
+        }),
+      ])
+      managerPersonalClients = mgClients
+      managerPersonalRevenue = Number(mgRevenue._sum.totalAmount ?? 0)
+    }
 
     // Per-agent team performance (SALES_MANAGER only)
     let teamPerformance: Array<{
@@ -322,6 +339,14 @@ export async function GET(req: NextRequest) {
             teamSize: IS_MANAGER ? teamEmpIds.length : undefined,
           }
         : null,
+      managerTarget: IS_MANAGER ? {
+        clientTarget: 10,
+        revenueTarget: 500000,
+        clientsThisMonth: managerPersonalClients,
+        revenueThisMonth: managerPersonalRevenue,
+        clientsRemaining: Math.max(0, 10 - managerPersonalClients),
+        revenueRemaining: Math.max(0, 500000 - managerPersonalRevenue),
+      } : undefined,
       teamPerformance: IS_MANAGER ? teamPerformance : undefined,
       applicantStats: IS_MANAGER ? applicantStats : undefined,
       activeAgentsCount: IS_MANAGER ? teamAgents.length : undefined,

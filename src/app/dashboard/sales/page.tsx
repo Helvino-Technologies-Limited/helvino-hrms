@@ -98,7 +98,10 @@ function AgentCard({ agent }: { agent: { id: string; name: string; clientsThisMo
           <div className="h-2 bg-slate-100 rounded-full overflow-hidden">
             <div className={`h-full rounded-full transition-all duration-500 ${cp >= 100 ? 'bg-green-500' : cp >= 60 ? 'bg-blue-500' : 'bg-amber-400'}`} style={{ width: `${cp}%` }} />
           </div>
-          <div className="text-right text-xs text-slate-400 mt-0.5">{cp}%</div>
+          <div className="flex items-center justify-between mt-0.5">
+            <span className="text-xs text-slate-400">{cp >= 100 ? '✅ Target met' : `${agent.clientTarget - agent.clientsThisMonth} remaining`}</span>
+            <span className="text-xs font-bold text-slate-500">{cp}%</span>
+          </div>
         </div>
 
         {/* Revenue */}
@@ -112,7 +115,10 @@ function AgentCard({ agent }: { agent: { id: string; name: string; clientsThisMo
           <div className="h-2 bg-slate-100 rounded-full overflow-hidden">
             <div className={`h-full rounded-full transition-all duration-500 ${rp >= 100 ? 'bg-green-500' : rp >= 60 ? 'bg-emerald-500' : 'bg-amber-400'}`} style={{ width: `${rp}%` }} />
           </div>
-          <div className="text-right text-xs text-slate-400 mt-0.5">{rp}% of {formatCurrency(agent.revenueTarget)}</div>
+          <div className="flex items-center justify-between mt-0.5">
+            <span className="text-xs text-slate-400">{rp >= 100 ? '✅ Target met' : `${formatCurrency(agent.revenueTarget - agent.revenueThisMonth)} remaining`}</span>
+            <span className="text-xs font-bold text-slate-500">{rp}%</span>
+          </div>
         </div>
       </div>
 
@@ -159,7 +165,6 @@ function ManagerDashboard({ data, loading }: { data: any; loading: boolean }) {
 
   const stats = data?.stats ?? {}
   const quick = data?.quick ?? {}
-  const target = data?.target ?? null
   const teamPerformance: any[] = data?.teamPerformance ?? []
   const recentLeads: any[] = data?.recentLeads ?? []
   const recentClients: any[] = data?.recentClients ?? []
@@ -173,9 +178,13 @@ function ManagerDashboard({ data, loading }: { data: any; loading: boolean }) {
   const applicantStats = data?.applicantStats ?? null
   const activeAgentsCount: number = data?.activeAgentsCount ?? teamPerformance.length
 
-  const teamTarget = target ?? { clientTarget: 10, revenueTarget: 500000, clientsThisMonth: 0, revenueThisMonth: 0, teamSize: 0 }
-  const cp = pct(teamTarget.clientsThisMonth, teamTarget.clientTarget)
-  const rp = pct(teamTarget.revenueThisMonth, teamTarget.revenueTarget)
+  // Manager's own personal target (their individual KPI)
+  const managerTarget = data?.managerTarget ?? { clientTarget: 10, revenueTarget: 500000, clientsThisMonth: 0, revenueThisMonth: 0, clientsRemaining: 10, revenueRemaining: 500000 }
+  const cp = pct(managerTarget.clientsThisMonth, managerTarget.clientTarget)
+  const rp = pct(managerTarget.revenueThisMonth, managerTarget.revenueTarget)
+  // Team combined totals (sum of all agents + manager)
+  const teamClientsThisMonth: number = quick.clientsThisMonth ?? 0
+  const teamRevenueThisMonth: number = quick.revenueThisMonth ?? 0
 
   const topAgent = teamPerformance.length > 0
     ? teamPerformance.reduce((best, a) => {
@@ -214,7 +223,7 @@ function ManagerDashboard({ data, loading }: { data: any; loading: boolean }) {
         </div>
       </div>
 
-      {/* ── Team Monthly Target — hero card ── */}
+      {/* ── My Monthly Target — hero card ── */}
       {loading ? (
         <div className="h-44 bg-slate-100 rounded-2xl animate-pulse" />
       ) : (
@@ -226,9 +235,9 @@ function ManagerDashboard({ data, loading }: { data: any; loading: boolean }) {
                 <Target className="w-5 h-5 text-blue-300" />
               </div>
               <div>
-                <div className="text-white font-black text-base">Team Monthly Target — {monthName}</div>
+                <div className="text-white font-black text-base">My Monthly Target — {monthName}</div>
                 <div className="text-blue-300 text-xs font-medium">
-                  {teamTarget.teamSize ? `${teamTarget.teamSize} agent${teamTarget.teamSize !== 1 ? 's' : ''}` : 'No agents yet'} · 10 clients · KSh 500,000 revenue
+                  Personal KPI · 10 clients · KSh 500,000 revenue
                 </div>
               </div>
             </div>
@@ -250,8 +259,8 @@ function ManagerDashboard({ data, loading }: { data: any; loading: boolean }) {
                     <span className="text-blue-100 text-sm font-semibold">New Clients This Month</span>
                   </div>
                   <div className="text-right">
-                    <span className="text-white font-black text-2xl">{teamTarget.clientsThisMonth}</span>
-                    <span className="text-blue-300 font-semibold text-lg"> / {teamTarget.clientTarget}</span>
+                    <span className="text-white font-black text-2xl">{managerTarget.clientsThisMonth}</span>
+                    <span className="text-blue-300 font-semibold text-lg"> / {managerTarget.clientTarget}</span>
                   </div>
                 </div>
                 <div className="h-3 bg-white/15 rounded-full overflow-hidden mb-2">
@@ -262,7 +271,7 @@ function ManagerDashboard({ data, loading }: { data: any; loading: boolean }) {
                 </div>
                 <div className="flex items-center justify-between">
                   <span className="text-blue-200 text-xs">
-                    {cp >= 100 ? '✅ Target achieved!' : `${teamTarget.clientTarget - teamTarget.clientsThisMonth} more needed`}
+                    {cp >= 100 ? '✅ Target achieved!' : `${managerTarget.clientsRemaining} more needed`}
                   </span>
                   <span className="text-white text-sm font-black">{cp}%</span>
                 </div>
@@ -276,8 +285,8 @@ function ManagerDashboard({ data, loading }: { data: any; loading: boolean }) {
                     <span className="text-blue-100 text-sm font-semibold">Revenue This Month</span>
                   </div>
                   <div className="text-right">
-                    <div className="text-white font-black text-lg leading-tight">{formatCurrency(teamTarget.revenueThisMonth)}</div>
-                    <div className="text-blue-300 text-xs">of {formatCurrency(teamTarget.revenueTarget)}</div>
+                    <div className="text-white font-black text-lg leading-tight">{formatCurrency(managerTarget.revenueThisMonth)}</div>
+                    <div className="text-blue-300 text-xs">of {formatCurrency(managerTarget.revenueTarget)}</div>
                   </div>
                 </div>
                 <div className="h-3 bg-white/15 rounded-full overflow-hidden mb-2">
@@ -288,10 +297,26 @@ function ManagerDashboard({ data, loading }: { data: any; loading: boolean }) {
                 </div>
                 <div className="flex items-center justify-between">
                   <span className="text-blue-200 text-xs">
-                    {rp >= 100 ? '✅ Target achieved!' : `${formatCurrency(teamTarget.revenueTarget - teamTarget.revenueThisMonth)} remaining`}
+                    {rp >= 100 ? '✅ Target achieved!' : `${formatCurrency(managerTarget.revenueRemaining)} remaining`}
                   </span>
                   <span className="text-white text-sm font-black">{rp}%</span>
                 </div>
+              </div>
+            </div>
+
+            {/* Team summary bar */}
+            <div className="mt-4 bg-white/10 backdrop-blur rounded-xl px-4 py-3 flex items-center justify-between flex-wrap gap-3">
+              <span className="text-blue-200 text-xs font-semibold flex items-center gap-1.5">
+                <Users className="w-3.5 h-3.5" /> Team combined this month:
+              </span>
+              <div className="flex items-center gap-4">
+                <span className="text-white text-xs font-bold">
+                  <span className="text-blue-300">Clients: </span>{teamClientsThisMonth}
+                </span>
+                <span className="text-white text-xs font-bold">
+                  <span className="text-blue-300">Revenue: </span>{formatCurrency(teamRevenueThisMonth)}
+                </span>
+                <span className="text-blue-200 text-xs">{activeAgentsCount} agent{activeAgentsCount !== 1 ? 's' : ''}</span>
               </div>
             </div>
           </div>
