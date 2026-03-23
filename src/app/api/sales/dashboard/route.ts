@@ -236,6 +236,23 @@ export async function GET(req: NextRequest) {
       revenueTarget: number
     }> = []
 
+    // Applicant stats for managers
+    let applicantStats: { total: number; newThisWeek: number; shortlisted: number; hired: number; byStatus: Record<string, number> } | null = null
+
+    if (IS_MANAGER && empId) {
+      const weekAgo = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000)
+      const [totalApplicants, newApplicantsThisWeek, shortlistedApplicants, hiredApplicants, applicantsByStatus] = await Promise.all([
+        prisma.applicant.count({ where: { salesManagerId: empId } }),
+        prisma.applicant.count({ where: { salesManagerId: empId, createdAt: { gte: weekAgo } } }),
+        prisma.applicant.count({ where: { salesManagerId: empId, status: 'SHORTLISTED' } }),
+        prisma.applicant.count({ where: { salesManagerId: empId, status: 'HIRED' } }),
+        prisma.applicant.groupBy({ by: ['status'], where: { salesManagerId: empId }, _count: { status: true } }),
+      ])
+      const byStatus: Record<string, number> = {}
+      applicantsByStatus.forEach(r => { byStatus[r.status] = r._count.status })
+      applicantStats = { total: totalApplicants, newThisWeek: newApplicantsThisWeek, shortlisted: shortlistedApplicants, hired: hiredApplicants, byStatus }
+    }
+
     // If no agents are formally assigned, show all SALES_AGENT employees as the team
     if (IS_MANAGER && teamAgents.length === 0) {
       const allAgents = await prisma.employee.findMany({
@@ -306,6 +323,8 @@ export async function GET(req: NextRequest) {
           }
         : null,
       teamPerformance: IS_MANAGER ? teamPerformance : undefined,
+      applicantStats: IS_MANAGER ? applicantStats : undefined,
+      activeAgentsCount: IS_MANAGER ? teamAgents.length : undefined,
       recentLeads,
       recentClients,
       statusBreakdown,

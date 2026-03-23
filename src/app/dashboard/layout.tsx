@@ -9,7 +9,7 @@ import {
   Bell, Search, Menu, X, LogOut, Settings, UserCircle,
   Shield, ChevronDown, Building, CheckCircle,
   TrendingUp, Target, FileText, Users2, RotateCcw, FolderOpen, Package, ListTodo,
-  Video, Database, ShieldCheck,
+  Video, Database, ShieldCheck, UserCheck,
   BookOpen, CreditCard, Receipt, Truck, Landmark, Percent, PiggyBank, ScrollText, ClipboardCheck,
   LifeBuoy, Mail, IdCard, KeyRound, HelpCircle
 } from 'lucide-react'
@@ -89,6 +89,8 @@ const salesNavItems = [
     roles: ['SUPER_ADMIN', 'HR_MANAGER', 'SALES_MANAGER'] },
   { href: '/dashboard/sales/reports', icon: BarChart3, label: 'Sales Reports',
     roles: ['SUPER_ADMIN', 'HR_MANAGER', 'SALES_MANAGER', 'FINANCE_OFFICER'] },
+  { href: '/dashboard/sales/team', icon: UserCheck, label: 'My Team',
+    roles: ['SALES_MANAGER'] },
   { href: '/dashboard/sales/recruitment', icon: Users2, label: 'Team Recruitment',
     roles: ['SUPER_ADMIN', 'HR_MANAGER', 'SALES_MANAGER'] },
   { href: '/dashboard/sales/meetings', icon: Video, label: 'Team Meetings',

@@ -6,7 +6,7 @@ import {
   TrendingUp, Trophy, Users, AlertTriangle, CheckSquare, FileText,
   UserPlus, DollarSign, ArrowRight, Building2, Target, TrendingDown,
   Zap, BarChart3, Calendar, ClipboardList, Award, Star,
-  ChevronRight, Activity
+  ChevronRight, Activity, Link2
 } from 'lucide-react'
 import toast from 'react-hot-toast'
 import { formatCurrency, formatDate } from '@/lib/utils'
@@ -170,6 +170,9 @@ function ManagerDashboard({ data, loading }: { data: any; loading: boolean }) {
   const maxStatus = statusBreakdown.reduce((m, s) => Math.max(m, s.count), 1)
   const maxSource = leadSources.reduce((m, s) => Math.max(m, s.count), 1)
 
+  const applicantStats = data?.applicantStats ?? null
+  const activeAgentsCount: number = data?.activeAgentsCount ?? teamPerformance.length
+
   const teamTarget = target ?? { clientTarget: 10, revenueTarget: 500000, clientsThisMonth: 0, revenueThisMonth: 0, teamSize: 0 }
   const cp = pct(teamTarget.clientsThisMonth, teamTarget.clientTarget)
   const rp = pct(teamTarget.revenueThisMonth, teamTarget.revenueTarget)
@@ -202,7 +205,7 @@ function ManagerDashboard({ data, loading }: { data: any; loading: boolean }) {
           <Link href="/dashboard/sales/leads/new" className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2.5 rounded-xl font-semibold flex items-center gap-2 text-sm shadow-sm transition-colors">
             <UserPlus className="w-4 h-4" /> Add Lead
           </Link>
-          <Link href="/dashboard/sales/recruitment" className="bg-white hover:bg-slate-50 border border-slate-200 text-slate-700 px-4 py-2.5 rounded-xl font-semibold flex items-center gap-2 text-sm transition-colors">
+          <Link href="/dashboard/sales/team" className="bg-white hover:bg-slate-50 border border-slate-200 text-slate-700 px-4 py-2.5 rounded-xl font-semibold flex items-center gap-2 text-sm transition-colors">
             <Users className="w-4 h-4" /> My Team
           </Link>
           <Link href="/dashboard/sales/clients" className="bg-white hover:bg-slate-50 border border-slate-200 text-slate-700 px-4 py-2.5 rounded-xl font-semibold flex items-center gap-2 text-sm transition-colors">
@@ -354,6 +357,57 @@ function ManagerDashboard({ data, loading }: { data: any; loading: boolean }) {
         </div>
       )}
 
+      {/* ── Team headcount + Recruitment snapshot ── */}
+      {!loading && (
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+          {/* Active agents */}
+          <Link href="/dashboard/sales/team"
+            className="bg-white rounded-2xl p-5 shadow-sm border border-slate-100 hover:shadow-md transition-shadow group">
+            <div className="flex items-center justify-between mb-3">
+              <div className="w-10 h-10 bg-blue-100 rounded-xl flex items-center justify-center">
+                <Users className="w-5 h-5 text-blue-600" />
+              </div>
+              <ArrowRight className="w-4 h-4 text-slate-300 group-hover:text-blue-500 transition-colors" />
+            </div>
+            <div className="text-3xl font-black text-slate-900">{activeAgentsCount}</div>
+            <div className="text-slate-600 text-sm font-semibold">Active Agents</div>
+            <div className="text-xs text-slate-400 mt-0.5">On your team</div>
+          </Link>
+
+          {/* Total applicants */}
+          <Link href="/dashboard/sales/team#applicants"
+            className="bg-white rounded-2xl p-5 shadow-sm border border-slate-100 hover:shadow-md transition-shadow group">
+            <div className="flex items-center justify-between mb-3">
+              <div className="w-10 h-10 bg-indigo-100 rounded-xl flex items-center justify-center">
+                <UserPlus className="w-5 h-5 text-indigo-600" />
+              </div>
+              {applicantStats && applicantStats.newThisWeek > 0 && (
+                <span className="text-xs font-semibold text-indigo-600 bg-indigo-50 px-2 py-0.5 rounded-full">+{applicantStats.newThisWeek} this wk</span>
+              )}
+            </div>
+            <div className="text-3xl font-black text-slate-900">{applicantStats?.total ?? 0}</div>
+            <div className="text-slate-600 text-sm font-semibold">My Applicants</div>
+            <div className="text-xs text-slate-400 mt-0.5">
+              {applicantStats?.byStatus?.SHORTLISTED ?? 0} shortlisted · {applicantStats?.byStatus?.HIRED ?? 0} hired
+            </div>
+          </Link>
+
+          {/* Recruitment link CTA */}
+          <Link href="/dashboard/sales/recruitment"
+            className="bg-gradient-to-br from-blue-500 to-blue-700 rounded-2xl p-5 shadow-sm hover:shadow-md transition-shadow group text-white">
+            <div className="flex items-center justify-between mb-3">
+              <div className="w-10 h-10 bg-white/20 rounded-xl flex items-center justify-center">
+                <Link2 className="w-5 h-5 text-white" />
+              </div>
+              <ArrowRight className="w-4 h-4 text-white/50 group-hover:text-white transition-colors" />
+            </div>
+            <div className="text-lg font-black text-white">Recruit</div>
+            <div className="text-blue-100 text-sm font-semibold">Team Recruitment</div>
+            <div className="text-blue-200 text-xs mt-0.5">Share your link · review applicants</div>
+          </Link>
+        </div>
+      )}
+
       {/* ── Quick action pills ── */}
       {!loading && (
         <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
@@ -393,15 +447,15 @@ function ManagerDashboard({ data, loading }: { data: any; loading: boolean }) {
             </div>
           </Link>
 
-          <Link href="/dashboard/sales/team-tasks"
+          <Link href="/dashboard/sales/team"
             className="bg-white rounded-2xl p-4 border border-slate-100 flex items-center gap-3 hover:shadow-md transition-all">
             <div className="w-9 h-9 bg-indigo-100 rounded-xl flex items-center justify-center flex-shrink-0">
-              <ClipboardList className="w-4 h-4 text-indigo-600" />
+              <Users className="w-4 h-4 text-indigo-600" />
             </div>
             <div>
-              <div className="text-2xl font-black text-indigo-700 leading-none">{teamPerformance.length}</div>
-              <div className="text-slate-500 text-xs font-semibold mt-0.5">Team Members</div>
-              <div className="text-slate-400 text-xs">View team tasks</div>
+              <div className="text-2xl font-black text-indigo-700 leading-none">{activeAgentsCount}</div>
+              <div className="text-slate-500 text-xs font-semibold mt-0.5">Active Agents</div>
+              <div className="text-slate-400 text-xs">View my team</div>
             </div>
           </Link>
         </div>
