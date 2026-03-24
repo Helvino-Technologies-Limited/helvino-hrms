@@ -28,9 +28,27 @@ export function generateContractHtml(data: {
     : 'As per separate offer letter'
   const empType = data.employmentType.replace(/_/g, ' ')
   let role = (data.userRole || '').toUpperCase()
-  // If the user role doesn't already say SALES_MANAGER, check job title as fallback
-  // (covers cases where a Sales Manager's User account was assigned SALES_AGENT)
-  if (role !== 'SALES_MANAGER') {
+  // Fallback: infer sales role from job title when User account has a generic role
+  if (role !== 'SALES_MANAGER' && role !== 'SALES_AGENT') {
+    const titleLower = (data.jobTitle || '').toLowerCase()
+    if (
+      titleLower.includes('sales manager') ||
+      titleLower.includes('sales team lead') ||
+      titleLower.includes('sales supervisor') ||
+      titleLower.includes('sales director')
+    ) {
+      role = 'SALES_MANAGER'
+    } else if (
+      titleLower.includes('sales agent') ||
+      titleLower.includes('sales representative') ||
+      titleLower.includes('sales rep') ||
+      titleLower.includes('sales executive')
+    ) {
+      role = 'SALES_AGENT'
+    }
+  }
+  // Override SALES_AGENT → SALES_MANAGER if job title clearly says manager
+  if (role === 'SALES_AGENT') {
     const titleLower = (data.jobTitle || '').toLowerCase()
     if (
       titleLower.includes('sales manager') ||
@@ -64,26 +82,26 @@ export function generateContractHtml(data: {
   if (role === 'SALES_AGENT') {
     performanceClause = `
     <div class="clause">
-      <h3>${idx++}. Performance Targets</h3>
-      <p>As a Sales Agent, the Employee is expected to meet the following monthly performance targets, which are subject to periodic review by mutual agreement:</p>
+      <h3>${idx++}. Performance Standards</h3>
+      <p>The Employee shall perform their duties as <strong>${data.jobTitle}</strong> to the highest professional standard. The following mandatory monthly performance standards shall apply to this role and shall form an integral part of this contract:</p>
       <table class="details" style="margin-top:10px">
-        <tr><td>Monthly Client Acquisition</td><td>Minimum <strong>${numWords(agentClients)}</strong> new clients per calendar month</td></tr>
+        <tr><td>Monthly Client Acquisition Target</td><td>Minimum <strong>${numWords(agentClients)}</strong> new clients per calendar month</td></tr>
         <tr><td>Monthly Revenue Target</td><td>Minimum <strong>${fmtKes(agentRevenue)}</strong> gross revenue per calendar month</td></tr>
         <tr><td>Target Review Cycle</td><td>Quarterly — targets may be revised upward or downward by mutual written consent</td></tr>
       </table>
-      <p style="margin-top:10px">Consistent failure to meet targets, without reasonable justification, may result in performance improvement proceedings as per Company policy. Exceptional performance above target shall be recognised and may attract performance bonuses at Management's discretion.</p>
+      <p style="margin-top:10px">These targets are the minimum performance standards against which the Employee's output shall be measured on a monthly basis. Consistent failure to meet these standards, without reasonable justification, may result in a formal performance improvement process as per Company policy. Exceptional performance above the stated targets shall be recognised and may attract performance bonuses at Management's discretion.</p>
     </div>`
   } else if (role === 'SALES_MANAGER') {
     performanceClause = `
     <div class="clause">
-      <h3>${idx++}. Performance Targets &amp; Team Management</h3>
-      <p>As a Sales Manager, the Employee is responsible for leading their team and ensuring the following monthly performance targets are achieved. These targets are subject to quarterly review by mutual agreement:</p>
+      <h3>${idx++}. Performance Standards &amp; Team Management</h3>
+      <p>The Employee shall perform their duties as <strong>${data.jobTitle}</strong> to the highest professional standard. The following mandatory monthly performance standards shall apply to this role, covering both personal output and team management responsibilities, and shall form an integral part of this contract:</p>
       <table class="details" style="margin-top:10px">
-        <tr><td>Team Client Acquisition</td><td>Minimum <strong>${numWords(mgrClients)}</strong> new clients per calendar month across the managed team</td></tr>
-        <tr><td>Team Revenue Target</td><td>Minimum <strong>${fmtKes(mgrRevenue)}</strong> gross revenue per calendar month across the managed team</td></tr>
+        <tr><td>Team Monthly Client Acquisition Target</td><td>Minimum <strong>${numWords(mgrClients)}</strong> new clients per calendar month across the managed team</td></tr>
+        <tr><td>Team Monthly Revenue Target</td><td>Minimum <strong>${fmtKes(mgrRevenue)}</strong> gross revenue per calendar month across the managed team</td></tr>
         <tr><td>Target Review Cycle</td><td>Quarterly — targets may be revised upward or downward by mutual written consent</td></tr>
       </table>
-      <p style="margin-top:10px">The Employee shall be responsible for recruiting, training, and managing a team of Sales Agents, setting individual agent targets, conducting performance reviews, and reporting team performance to the Company. Exceptional team performance may attract management bonuses at the Company's discretion.</p>
+      <p style="margin-top:10px">These targets are the minimum performance standards against which the Employee's output and team performance shall be measured on a monthly basis. The Employee shall be responsible for recruiting, coaching, and managing a team of Sales Agents; setting individual agent targets aligned with the above; conducting regular performance reviews; and reporting team performance to the Company. Consistent failure to meet these standards may result in a formal performance improvement process. Exceptional team performance may attract management bonuses at the Company's discretion.</p>
     </div>`
   } else {
     // General performance clause for all other roles
