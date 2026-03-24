@@ -11,6 +11,7 @@ import {
 } from 'lucide-react'
 import { formatCurrency, formatDate } from '@/lib/utils'
 import Letterhead from '@/components/Letterhead'
+import { generateQuotationHtml } from '@/lib/quotation-pdf'
 
 const STATUS_COLORS: Record<string, string> = {
   DRAFT: 'bg-slate-100 text-slate-700',
@@ -117,33 +118,91 @@ export default function QuotationDetailPage() {
   }
 
   async function downloadPdf() {
-    if (!docRef.current) return
     setDownloadingPdf(true)
     try {
       const [{ default: html2canvas }, { default: jsPDF }] = await Promise.all([
         import('html2canvas'),
         import('jspdf'),
       ])
-      const canvas = await html2canvas(docRef.current, { scale: 2, useCORS: true, logging: false })
-      const imgData = canvas.toDataURL('image/png')
-      const pdf = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4' })
-      const pageWidth = pdf.internal.pageSize.getWidth()
-      const pageHeight = pdf.internal.pageSize.getHeight()
-      const imgWidth = pageWidth
-      const imgHeight = (canvas.height * imgWidth) / canvas.width
-      let heightLeft = imgHeight
-      let position = 0
-      pdf.addImage(imgData, 'PNG', 0, position, imgWidth, imgHeight)
-      heightLeft -= pageHeight
-      while (heightLeft > 0) {
-        position -= pageHeight
-        pdf.addPage()
-        pdf.addImage(imgData, 'PNG', 0, position, imgWidth, imgHeight)
-        heightLeft -= pageHeight
+
+      const signerName = session?.user
+        ? `${(session.user as any).firstName ?? ''} ${(session.user as any).lastName ?? ''}`.trim()
+        : ''
+      const signerTitle = ((session?.user as any)?.role ?? '').replace(/_/g, ' ')
+
+      const html = generateQuotationHtml({
+        ...quotation,
+        signerName,
+        signerTitle,
+      })
+
+      // Render in an off-screen container
+      const container = document.createElement('div')
+      container.style.cssText = 'position:fixed;left:-9999px;top:0;width:900px;background:#fff;z-index:-1;'
+      container.innerHTML = html
+      document.body.appendChild(container)
+
+      // Wait for logo image to load
+      const img = container.querySelector('img') as HTMLImageElement | null
+      if (img && !img.complete) {
+        await new Promise<void>(resolve => {
+          img.onload = () => resolve()
+          img.onerror = () => resolve()
+          setTimeout(resolve, 2000)
+        })
+      } else {
+        await new Promise(r => setTimeout(r, 200))
       }
+
+      const canvas = await html2canvas(container, {
+        scale: 2,
+        useCORS: true,
+        backgroundColor: '#ffffff',
+        logging: false,
+        width: container.offsetWidth,
+        height: container.scrollHeight,
+        windowWidth: container.offsetWidth,
+      })
+      document.body.removeChild(container)
+
+      const pdf = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4' })
+      const pageW = pdf.internal.pageSize.getWidth()
+      const pageH = pdf.internal.pageSize.getHeight()
+      const imgData = canvas.toDataURL('image/jpeg', 0.97)
+      const totalImgH = (canvas.height * pageW) / canvas.width
+
+      // Smart page-break: avoid cutting through rows and paragraphs
+      const mmPerPx = pageW / container.offsetWidth
+      const noBreakEls = container.querySelectorAll('tr, p, .section, .payment-box, .sig-area, .footer')
+      const bounds: { top: number; bottom: number }[] = []
+      noBreakEls.forEach(el => {
+        const r = (el as HTMLElement).getBoundingClientRect()
+        bounds.push({ top: r.top * mmPerPx, bottom: r.bottom * mmPerPx })
+      })
+
+      const cutPoints: number[] = [0]
+      while (true) {
+        const lastCut = cutPoints[cutPoints.length - 1]
+        if (lastCut + pageH >= totalImgH) break
+        const idealCut = lastCut + pageH
+        const split = bounds.filter(b => b.top < idealCut && b.bottom > idealCut)
+        let cut = idealCut
+        if (split.length > 0) {
+          const safeTop = Math.min(...split.map(b => b.top))
+          if (safeTop > lastCut + 5) cut = safeTop
+        }
+        cutPoints.push(cut)
+      }
+
+      cutPoints.forEach((yOffset, i) => {
+        if (i > 0) pdf.addPage()
+        pdf.addImage(imgData, 'JPEG', 0, -yOffset, pageW, totalImgH)
+      })
+
       pdf.save(`${quotation.quotationNumber}.pdf`)
       toast.success('PDF downloaded')
-    } catch {
+    } catch (e) {
+      console.error(e)
       toast.error('Failed to generate PDF')
     }
     setDownloadingPdf(false)
@@ -218,6 +277,17 @@ export default function QuotationDetailPage() {
 
   return (
     <>
+      {/* Print styles */}
+      <style>{`
+        @media print {
+          .print\\:hidden { display: none !important; }
+          body { background: white !important; margin: 0; }
+          tr, .section, .payment-box { break-inside: avoid; page-break-inside: avoid; }
+          thead { display: table-header-group; }
+        }
+        @page { margin: 1cm; size: A4 portrait; }
+      `}</style>
+
       {/* Action bar — hidden on print */}
       <div className="print:hidden space-y-4 mb-6">
         {/* Top navigation */}
