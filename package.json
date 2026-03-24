@@ -30,10 +30,10 @@
     "framer-motion": "^12.34.4",
     "html2canvas": "^1.4.1",
     "jsonwebtoken": "^9.0.3",
-    "jspdf": "^4.2.0",
+    "jspdf": "^4.2.1",
     "lucide-react": "^0.576.0",
     "nanoid": "^5.1.6",
-    "next": "16.1.6",
+    "next": "16.2.1",
     "next-auth": "^4.24.13",
     "nodemailer": "^8.0.1",
     "react": "19.2.3",
@@ -56,7 +56,7 @@
     "autoprefixer": "10.4.20",
     "babel-plugin-react-compiler": "1.0.0",
     "eslint": "^9",
-    "eslint-config-next": "16.1.6",
+    "eslint-config-next": "16.2.1",
     "postcss": "8.4.49",
     "prisma": "^7.4.2",
     "tailwindcss": "3.4.17",
@@ -65,5 +65,14 @@
   },
   "prisma": {
     "seed": "ts-node --compiler-options {\"module\":\"CommonJS\"} prisma/seed.ts"
+  },
+  "pnpm": {
+    "overrides": {
+      "hono": ">=4.12.9",
+      "@hono/node-server": ">=1.19.11",
+      "flatted": ">=3.4.2",
+      "effect": ">=3.21.0",
+      "lodash": ">=4.17.23"
+    }
   }
 }
