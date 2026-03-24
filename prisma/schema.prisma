@@ -301,6 +301,7 @@ model Employee {
   nhifCardUrl      String?
   nssfCardUrl      String?
   employmentContract EmploymentContract?
+  terminationLetter  TerminationLetter?
   emergencyContact String?
   emergencyPhone   String?
   user             User?
@@ -875,6 +876,23 @@ model EmploymentContract {
   signedByIp   String?
   createdAt    DateTime  @default(now())
   updatedAt    DateTime  @updatedAt
+}
+
+model TerminationLetter {
+  id             String    @id @default(cuid())
+  employeeId     String    @unique
+  employee       Employee  @relation(fields: [employeeId], references: [id], onDelete: Cascade)
+  reason         String    // REDUNDANCY | GROSS_MISCONDUCT | PERFORMANCE | RESIGNATION | CONTRACT_EXPIRY | PROBATION_FAILURE | MUTUAL_AGREEMENT | OTHER
+  reasonDetails  String?   @db.Text
+  lastWorkingDay DateTime
+  noticeDays     Int       @default(30)
+  payInLieu      Boolean   @default(false)
+  issuedBy       String
+  issuedByTitle  String    @default("HR Director")
+  letterHtml     String    @db.Text
+  sentAt         DateTime?
+  createdAt      DateTime  @default(now())
+  updatedAt      DateTime  @updatedAt
 }
 
 // ─── Accounting Module Enums ──────────────────────────────────────────────────
