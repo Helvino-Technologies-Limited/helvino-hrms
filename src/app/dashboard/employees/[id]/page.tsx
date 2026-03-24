@@ -62,6 +62,11 @@ export default function EmployeeDetailPage() {
   const [sending, setSending] = useState(false)
   const [resending, setResending] = useState(false)
   const [downloading, setDownloading] = useState(false)
+  // Sales performance targets (editable before generating contract)
+  const [agentClientTarget, setAgentClientTarget] = useState('5')
+  const [agentRevenueTarget, setAgentRevenueTarget] = useState('250000')
+  const [managerClientTarget, setManagerClientTarget] = useState('10')
+  const [managerRevenueTarget, setManagerRevenueTarget] = useState('700000')
   const previewRef = useRef<HTMLDivElement>(null)
 
   useEffect(() => {
@@ -92,7 +97,13 @@ export default function EmployeeDetailPage() {
       const res = await fetch(`/api/employees/${id}/contract`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ send: sendEmail }),
+        body: JSON.stringify({
+          send: sendEmail,
+          agentClientTarget:   agentClientTarget   ? Number(agentClientTarget)   : undefined,
+          agentRevenueTarget:  agentRevenueTarget  ? Number(agentRevenueTarget)  : undefined,
+          managerClientTarget: managerClientTarget ? Number(managerClientTarget) : undefined,
+          managerRevenueTarget:managerRevenueTarget? Number(managerRevenueTarget): undefined,
+        }),
       })
       const data = await res.json()
       if (!res.ok) throw new Error(data.error || 'Failed')
@@ -505,6 +516,54 @@ export default function EmployeeDetailPage() {
                     </div>
                   </div>
                 )}
+
+                {/* Editable sales targets — shown only for sales roles */}
+                {(() => {
+                  const empRole = (employee?.user?.role || '').toUpperCase()
+                  const titleLower = (employee?.jobTitle || '').toLowerCase()
+                  const isMgr = empRole === 'SALES_MANAGER' ||
+                    titleLower.includes('sales manager') || titleLower.includes('sales team lead')
+                  const isAgent = !isMgr && (empRole === 'SALES_AGENT' || titleLower.includes('sales agent'))
+                  if (!isMgr && !isAgent) return null
+                  return (
+                    <div className="mb-4 bg-amber-50 border border-amber-200 rounded-xl p-4">
+                      <p className="text-xs font-bold text-amber-800 uppercase tracking-wide mb-3">
+                        Performance Targets — will be embedded in contract
+                      </p>
+                      <div className="grid grid-cols-2 gap-3">
+                        <div>
+                          <label className="text-xs font-semibold text-slate-600 block mb-1">
+                            Monthly Client Target
+                          </label>
+                          <input
+                            type="number" min="1"
+                            value={isMgr ? managerClientTarget : agentClientTarget}
+                            onChange={e => isMgr
+                              ? setManagerClientTarget(e.target.value)
+                              : setAgentClientTarget(e.target.value)}
+                            className="w-full px-3 py-2 text-sm border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-amber-400 bg-white"
+                          />
+                        </div>
+                        <div>
+                          <label className="text-xs font-semibold text-slate-600 block mb-1">
+                            Monthly Revenue Target (KES)
+                          </label>
+                          <input
+                            type="number" min="0" step="1000"
+                            value={isMgr ? managerRevenueTarget : agentRevenueTarget}
+                            onChange={e => isMgr
+                              ? setManagerRevenueTarget(e.target.value)
+                              : setAgentRevenueTarget(e.target.value)}
+                            className="w-full px-3 py-2 text-sm border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-amber-400 bg-white"
+                          />
+                        </div>
+                      </div>
+                      <p className="text-xs text-amber-700 mt-2">
+                        Adjust targets before generating. These figures will appear verbatim in the contract.
+                      </p>
+                    </div>
+                  )
+                })()}
 
                 {/* Action buttons */}
                 <div className="flex flex-wrap gap-2">

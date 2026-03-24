@@ -39,6 +39,10 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
 
     const body = await req.json().catch(() => ({}))
     const shouldSend: boolean = body.send !== false   // default true
+    const agentClientTarget  = body.agentClientTarget  ? Number(body.agentClientTarget)  : undefined
+    const agentRevenueTarget = body.agentRevenueTarget ? Number(body.agentRevenueTarget) : undefined
+    const managerClientTarget  = body.managerClientTarget  ? Number(body.managerClientTarget)  : undefined
+    const managerRevenueTarget = body.managerRevenueTarget ? Number(body.managerRevenueTarget) : undefined
 
     const employee = await prisma.employee.findUnique({
       where: { id },
@@ -60,6 +64,10 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
       basicSalary: employee.basicSalary,
       probationEndDate: employee.probationEndDate,
       userRole: employee.user?.role ?? null,
+      agentClientTarget,
+      agentRevenueTarget,
+      managerClientTarget,
+      managerRevenueTarget,
     })
 
     const contract = await prisma.employmentContract.upsert({

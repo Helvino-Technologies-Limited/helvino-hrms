@@ -11,6 +11,11 @@ export function generateContractHtml(data: {
   basicSalary?: number | null
   probationEndDate?: string | Date | null
   userRole?: string | null
+  // Sales targets (editable per contract)
+  agentClientTarget?: number | null
+  agentRevenueTarget?: number | null
+  managerClientTarget?: number | null
+  managerRevenueTarget?: number | null
 }): string {
   const year = new Date().getFullYear()
   const today = new Date().toLocaleDateString('en-KE', { day: 'numeric', month: 'long', year: 'numeric' })
@@ -39,6 +44,21 @@ export function generateContractHtml(data: {
 
   let idx = 1
 
+  // Resolved sales targets (custom or default)
+  const agentClients = data.agentClientTarget ?? 5
+  const agentRevenue = data.agentRevenueTarget ?? 250000
+  const mgrClients   = data.managerClientTarget ?? 10
+  const mgrRevenue   = data.managerRevenueTarget ?? 700000
+
+  function fmtKes(n: number) {
+    return `KES ${n.toLocaleString('en-KE')}`
+  }
+  function numWords(n: number) {
+    const words: Record<number, string> = { 1:'one',2:'two',3:'three',4:'four',5:'five',6:'six',7:'seven',8:'eight',9:'nine',10:'ten',
+      11:'eleven',12:'twelve',13:'thirteen',14:'fourteen',15:'fifteen',16:'sixteen',17:'seventeen',18:'eighteen',19:'nineteen',20:'twenty' }
+    return words[n] ? `${n} (${words[n]})` : `${n}`
+  }
+
   // Role-specific performance clause
   let performanceClause = ''
   if (role === 'SALES_AGENT') {
@@ -47,8 +67,8 @@ export function generateContractHtml(data: {
       <h3>${idx++}. Performance Targets</h3>
       <p>As a Sales Agent, the Employee is expected to meet the following monthly performance targets, which are subject to periodic review by mutual agreement:</p>
       <table class="details" style="margin-top:10px">
-        <tr><td>Monthly Client Acquisition</td><td>Minimum <strong>5 (five)</strong> new clients per calendar month</td></tr>
-        <tr><td>Monthly Revenue Target</td><td>Minimum <strong>KES 250,000</strong> gross revenue per calendar month</td></tr>
+        <tr><td>Monthly Client Acquisition</td><td>Minimum <strong>${numWords(agentClients)}</strong> new clients per calendar month</td></tr>
+        <tr><td>Monthly Revenue Target</td><td>Minimum <strong>${fmtKes(agentRevenue)}</strong> gross revenue per calendar month</td></tr>
         <tr><td>Target Review Cycle</td><td>Quarterly — targets may be revised upward or downward by mutual written consent</td></tr>
       </table>
       <p style="margin-top:10px">Consistent failure to meet targets, without reasonable justification, may result in performance improvement proceedings as per Company policy. Exceptional performance above target shall be recognised and may attract performance bonuses at Management's discretion.</p>
@@ -59,8 +79,8 @@ export function generateContractHtml(data: {
       <h3>${idx++}. Performance Targets &amp; Team Management</h3>
       <p>As a Sales Manager, the Employee is responsible for leading their team and ensuring the following monthly performance targets are achieved. These targets are subject to quarterly review by mutual agreement:</p>
       <table class="details" style="margin-top:10px">
-        <tr><td>Team Client Acquisition</td><td>Minimum <strong>10 (ten)</strong> new clients per calendar month across the managed team</td></tr>
-        <tr><td>Team Revenue Target</td><td>Minimum <strong>KES 500,000</strong> gross revenue per calendar month across the managed team</td></tr>
+        <tr><td>Team Client Acquisition</td><td>Minimum <strong>${numWords(mgrClients)}</strong> new clients per calendar month across the managed team</td></tr>
+        <tr><td>Team Revenue Target</td><td>Minimum <strong>${fmtKes(mgrRevenue)}</strong> gross revenue per calendar month across the managed team</td></tr>
         <tr><td>Target Review Cycle</td><td>Quarterly — targets may be revised upward or downward by mutual written consent</td></tr>
       </table>
       <p style="margin-top:10px">The Employee shall be responsible for recruiting, training, and managing a team of Sales Agents, setting individual agent targets, conducting performance reviews, and reporting team performance to the Company. Exceptional team performance may attract management bonuses at the Company's discretion.</p>
