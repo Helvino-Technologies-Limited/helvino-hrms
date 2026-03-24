@@ -27,6 +27,8 @@ const hrNavItems = [
     roles: ['SUPER_ADMIN', 'HR_MANAGER'] },
   { href: '/dashboard/hr/auth-credentials', icon: KeyRound, label: 'Auth Credentials',
     roles: ['SUPER_ADMIN', 'HR_MANAGER'] },
+  { href: '/dashboard/hr/letters', icon: FileText, label: 'HR Letters',
+    roles: ['SUPER_ADMIN', 'HR_MANAGER'] },
   { href: '/dashboard/departments', icon: Building2, label: 'Departments',
     roles: ['SUPER_ADMIN'] },
   { href: '/dashboard/attendance', icon: Clock, label: 'Attendance',

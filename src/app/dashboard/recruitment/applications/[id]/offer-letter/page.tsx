@@ -272,19 +272,41 @@ export default function OfferLetterPage() {
       const pdf = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4' })
       const pageW = pdf.internal.pageSize.getWidth()
       const pageH = pdf.internal.pageSize.getHeight()
-      const imgH = (canvas.height * pageW) / canvas.width
+      const totalImgH = (canvas.height * pageW) / canvas.width
 
-      let remaining = imgH
-      let yPos = 0
-      pdf.addImage(imgData, 'JPEG', 0, yPos, pageW, imgH)
-      remaining -= pageH
+      // Smart page-break: avoid cutting through paragraphs and list items
+      const mmPerPx = pageW / el.offsetWidth
+      const elTop = el.getBoundingClientRect().top
+      const noBreakEls = el.querySelectorAll('p, li, .space-y-5 > div, .space-y-2 > div, .bg-blue-50, .bg-slate-50, .grid')
+      const bounds: { top: number; bottom: number }[] = []
+      noBreakEls.forEach(child => {
+        const r = child.getBoundingClientRect()
+        bounds.push({
+          top: (r.top - elTop) * mmPerPx,
+          bottom: (r.bottom - elTop) * mmPerPx,
+        })
+      })
 
-      while (remaining > 0) {
-        yPos -= pageH
-        pdf.addPage()
-        pdf.addImage(imgData, 'JPEG', 0, yPos, pageW, imgH)
-        remaining -= pageH
+      // Build page cut points
+      const cutPoints: number[] = [0]
+      while (true) {
+        const lastCut = cutPoints[cutPoints.length - 1]
+        if (lastCut + pageH >= totalImgH) break
+        const idealCut = lastCut + pageH
+        const split = bounds.filter(b => b.top < idealCut && b.bottom > idealCut)
+        let cut = idealCut
+        if (split.length > 0) {
+          const safeTop = Math.min(...split.map(b => b.top))
+          // Only move cut back if it's meaningful (> 5mm gap)
+          if (safeTop > lastCut + 5) cut = safeTop
+        }
+        cutPoints.push(cut)
       }
+
+      cutPoints.forEach((yOffset, i) => {
+        if (i > 0) pdf.addPage()
+        pdf.addImage(imgData, 'JPEG', 0, -yOffset, pageW, totalImgH)
+      })
 
       const fname = `Offer_Letter_${applicant.firstName}_${applicant.lastName}_${today.getFullYear()}.pdf`
       pdf.save(fname)
@@ -365,6 +387,9 @@ export default function OfferLetterPage() {
           .letter-wrap { padding: 0 !important; background: white !important; min-height: auto !important; }
           .letter-card { box-shadow: none !important; border: none !important; border-radius: 0 !important; max-width: 100% !important; margin: 0 !important; }
           .tc-section { page-break-before: always; }
+          p, li { break-inside: avoid; page-break-inside: avoid; }
+          .space-y-5 > div, .space-y-2 > div { break-inside: avoid; page-break-inside: avoid; }
+          .bg-blue-50, .bg-slate-50, .grid { break-inside: avoid; page-break-inside: avoid; }
         }
         @page { margin: 1.5cm; size: A4 portrait; }
       `}</style>
