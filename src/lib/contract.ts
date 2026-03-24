@@ -22,7 +22,20 @@ export function generateContractHtml(data: {
     ? `KES ${Number(data.basicSalary).toLocaleString('en-KE', { minimumFractionDigits: 2 })} gross per month`
     : 'As per separate offer letter'
   const empType = data.employmentType.replace(/_/g, ' ')
-  const role = (data.userRole || '').toUpperCase()
+  let role = (data.userRole || '').toUpperCase()
+  // If the user role doesn't already say SALES_MANAGER, check job title as fallback
+  // (covers cases where a Sales Manager's User account was assigned SALES_AGENT)
+  if (role !== 'SALES_MANAGER') {
+    const titleLower = (data.jobTitle || '').toLowerCase()
+    if (
+      titleLower.includes('sales manager') ||
+      titleLower.includes('sales team lead') ||
+      titleLower.includes('sales supervisor') ||
+      titleLower.includes('sales director')
+    ) {
+      role = 'SALES_MANAGER'
+    }
+  }
 
   let idx = 1
 
