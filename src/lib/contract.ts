@@ -16,6 +16,9 @@ export function generateContractHtml(data: {
   agentRevenueTarget?: number | null
   managerClientTarget?: number | null
   managerRevenueTarget?: number | null
+  // HR signatory
+  signerName?: string | null
+  signerTitle?: string | null
 }): string {
   const year = new Date().getFullYear()
   const today = new Date().toLocaleDateString('en-KE', { day: 'numeric', month: 'long', year: 'numeric' })
@@ -350,11 +353,13 @@ export function generateContractHtml(data: {
       <div class="sig-block">
         <div class="party">For and on Behalf of:</div>
         <div class="party-sub">Helvino Technologies Limited</div>
-        <div class="sig-line"></div>
+        <div class="sig-line" style="display:flex;align-items:flex-end;padding-bottom:2px">
+          ${data.signerName ? `<span style="font-family:'Brush Script MT',cursive;font-size:22px;color:#1e3a5f;letter-spacing:1px">${data.signerName}</span>` : ''}
+        </div>
         <div class="sig-label">
           <strong>Authorised Signatory</strong><br>
-          Name: ___________________________<br>
-          Title: HR Director / CEO<br>
+          Name: <strong>${data.signerName || '___________________________'}</strong><br>
+          Title: ${data.signerTitle || 'HR Director'}<br>
           Date: ${today}
         </div>
       </div>

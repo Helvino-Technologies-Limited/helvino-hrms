@@ -62,12 +62,24 @@ export default function EmployeeDetailPage() {
   const [sending, setSending] = useState(false)
   const [resending, setResending] = useState(false)
   const [downloading, setDownloading] = useState(false)
+  // Contract signatory (HR who signs the contract)
+  const [signerName, setSignerName] = useState('')
+  const [signerTitle, setSignerTitle] = useState('HR Director')
+
   // Sales performance targets (editable before generating contract)
   const [agentClientTarget, setAgentClientTarget] = useState('5')
   const [agentRevenueTarget, setAgentRevenueTarget] = useState('250000')
   const [managerClientTarget, setManagerClientTarget] = useState('10')
   const [managerRevenueTarget, setManagerRevenueTarget] = useState('700000')
   const previewRef = useRef<HTMLDivElement>(null)
+
+  // Pre-populate signatory fields from session
+  useEffect(() => {
+    if (session?.user?.name) {
+      setSignerName(session.user.name)
+      setTermForm(f => ({ ...f, issuedBy: f.issuedBy || session.user!.name! }))
+    }
+  }, [session])
 
   useEffect(() => {
     fetch(`/api/employees/${id}`).then(r => r.json()).then(d => {
@@ -103,6 +115,8 @@ export default function EmployeeDetailPage() {
           agentRevenueTarget:  agentRevenueTarget  ? Number(agentRevenueTarget)  : undefined,
           managerClientTarget: managerClientTarget ? Number(managerClientTarget) : undefined,
           managerRevenueTarget:managerRevenueTarget? Number(managerRevenueTarget): undefined,
+          signerName:  signerName  || undefined,
+          signerTitle: signerTitle || undefined,
         }),
       })
       const data = await res.json()
@@ -564,6 +578,37 @@ export default function EmployeeDetailPage() {
                     </div>
                   )
                 })()}
+
+                {/* Authorised Signatory */}
+                <div className="mb-4 bg-blue-50 border border-blue-200 rounded-xl p-4">
+                  <p className="text-xs font-bold text-blue-800 uppercase tracking-wide mb-3">
+                    Authorised Signatory — will appear on contract
+                  </p>
+                  <div className="grid grid-cols-2 gap-3">
+                    <div>
+                      <label className="text-xs font-semibold text-slate-600 block mb-1">Full Name *</label>
+                      <input
+                        type="text"
+                        placeholder="e.g. Jane Wambua"
+                        value={signerName}
+                        onChange={e => setSignerName(e.target.value)}
+                        className="w-full px-3 py-2 text-sm border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-400 bg-white"
+                      />
+                    </div>
+                    <div>
+                      <label className="text-xs font-semibold text-slate-600 block mb-1">Title</label>
+                      <input
+                        type="text"
+                        value={signerTitle}
+                        onChange={e => setSignerTitle(e.target.value)}
+                        className="w-full px-3 py-2 text-sm border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-400 bg-white"
+                      />
+                    </div>
+                  </div>
+                  <p className="text-xs text-blue-700 mt-2">
+                    Your typed name serves as the digital signature on the contract — no physical signing required.
+                  </p>
+                </div>
 
                 {/* Action buttons */}
                 <div className="flex flex-wrap gap-2">
