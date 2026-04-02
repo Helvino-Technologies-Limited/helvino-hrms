@@ -1370,3 +1370,13 @@ model SalesTeamTask {
   createdAt    DateTime @default(now())
   updatedAt    DateTime @updatedAt
 }
+
+// Configurable targets for each sales role — edited by SUPER_ADMIN / HR_MANAGER
+model SalesTarget {
+  id            String   @id @default(cuid())
+  role          String   @unique // 'SALES_AGENT' | 'SALES_MANAGER'
+  clientTarget  Int      @default(5)
+  revenueTarget Float    @default(250000)
+  updatedBy     String?  // userId of last admin who changed it
+  updatedAt     DateTime @updatedAt
+}

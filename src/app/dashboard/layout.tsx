@@ -101,6 +101,8 @@ const salesNavItems = [
     roles: ['SUPER_ADMIN', 'HR_MANAGER', 'SALES_MANAGER', 'SALES_AGENT'] },
   { href: '/dashboard/sales/team-tasks', icon: ListTodo, label: 'Team Tasks',
     roles: ['SUPER_ADMIN', 'HR_MANAGER', 'SALES_MANAGER', 'SALES_AGENT'] },
+  { href: '/dashboard/sales/targets', icon: Target, label: 'Sales Targets',
+    roles: ['SUPER_ADMIN', 'HR_MANAGER'] },
 ]
 
 const accountingNavItems = [

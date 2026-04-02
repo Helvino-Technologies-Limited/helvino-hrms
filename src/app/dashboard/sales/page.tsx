@@ -493,7 +493,11 @@ function ManagerDashboard({ data, loading }: { data: any; loading: boolean }) {
             <Users className="w-5 h-5 text-blue-600" />
             <h2 className="text-lg font-black text-slate-900">Agent Performance This Month</h2>
           </div>
-          <div className="text-xs text-slate-400 font-medium">Target per agent: 5 clients · KSh 250,000</div>
+          <div className="text-xs text-slate-400 font-medium">
+            {teamPerformance.length > 0
+              ? `Target per agent: ${teamPerformance[0].clientTarget} clients · ${formatCurrency(teamPerformance[0].revenueTarget)}`
+              : 'Target per agent'}
+          </div>
         </div>
 
         {loading ? (

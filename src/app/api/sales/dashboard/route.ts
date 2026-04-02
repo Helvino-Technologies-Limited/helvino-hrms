@@ -212,15 +212,24 @@ export async function GET(req: NextRequest) {
       count: monthlyLeadCounts[i] as number,
     }))
 
-    // Targets per role
+    // Targets per role — read from DB (admin-configurable)
+    const [agentTargetRow, managerTargetRow] = await Promise.all([
+      prisma.salesTarget.findUnique({ where: { role: 'SALES_AGENT' } }),
+      prisma.salesTarget.findUnique({ where: { role: 'SALES_MANAGER' } }),
+    ])
+    const agentClientTarget   = agentTargetRow?.clientTarget   ?? 5
+    const agentRevenueTarget  = agentTargetRow?.revenueTarget  ?? 250000
+    const mgClientTarget      = managerTargetRow?.clientTarget  ?? 10
+    const mgRevenueTarget     = managerTargetRow?.revenueTarget ?? 500000
+
     let clientTarget = 0
     let revenueTarget = 0
     if (IS_AGENT) {
-      clientTarget = 5
-      revenueTarget = 250000
+      clientTarget = agentClientTarget
+      revenueTarget = agentRevenueTarget
     } else if (IS_MANAGER) {
-      clientTarget = 10
-      revenueTarget = 500000
+      clientTarget = mgClientTarget
+      revenueTarget = mgRevenueTarget
     }
 
     const revenueThisMonth = revenueThisMonthAgg._sum.totalAmount ?? 0
@@ -302,8 +311,8 @@ export async function GET(req: NextRequest) {
         name: `${agent.firstName} ${agent.lastName}`,
         clientsThisMonth: clientCountMap.get(agent.id) ?? 0,
         revenueThisMonth: Number(revenueMap.get(agent.id) ?? 0),
-        clientTarget: 5,
-        revenueTarget: 250000,
+        clientTarget: agentClientTarget,
+        revenueTarget: agentRevenueTarget,
       }))
     }
 
@@ -340,12 +349,12 @@ export async function GET(req: NextRequest) {
           }
         : null,
       managerTarget: IS_MANAGER ? {
-        clientTarget: 10,
-        revenueTarget: 500000,
+        clientTarget: mgClientTarget,
+        revenueTarget: mgRevenueTarget,
         clientsThisMonth: managerPersonalClients,
         revenueThisMonth: managerPersonalRevenue,
-        clientsRemaining: Math.max(0, 10 - managerPersonalClients),
-        revenueRemaining: Math.max(0, 500000 - managerPersonalRevenue),
+        clientsRemaining: Math.max(0, mgClientTarget - managerPersonalClients),
+        revenueRemaining: Math.max(0, mgRevenueTarget - managerPersonalRevenue),
       } : undefined,
       teamPerformance: IS_MANAGER ? teamPerformance : undefined,
       applicantStats: IS_MANAGER ? applicantStats : undefined,
