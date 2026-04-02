@@ -6,7 +6,7 @@ import {
   ArrowLeft, Mail, Phone, MapPin, Building2, Calendar, User,
   DollarSign, Clock, Star, Award, Briefcase, Edit,
   FileText, Send, Download, RefreshCw, CheckCircle2, AlertCircle,
-  Eye, Loader2, X, ShieldAlert
+  Eye, Loader2, X, ShieldAlert, Target, RotateCcw, Save
 } from 'lucide-react'
 import { formatDate, formatCurrency, getInitials } from '@/lib/utils'
 import toast from 'react-hot-toast'
@@ -73,6 +73,13 @@ export default function EmployeeDetailPage() {
   const [managerRevenueTarget, setManagerRevenueTarget] = useState('700000')
   const previewRef = useRef<HTMLDivElement>(null)
 
+  // Per-employee sales target state
+  const [empTarget, setEmpTarget] = useState<{ clientTarget: number; revenueTarget: number; updatedAt?: string } | null>(null)
+  const [empTargetLoading, setEmpTargetLoading] = useState(false)
+  const [empTargetEditing, setEmpTargetEditing] = useState(false)
+  const [empTargetForm, setEmpTargetForm] = useState({ clientTarget: '', revenueTarget: '' })
+  const [empTargetSaving, setEmpTargetSaving] = useState(false)
+
   // Pre-populate signatory fields from session
   useEffect(() => {
     if (session?.user?.name) {
@@ -87,6 +94,64 @@ export default function EmployeeDetailPage() {
       setLoading(false)
     })
   }, [id])
+
+  // Load per-employee sales target once employee is known
+  useEffect(() => {
+    if (!employee) return
+    const empRole = (employee?.user?.role || '').toUpperCase()
+    const titleLower = (employee?.jobTitle || '').toLowerCase()
+    const isSales = ['SALES_AGENT', 'SALES_MANAGER'].includes(empRole) ||
+      titleLower.includes('sales')
+    if (!isSales) return
+    setEmpTargetLoading(true)
+    fetch(`/api/employees/${id}/sales-target`)
+      .then(r => r.json())
+      .then(t => {
+        setEmpTarget(t)
+        if (t) {
+          setEmpTargetForm({ clientTarget: String(t.clientTarget), revenueTarget: String(t.revenueTarget) })
+        }
+      })
+      .finally(() => setEmpTargetLoading(false))
+  }, [employee, id])
+
+  async function saveEmpTarget() {
+    setEmpTargetSaving(true)
+    try {
+      const res = await fetch(`/api/employees/${id}/sales-target`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          clientTarget: empTargetForm.clientTarget,
+          revenueTarget: empTargetForm.revenueTarget,
+        }),
+      })
+      const data = await res.json()
+      if (!res.ok) { toast.error(data.error || 'Failed to save'); return }
+      setEmpTarget(data)
+      setEmpTargetEditing(false)
+      toast.success('Sales target saved')
+    } catch {
+      toast.error('Failed to save target')
+    } finally {
+      setEmpTargetSaving(false)
+    }
+  }
+
+  async function resetEmpTarget() {
+    setEmpTargetSaving(true)
+    try {
+      await fetch(`/api/employees/${id}/sales-target`, { method: 'DELETE' })
+      setEmpTarget(null)
+      setEmpTargetForm({ clientTarget: '', revenueTarget: '' })
+      setEmpTargetEditing(false)
+      toast.success('Target reset to role default')
+    } catch {
+      toast.error('Failed to reset target')
+    } finally {
+      setEmpTargetSaving(false)
+    }
+  }
 
   // Fetch contract + termination letter when switching to contract tab
   useEffect(() => {
@@ -327,34 +392,172 @@ export default function EmployeeDetailPage() {
         ))}
       </div>
 
-      {activeTab === 'overview' && (
-        <div className="grid md:grid-cols-2 gap-4">
-          {[
-            { icon: Mail, label: 'Work Email', value: employee.email },
-            { icon: Phone, label: 'Phone', value: employee.phone },
-            { icon: Mail, label: 'Personal Email', value: employee.personalEmail || '—' },
-            { icon: MapPin, label: 'City', value: employee.city || '—' },
-            { icon: Building2, label: 'Department', value: employee.department?.name || '—' },
-            { icon: Briefcase, label: 'Employment Type', value: employee.employmentType?.replace('_', ' ') },
-            { icon: Calendar, label: 'Date Hired', value: formatDate(employee.dateHired) },
-            { icon: DollarSign, label: 'Basic Salary', value: employee.basicSalary ? formatCurrency(employee.basicSalary) : '—' },
-            { icon: User, label: 'Manager', value: employee.manager ? `${employee.manager.firstName} ${employee.manager.lastName}` : '—' },
-            { icon: Phone, label: 'Emergency Contact', value: employee.emergencyContact ? `${employee.emergencyContact} — ${employee.emergencyPhone || ''}` : '—' },
-            { icon: Building2, label: 'Bank', value: employee.bankName ? `${employee.bankName} — ${employee.bankAccount || ''}` : '—' },
-            { icon: User, label: 'National ID', value: employee.nationalId || '—' },
-          ].map(item => (
-            <div key={item.label} className="bg-white rounded-xl p-4 border border-slate-100 flex items-center gap-3">
-              <div className="w-9 h-9 bg-blue-50 rounded-xl flex items-center justify-center flex-shrink-0">
-                <item.icon className="w-4 h-4 text-blue-600" />
-              </div>
-              <div>
-                <div className="text-xs font-semibold text-slate-400 uppercase tracking-wide">{item.label}</div>
-                <div className="text-sm font-semibold text-slate-900 mt-0.5">{item.value}</div>
-              </div>
+      {activeTab === 'overview' && (() => {
+        const empRole = (employee?.user?.role || '').toUpperCase()
+        const titleLower = (employee?.jobTitle || '').toLowerCase()
+        const isSalesMgr = empRole === 'SALES_MANAGER' || titleLower.includes('sales manager')
+        const isSalesEmp = isSalesMgr || empRole === 'SALES_AGENT' || titleLower.includes('sales')
+        const canEditTarget = ['SUPER_ADMIN', 'HR_MANAGER', 'SALES_MANAGER'].includes(userRole)
+
+        return (
+          <div className="space-y-4">
+            <div className="grid md:grid-cols-2 gap-4">
+              {[
+                { icon: Mail, label: 'Work Email', value: employee.email },
+                { icon: Phone, label: 'Phone', value: employee.phone },
+                { icon: Mail, label: 'Personal Email', value: employee.personalEmail || '—' },
+                { icon: MapPin, label: 'City', value: employee.city || '—' },
+                { icon: Building2, label: 'Department', value: employee.department?.name || '—' },
+                { icon: Briefcase, label: 'Employment Type', value: employee.employmentType?.replace('_', ' ') },
+                { icon: Calendar, label: 'Date Hired', value: formatDate(employee.dateHired) },
+                { icon: DollarSign, label: 'Basic Salary', value: employee.basicSalary ? formatCurrency(employee.basicSalary) : '—' },
+                { icon: User, label: 'Manager', value: employee.manager ? `${employee.manager.firstName} ${employee.manager.lastName}` : '—' },
+                { icon: Phone, label: 'Emergency Contact', value: employee.emergencyContact ? `${employee.emergencyContact} — ${employee.emergencyPhone || ''}` : '—' },
+                { icon: Building2, label: 'Bank', value: employee.bankName ? `${employee.bankName} — ${employee.bankAccount || ''}` : '—' },
+                { icon: User, label: 'National ID', value: employee.nationalId || '—' },
+              ].map(item => (
+                <div key={item.label} className="bg-white rounded-xl p-4 border border-slate-100 flex items-center gap-3">
+                  <div className="w-9 h-9 bg-blue-50 rounded-xl flex items-center justify-center flex-shrink-0">
+                    <item.icon className="w-4 h-4 text-blue-600" />
+                  </div>
+                  <div>
+                    <div className="text-xs font-semibold text-slate-400 uppercase tracking-wide">{item.label}</div>
+                    <div className="text-sm font-semibold text-slate-900 mt-0.5">{item.value}</div>
+                  </div>
+                </div>
+              ))}
             </div>
-          ))}
-        </div>
-      )}
+
+            {/* ── Sales Target Card (sales roles only) ── */}
+            {isSalesEmp && (
+              <div className="bg-white rounded-2xl border border-slate-100 shadow-sm p-5">
+                <div className="flex items-center justify-between mb-4">
+                  <div className="flex items-center gap-2.5">
+                    <div className="w-9 h-9 bg-blue-100 rounded-xl flex items-center justify-center">
+                      <Target className="w-4 h-4 text-blue-600" />
+                    </div>
+                    <div>
+                      <h3 className="font-bold text-slate-900 text-sm">Monthly Sales Target</h3>
+                      {empTarget?.updatedAt && (
+                        <p className="text-xs text-slate-400">
+                          Last updated {new Date(empTarget.updatedAt).toLocaleDateString()}
+                        </p>
+                      )}
+                    </div>
+                  </div>
+                  {canEditTarget && !empTargetEditing && (
+                    <div className="flex items-center gap-2">
+                      {empTarget && (
+                        <button
+                          onClick={resetEmpTarget}
+                          disabled={empTargetSaving}
+                          className="flex items-center gap-1.5 text-xs text-slate-500 hover:text-red-600 border border-slate-200 px-2.5 py-1.5 rounded-lg hover:border-red-200 hover:bg-red-50 transition-colors">
+                          <RotateCcw className="w-3 h-3" />
+                          Reset to default
+                        </button>
+                      )}
+                      <button
+                        onClick={() => {
+                          setEmpTargetForm({
+                            clientTarget: String(empTarget?.clientTarget ?? (isSalesMgr ? 10 : 5)),
+                            revenueTarget: String(empTarget?.revenueTarget ?? (isSalesMgr ? 500000 : 250000)),
+                          })
+                          setEmpTargetEditing(true)
+                        }}
+                        className="flex items-center gap-1.5 text-xs text-blue-600 border border-blue-200 px-2.5 py-1.5 rounded-lg hover:bg-blue-50 transition-colors">
+                        <Edit className="w-3 h-3" />
+                        {empTarget ? 'Edit' : 'Set target'}
+                      </button>
+                    </div>
+                  )}
+                </div>
+
+                {empTargetLoading ? (
+                  <div className="flex items-center gap-2 py-2 text-slate-400 text-sm">
+                    <Loader2 className="w-4 h-4 animate-spin" /> Loading…
+                  </div>
+                ) : empTargetEditing ? (
+                  <div className="space-y-4">
+                    <div className="grid grid-cols-2 gap-4">
+                      <div>
+                        <label className="block text-xs font-semibold text-slate-600 mb-1.5">
+                          Monthly Client Target
+                        </label>
+                        <div className="relative">
+                          <input
+                            type="number" min="0"
+                            value={empTargetForm.clientTarget}
+                            onChange={e => setEmpTargetForm(f => ({ ...f, clientTarget: e.target.value }))}
+                            className="w-full px-3 py-2.5 text-sm border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 pr-16"
+                          />
+                          <span className="absolute right-3 top-1/2 -translate-y-1/2 text-xs text-slate-400">clients</span>
+                        </div>
+                      </div>
+                      <div>
+                        <label className="block text-xs font-semibold text-slate-600 mb-1.5">
+                          Monthly Revenue Target (KES)
+                        </label>
+                        <div className="relative">
+                          <input
+                            type="number" min="0" step="1000"
+                            value={empTargetForm.revenueTarget}
+                            onChange={e => setEmpTargetForm(f => ({ ...f, revenueTarget: e.target.value }))}
+                            className="w-full px-3 py-2.5 text-sm border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 pr-12"
+                          />
+                          <span className="absolute right-3 top-1/2 -translate-y-1/2 text-xs text-slate-400">KES</span>
+                        </div>
+                      </div>
+                    </div>
+                    <div className="flex gap-2 justify-end">
+                      <button
+                        type="button"
+                        onClick={() => setEmpTargetEditing(false)}
+                        className="px-4 py-2 text-sm border border-slate-200 rounded-xl text-slate-600 hover:bg-slate-50 transition-colors">
+                        Cancel
+                      </button>
+                      <button
+                        onClick={saveEmpTarget}
+                        disabled={empTargetSaving}
+                        className="flex items-center gap-2 px-4 py-2 text-sm bg-blue-600 hover:bg-blue-700 text-white rounded-xl font-semibold disabled:opacity-60 transition-colors">
+                        {empTargetSaving ? <Loader2 className="w-4 h-4 animate-spin" /> : <Save className="w-4 h-4" />}
+                        Save
+                      </button>
+                    </div>
+                  </div>
+                ) : empTarget ? (
+                  <div className="grid grid-cols-2 gap-3">
+                    <div className="bg-blue-50 rounded-xl p-4">
+                      <div className="text-xs font-semibold text-blue-600 uppercase tracking-wide mb-1">Client Target</div>
+                      <div className="text-2xl font-black text-blue-700">{empTarget.clientTarget}</div>
+                      <div className="text-xs text-blue-500 mt-0.5">clients / month</div>
+                    </div>
+                    <div className="bg-green-50 rounded-xl p-4">
+                      <div className="text-xs font-semibold text-green-600 uppercase tracking-wide mb-1">Revenue Target</div>
+                      <div className="text-xl font-black text-green-700">{formatCurrency(empTarget.revenueTarget)}</div>
+                      <div className="text-xs text-green-500 mt-0.5">per month</div>
+                    </div>
+                  </div>
+                ) : (
+                  <div className="flex items-center gap-3 py-3">
+                    <div className="grid grid-cols-2 gap-3 flex-1">
+                      <div className="bg-slate-50 rounded-xl p-4">
+                        <div className="text-xs font-semibold text-slate-400 uppercase tracking-wide mb-1">Client Target</div>
+                        <div className="text-2xl font-black text-slate-400">{isSalesMgr ? 10 : 5}</div>
+                        <div className="text-xs text-slate-400 mt-0.5">role default</div>
+                      </div>
+                      <div className="bg-slate-50 rounded-xl p-4">
+                        <div className="text-xs font-semibold text-slate-400 uppercase tracking-wide mb-1">Revenue Target</div>
+                        <div className="text-xl font-black text-slate-400">{formatCurrency(isSalesMgr ? 500000 : 250000)}</div>
+                        <div className="text-xs text-slate-400 mt-0.5">role default</div>
+                      </div>
+                    </div>
+                  </div>
+                )}
+              </div>
+            )}
+          </div>
+        )
+      })()}
 
       {activeTab === 'attendance' && (
         <div className="bg-white rounded-2xl shadow-sm border border-slate-100 overflow-hidden">

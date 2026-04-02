@@ -339,6 +339,7 @@ model Employee {
   // Sales team relations
   salesApplicants  Applicant[]         @relation("SalesManagerApplicants")
   recruitmentLink  SalesManagerRecruitmentLink?
+  salesTarget      SalesEmployeeTarget?
   teamMeetings     SalesTeamMeeting[]  @relation("MeetingOrganizer")
   teamTasksCreated SalesTeamTask[]     @relation("TeamTaskCreator")
   teamTasksAssigned SalesTeamTask[]    @relation("TeamTaskAssignee")
@@ -1378,5 +1379,16 @@ model SalesTarget {
   clientTarget  Int      @default(5)
   revenueTarget Float    @default(250000)
   updatedBy     String?  // userId of last admin who changed it
+  updatedAt     DateTime @updatedAt
+}
+
+// Per-employee target override — takes priority over role-level SalesTarget
+model SalesEmployeeTarget {
+  id            String   @id @default(cuid())
+  employeeId    String   @unique
+  employee      Employee @relation(fields: [employeeId], references: [id], onDelete: Cascade)
+  clientTarget  Int
+  revenueTarget Float
+  updatedBy     String?  // userId of admin who last changed it
   updatedAt     DateTime @updatedAt
 }

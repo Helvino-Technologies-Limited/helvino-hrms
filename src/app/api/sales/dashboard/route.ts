@@ -213,23 +213,25 @@ export async function GET(req: NextRequest) {
     }))
 
     // Targets per role — read from DB (admin-configurable)
-    const [agentTargetRow, managerTargetRow] = await Promise.all([
+    const [agentTargetRow, managerTargetRow, personalTargetRow] = await Promise.all([
       prisma.salesTarget.findUnique({ where: { role: 'SALES_AGENT' } }),
       prisma.salesTarget.findUnique({ where: { role: 'SALES_MANAGER' } }),
+      empId ? prisma.salesEmployeeTarget.findUnique({ where: { employeeId: empId } }) : Promise.resolve(null),
     ])
     const agentClientTarget   = agentTargetRow?.clientTarget   ?? 5
     const agentRevenueTarget  = agentTargetRow?.revenueTarget  ?? 250000
     const mgClientTarget      = managerTargetRow?.clientTarget  ?? 10
     const mgRevenueTarget     = managerTargetRow?.revenueTarget ?? 500000
 
+    // Per-employee override takes priority over role default
     let clientTarget = 0
     let revenueTarget = 0
     if (IS_AGENT) {
-      clientTarget = agentClientTarget
-      revenueTarget = agentRevenueTarget
+      clientTarget  = personalTargetRow?.clientTarget  ?? agentClientTarget
+      revenueTarget = personalTargetRow?.revenueTarget ?? agentRevenueTarget
     } else if (IS_MANAGER) {
-      clientTarget = mgClientTarget
-      revenueTarget = mgRevenueTarget
+      clientTarget  = personalTargetRow?.clientTarget  ?? mgClientTarget
+      revenueTarget = personalTargetRow?.revenueTarget ?? mgRevenueTarget
     }
 
     const revenueThisMonth = revenueThisMonthAgg._sum.totalAmount ?? 0
@@ -290,7 +292,7 @@ export async function GET(req: NextRequest) {
 
     if (IS_MANAGER && teamAgents.length > 0) {
       const agentIds = teamAgents.map((a) => a.id)
-      const [agentClientCounts, agentRevenueSums] = await Promise.all([
+      const [agentClientCounts, agentRevenueSums, agentEmpTargets] = await Promise.all([
         prisma.client.groupBy({
           by: ['createdById'],
           where: { createdById: { in: agentIds }, createdAt: { gte: monthStart, lt: monthEnd } },
@@ -301,19 +303,27 @@ export async function GET(req: NextRequest) {
           where: { createdById: { in: agentIds }, status: 'APPROVED', createdAt: { gte: monthStart, lt: monthEnd } },
           _sum: { totalAmount: true },
         }),
+        prisma.salesEmployeeTarget.findMany({
+          where: { employeeId: { in: agentIds } },
+          select: { employeeId: true, clientTarget: true, revenueTarget: true },
+        }),
       ])
 
       const clientCountMap = new Map(agentClientCounts.map((r) => [r.createdById, r._count.id]))
       const revenueMap = new Map(agentRevenueSums.map((r) => [r.createdById, r._sum.totalAmount ?? 0]))
+      const empTargetMap = new Map(agentEmpTargets.map((t) => [t.employeeId, t]))
 
-      teamPerformance = teamAgents.map((agent) => ({
-        id: agent.id,
-        name: `${agent.firstName} ${agent.lastName}`,
-        clientsThisMonth: clientCountMap.get(agent.id) ?? 0,
-        revenueThisMonth: Number(revenueMap.get(agent.id) ?? 0),
-        clientTarget: agentClientTarget,
-        revenueTarget: agentRevenueTarget,
-      }))
+      teamPerformance = teamAgents.map((agent) => {
+        const override = empTargetMap.get(agent.id)
+        return {
+          id: agent.id,
+          name: `${agent.firstName} ${agent.lastName}`,
+          clientsThisMonth: clientCountMap.get(agent.id) ?? 0,
+          revenueThisMonth: Number(revenueMap.get(agent.id) ?? 0),
+          clientTarget: override?.clientTarget ?? agentClientTarget,
+          revenueTarget: override?.revenueTarget ?? agentRevenueTarget,
+        }
+      })
     }
 
     return NextResponse.json({
@@ -349,12 +359,12 @@ export async function GET(req: NextRequest) {
           }
         : null,
       managerTarget: IS_MANAGER ? {
-        clientTarget: mgClientTarget,
-        revenueTarget: mgRevenueTarget,
+        clientTarget,
+        revenueTarget,
         clientsThisMonth: managerPersonalClients,
         revenueThisMonth: managerPersonalRevenue,
-        clientsRemaining: Math.max(0, mgClientTarget - managerPersonalClients),
-        revenueRemaining: Math.max(0, mgRevenueTarget - managerPersonalRevenue),
+        clientsRemaining: Math.max(0, clientTarget - managerPersonalClients),
+        revenueRemaining: Math.max(0, revenueTarget - managerPersonalRevenue),
       } : undefined,
       teamPerformance: IS_MANAGER ? teamPerformance : undefined,
       applicantStats: IS_MANAGER ? applicantStats : undefined,
