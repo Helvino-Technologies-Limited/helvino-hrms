@@ -54,7 +54,7 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ tok
     })
     const employeeName = `${contract.employee.firstName} ${contract.employee.lastName}`
     sendEmail({
-      to: process.env.SMTP_FROM || 'hr@helvino.org',
+      to: process.env.SMTP_FROM || 'info@helvino.org',
       subject: `Contract Signed — ${employeeName}`,
       html: contractSignedEmailHtml(employeeName, signedByName.trim(), signedAtStr),
     }).catch(console.error)

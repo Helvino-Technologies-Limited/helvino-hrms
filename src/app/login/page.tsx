@@ -185,7 +185,7 @@ export default function LoginPage() {
                 <div className="mt-6 pt-6 border-t border-slate-100 text-center space-y-2">
                   <p className="text-slate-500 text-sm">
                     Forgot your code?{' '}
-                    <a href="mailto:hr@helvino.org" className="text-blue-600 font-semibold hover:underline">Contact HR</a>
+                    <a href="mailto:info@helvino.org" className="text-blue-600 font-semibold hover:underline">Contact HR</a>
                   </p>
                   <p className="text-slate-400 text-xs">
                     <button type="button" onClick={() => { setAdminMode(true); setError('') }}
@@ -339,7 +339,7 @@ export default function LoginPage() {
                   </p>
                   <p className="text-slate-500 text-sm">
                     Account issues?{' '}
-                    <a href="mailto:hr@helvino.org" className="text-blue-600 font-semibold hover:underline">Contact Support</a>
+                    <a href="mailto:info@helvino.org" className="text-blue-600 font-semibold hover:underline">Contact Support</a>
                   </p>
                 </div>
               </>

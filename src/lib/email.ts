@@ -68,7 +68,7 @@ export function emailTemplate(title: string, body: string): string {
           <hr style="border:none;border-top:1px solid #e2e8f0;margin:20px 0;">
           <p style="color:#94a3b8;font-size:12px;margin:0;">
             © ${new Date().getFullYear()} Helvino Technologies Limited | 
-            <a href="mailto:hr@helvino.org" style="color:#2563eb;">hr@helvino.org</a> | 
+            <a href="mailto:info@helvino.org" style="color:#2563eb;">info@helvino.org</a> |
             0110421320 | helvinocrm.org
           </p>
         </div>

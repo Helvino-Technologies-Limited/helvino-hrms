@@ -103,7 +103,7 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
             <tr><td style="padding:8px;border:1px solid #e2e8f0;background:#fef2f2;font-weight:bold;color:#991b1b;">Employee</td><td style="padding:8px;border:1px solid #e2e8f0;">${employee.firstName} ${employee.lastName} (${employee.employeeCode})</td></tr>
             <tr><td style="padding:8px;border:1px solid #e2e8f0;background:#fef2f2;font-weight:bold;color:#991b1b;">Last Working Day</td><td style="padding:8px;border:1px solid #e2e8f0;"><strong>${lastDay}</strong></td></tr>
           </table>
-          <p>Please log in to the HR portal or contact HR at <a href="mailto:hr@helvino.org" style="color:#2563eb;">hr@helvino.org</a> if you have any questions.</p>
+          <p>Please log in to the HR portal or contact HR at <a href="mailto:info@helvino.org" style="color:#2563eb;">info@helvino.org</a> if you have any questions.</p>
           <p style="color:#64748b;font-size:12px;">This communication is strictly private and confidential.</p>
           `
         ),
@@ -154,7 +154,7 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
         <table style="width:100%;border-collapse:collapse;margin:16px 0;">
           <tr><td style="padding:8px;border:1px solid #e2e8f0;background:#fef2f2;font-weight:bold;color:#991b1b;">Last Working Day</td><td style="padding:8px;border:1px solid #e2e8f0;"><strong>${lastDay}</strong></td></tr>
         </table>
-        <p>Contact HR at <a href="mailto:hr@helvino.org" style="color:#2563eb;">hr@helvino.org</a> for any queries.</p>
+        <p>Contact HR at <a href="mailto:info@helvino.org" style="color:#2563eb;">info@helvino.org</a> for any queries.</p>
         `
       ),
     })

@@ -144,7 +144,7 @@ export default function SubscriptionsPage() {
             <div className="p-4 bg-slate-50 border border-slate-200 rounded-xl flex items-start gap-2 mb-4">
               <Info className="w-4 h-4 text-slate-500 flex-shrink-0 mt-0.5" />
               <p className="text-xs text-slate-600">
-                To renew, make payment and contact us at <span className="font-semibold">support@helvino.org</span> or WhatsApp <span className="font-semibold">+254 703 445 756</span> with your company name and service name.
+                To renew, make payment and contact us at <span className="font-semibold">customer@helvino.org</span> or WhatsApp <span className="font-semibold">+254 703 445 756</span> with your company name and service name.
               </p>
             </div>
             <button onClick={() => setRenewModal(null)}

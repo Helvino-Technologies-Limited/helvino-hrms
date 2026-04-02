@@ -208,7 +208,7 @@ const chapters: Chapter[] = [
         heading: 'Getting Support',
         body: [
           'For technical issues with the portal, raise a Support Ticket.',
-          'For billing queries, contact accounts@helvino.org.',
+          'For billing queries, contact customer@helvino.org.',
           'For general inquiries, call Helvino Technologies Ltd: 0110 421 320.',
           'Business hours: Monday–Friday 8:00 AM – 6:00 PM (EAT).',
           'Website: www.helvinocrm.org',

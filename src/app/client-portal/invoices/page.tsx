@@ -184,7 +184,7 @@ export default function InvoicesPage() {
               </div>
               <div className="p-4 bg-slate-50 border border-slate-200 rounded-xl flex items-start gap-2">
                 <Info className="w-4 h-4 text-slate-500 flex-shrink-0 mt-0.5" />
-                <p className="text-xs text-slate-600">After payment, send proof to <span className="font-semibold">billing@helvino.org</span> or WhatsApp <span className="font-semibold">+254 703 445 756</span> with your invoice number.</p>
+                <p className="text-xs text-slate-600">After payment, send proof to <span className="font-semibold">customer@helvino.org</span> or WhatsApp <span className="font-semibold">+254 703 445 756</span> with your invoice number.</p>
               </div>
             </div>
             <button onClick={() => setPayModal(null)}

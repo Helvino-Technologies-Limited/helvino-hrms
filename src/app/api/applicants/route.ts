@@ -61,7 +61,7 @@ export async function POST(req: NextRequest) {
             <p>Dear <strong>${firstName} ${lastName}</strong>,</p>
             <p>Thank you for applying for <strong>${applicant.job.title}</strong> at Helvino Technologies Limited.</p>
             <p>Your application has been received and is under review. We will contact you within 5–7 business days.</p>
-            <p>Best regards,<br><strong>Helvino HR Team</strong><br>0110421320 | hr@helvino.org</p>
+            <p>Best regards,<br><strong>Helvino HR Team</strong><br>0110421320 | info@helvino.org</p>
           </div>
         </div>
       `,

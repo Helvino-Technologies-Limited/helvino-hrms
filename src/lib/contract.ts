@@ -162,7 +162,7 @@ export function generateContractHtml(data: {
     <div class="header-logo-fallback" style="display:none">HELVINO</div>
     <div class="header-text">
       <h1>Helvino Technologies Limited</h1>
-      <p>Siaya, Kenya &nbsp;·&nbsp; hr@helvino.org &nbsp;·&nbsp; +254 110 421 320 &nbsp;·&nbsp; helvino.org</p>
+      <p>Siaya, Kenya &nbsp;·&nbsp; info@helvino.org &nbsp;·&nbsp; +254 110 421 320 &nbsp;·&nbsp; helvino.org</p>
     </div>
     <div style="margin-left:auto;text-align:right">
       <div style="color:#93c5fd;font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:1px">Date Issued</div>
@@ -381,7 +381,7 @@ export function generateContractHtml(data: {
   <div class="footer">
     <p>
       <strong>Helvino Technologies Limited</strong> &nbsp;|&nbsp; Siaya, Kenya &nbsp;|&nbsp;
-      <a href="mailto:hr@helvino.org">hr@helvino.org</a> &nbsp;|&nbsp;
+      <a href="mailto:info@helvino.org">info@helvino.org</a> &nbsp;|&nbsp;
       +254 110 421 320 &nbsp;|&nbsp;
       <a href="https://helvino.org">helvino.org</a>
     </p>

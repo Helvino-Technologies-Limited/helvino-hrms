@@ -105,7 +105,7 @@ export function generateTerminationLetterHtml(data: {
     <div class="header-logo-fallback" style="display:none">HELVINO</div>
     <div class="header-text">
       <h1>Helvino Technologies Limited</h1>
-      <p>Siaya, Kenya &nbsp;·&nbsp; hr@helvino.org &nbsp;·&nbsp; +254 110 421 320 &nbsp;·&nbsp; helvino.org</p>
+      <p>Siaya, Kenya &nbsp;·&nbsp; info@helvino.org &nbsp;·&nbsp; +254 110 421 320 &nbsp;·&nbsp; helvino.org</p>
     </div>
     <div style="margin-left:auto;text-align:right">
       <div style="color:#93c5fd;font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:1px">STRICTLY PRIVATE & CONFIDENTIAL</div>
@@ -198,7 +198,7 @@ export function generateTerminationLetterHtml(data: {
       <h3>Reference Letter</h3>
       ${data.reason === 'GROSS_MISCONDUCT'
         ? `<p>In view of the circumstances of your departure, the Company is unable to provide a reference letter at this time. Any reference requests by prospective employers will be confirmed to the dates of employment only.</p>`
-        : `<p>Upon request, the Company will provide a factual reference letter confirming your period of employment, position held, and responsibilities undertaken. Reference requests should be directed to <a href="mailto:hr@helvino.org">hr@helvino.org</a>.</p>`
+        : `<p>Upon request, the Company will provide a factual reference letter confirming your period of employment, position held, and responsibilities undertaken. Reference requests should be directed to <a href="mailto:info@helvino.org">info@helvino.org</a>.</p>`
       }
     </div>
 
@@ -244,7 +244,7 @@ export function generateTerminationLetterHtml(data: {
   <div class="footer">
     <p>
       <strong>Helvino Technologies Limited</strong> &nbsp;|&nbsp; Siaya, Kenya &nbsp;|&nbsp;
-      <a href="mailto:hr@helvino.org">hr@helvino.org</a> &nbsp;|&nbsp;
+      <a href="mailto:info@helvino.org">info@helvino.org</a> &nbsp;|&nbsp;
       +254 110 421 320 &nbsp;|&nbsp;
       <a href="https://helvino.org">helvino.org</a>
     </p>

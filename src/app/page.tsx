@@ -293,7 +293,7 @@ export default function HomePage() {
               View Open Positions
               <ArrowRight className="w-5 h-5" />
             </Link>
-            <a href="mailto:careers@helvino.org"
+            <a href="mailto:info@helvino.org"
               className="border-2 border-white/40 text-white hover:bg-white/10 font-bold px-8 py-4 rounded-xl text-lg transition-all duration-200 inline-flex items-center gap-2 justify-center">
               <Mail className="w-5 h-5" />
               Send Your CV

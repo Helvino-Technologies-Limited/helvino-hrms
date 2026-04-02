@@ -69,8 +69,12 @@ export async function POST(req: NextRequest) {
 
     const body = await req.json()
 
-    const count = await prisma.lead.count()
-    const leadNumber = `LEAD-${String(count + 1).padStart(4, '0')}`
+    const last = await prisma.lead.findFirst({
+      orderBy: { leadNumber: 'desc' },
+      select: { leadNumber: true },
+    })
+    const lastNum = last ? parseInt(last.leadNumber.replace('LEAD-', ''), 10) : 0
+    const leadNumber = `LEAD-${String(lastNum + 1).padStart(4, '0')}`
 
     const lead = await prisma.lead.create({
       data: {
@@ -95,8 +99,8 @@ export async function POST(req: NextRequest) {
     })
 
     return NextResponse.json(lead, { status: 201 })
-  } catch (error) {
+  } catch (error: any) {
     console.error(error)
-    return NextResponse.json({ error: 'Failed to create lead' }, { status: 500 })
+    return NextResponse.json({ error: error?.message || 'Failed to create lead' }, { status: 500 })
   }
 }
