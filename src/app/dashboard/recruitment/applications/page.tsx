@@ -106,6 +106,18 @@ export default function ApplicationsPage() {
   const [jobFilter, setJobFilter] = useState('')
   const [statusFilter, setStatusFilter] = useState('ALL')
 
+  // Accordion open/close per job group — start all open
+  const [openJobs, setOpenJobs] = useState<Set<string>>(new Set())
+
+  function toggleJobGroup(jobId: string) {
+    setOpenJobs(prev => {
+      const next = new Set(prev)
+      // closed set: presence = collapsed, absence = open
+      next.has(jobId) ? next.delete(jobId) : next.add(jobId)
+      return next
+    })
+  }
+
   // Selection
   const [selected, setSelected] = useState<Set<string>>(new Set())
   const [bulkStatus, setBulkStatus] = useState('')
@@ -171,6 +183,24 @@ export default function ApplicationsPage() {
     applications.forEach(a => { counts[a.status] = (counts[a.status] || 0) + 1 })
     return counts
   }, [applications])
+
+  // ─── Group filtered applicants by job ───────────────────────────────────────
+  const groupedByJob = useMemo(() => {
+    const map = new Map<string, { job: any; apps: any[] }>()
+    filtered.forEach(app => {
+      const jobId = app.job?.id ?? 'NO_JOB'
+      if (!map.has(jobId)) {
+        map.set(jobId, { job: app.job ?? null, apps: [] })
+      }
+      map.get(jobId)!.apps.push(app)
+    })
+    // Sort groups by job title, unassigned last
+    return Array.from(map.entries()).sort(([, a], [, b]) => {
+      if (!a.job) return 1
+      if (!b.job) return -1
+      return (a.job.title ?? '').localeCompare(b.job.title ?? '')
+    })
+  }, [filtered])
 
   // ─── Inline status update ───────────────────────────────────────────────────
   async function updateStatus(id: string, status: string) {
@@ -482,204 +512,250 @@ export default function ApplicationsPage() {
         </div>
       )}
 
-      {/* Table */}
-      <div className="bg-white rounded-2xl shadow-sm border border-slate-100 overflow-hidden">
-        {loading ? (
-          <div className="flex items-center justify-center py-24">
-            <div className="w-8 h-8 border-4 border-blue-600 border-t-transparent rounded-full animate-spin" />
-          </div>
-        ) : filtered.length === 0 ? (
-          <div className="text-center py-20">
-            <Users className="w-12 h-12 mx-auto mb-3 text-slate-200" />
-            <p className="text-slate-500 font-medium">No applications found</p>
-            <p className="text-slate-400 text-sm mt-1">Try adjusting your filters</p>
-          </div>
-        ) : (
-          <div className="overflow-x-auto">
-            <table className="w-full text-sm">
-              <thead className="bg-slate-50 border-b border-slate-200">
-                <tr>
-                  <th className="px-4 py-3 w-10">
-                    <input type="checkbox" checked={allSelected} onChange={toggleAll}
-                      className="w-4 h-4 rounded accent-blue-600 cursor-pointer" />
-                  </th>
-                  {['Candidate','Position','Applied','Experience','Status','Score','Source','Emails','Actions'].map(h => (
-                    <th key={h} className="text-left px-4 py-3 text-xs font-semibold text-slate-500 uppercase tracking-wide whitespace-nowrap">{h}</th>
-                  ))}
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-slate-100">
-                {filtered.map((app: any) => {
-                  const initials = `${app.firstName?.[0] || ''}${app.lastName?.[0] || ''}`.toUpperCase()
-                  const color = avatarColor(`${app.firstName}${app.lastName}`)
-                  const isSelected = selected.has(app.id)
+      {/* Grouped by Job */}
+      {loading ? (
+        <div className="bg-white rounded-2xl shadow-sm border border-slate-100 flex items-center justify-center py-24">
+          <div className="w-8 h-8 border-4 border-blue-600 border-t-transparent rounded-full animate-spin" />
+        </div>
+      ) : filtered.length === 0 ? (
+        <div className="bg-white rounded-2xl shadow-sm border border-slate-100 text-center py-20">
+          <Users className="w-12 h-12 mx-auto mb-3 text-slate-200" />
+          <p className="text-slate-500 font-medium">No applications found</p>
+          <p className="text-slate-400 text-sm mt-1">Try adjusting your filters</p>
+        </div>
+      ) : (
+        <div className="space-y-4">
+          {groupedByJob.map(([jobId, { job, apps: groupApps }]) => {
+            const isOpen = !openJobs.has(jobId) // closed set = open by default
+            // Status breakdown for this job group
+            const breakdown: Record<string, number> = {}
+            groupApps.forEach(a => { breakdown[a.status] = (breakdown[a.status] || 0) + 1 })
+            const allGroupSelected = groupApps.length > 0 && groupApps.every(a => selected.has(a.id))
 
-                  return (
-                    <tr key={app.id}
-                      className={`hover:bg-slate-50 transition-colors ${isSelected ? 'bg-blue-50/50' : ''}`}>
-                      <td className="px-4 py-3.5 w-10">
-                        <input type="checkbox" checked={isSelected} onChange={() => toggleSelect(app.id)}
-                          className="w-4 h-4 rounded accent-blue-600 cursor-pointer" />
-                      </td>
+            return (
+              <div key={jobId} className="bg-white rounded-2xl shadow-sm border border-slate-100 overflow-hidden">
+                {/* Job group header */}
+                <button
+                  onClick={() => toggleJobGroup(jobId)}
+                  className="w-full flex items-center gap-3 px-5 py-4 hover:bg-slate-50 transition-colors text-left border-b border-slate-100">
+                  <div className={`transition-transform duration-200 ${isOpen ? 'rotate-90' : 'rotate-0'} flex-shrink-0`}>
+                    <ChevronRight className="w-4 h-4 text-slate-400" />
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-center gap-3 flex-wrap">
+                      <span className="font-bold text-slate-900 text-sm truncate">
+                        {job ? job.title : 'Unassigned'}
+                      </span>
+                      {job && (
+                        <Link
+                          href={`/dashboard/recruitment/jobs/${job.id}`}
+                          onClick={e => e.stopPropagation()}
+                          className="text-xs text-blue-500 hover:text-blue-700 hover:underline flex items-center gap-0.5">
+                          <ExternalLink className="w-3 h-3" /> View Job
+                        </Link>
+                      )}
+                      <span className="text-xs font-semibold bg-slate-100 text-slate-600 px-2.5 py-0.5 rounded-full">
+                        {groupApps.length} applicant{groupApps.length !== 1 ? 's' : ''}
+                      </span>
+                    </div>
+                    <div className="flex gap-1.5 mt-1.5 flex-wrap">
+                      {Object.entries(breakdown).map(([st, cnt]) => (
+                        <span key={st} className={`text-xs px-2 py-0.5 rounded-full border font-semibold ${STATUS_BADGE[st] || 'bg-slate-100 text-slate-600 border-slate-200'}`}>
+                          {STATUS_LABEL[st] || st} · {cnt}
+                        </span>
+                      ))}
+                    </div>
+                  </div>
+                </button>
 
-                      {/* Candidate */}
-                      <td className="px-4 py-3.5">
-                        <div className="flex items-center gap-2.5">
-                          <div className={`w-9 h-9 rounded-xl ${color} flex items-center justify-center text-white font-bold text-xs flex-shrink-0`}>
-                            {initials}
-                          </div>
-                          <div className="min-w-0">
-                            <p className="font-semibold text-slate-900 truncate max-w-[140px]">{app.firstName} {app.lastName}</p>
-                            <p className="text-slate-400 text-xs truncate max-w-[140px]">{app.email}</p>
-                          </div>
-                        </div>
-                      </td>
-
-                      {/* Position */}
-                      <td className="px-4 py-3.5">
-                        {app.job ? (
-                          <Link href={`/dashboard/recruitment/jobs/${app.job.id}`}
-                            className="text-xs font-semibold text-blue-600 hover:text-blue-800 hover:underline flex items-center gap-1 max-w-[160px] truncate">
-                            {app.job.title}
-                          </Link>
-                        ) : (
-                          <span className="text-xs text-slate-400">—</span>
-                        )}
-                      </td>
-
-                      <td className="px-4 py-3.5 text-slate-500 text-xs whitespace-nowrap">{formatDate(app.createdAt)}</td>
-
-                      <td className="px-4 py-3.5 text-slate-600 text-xs">
-                        {app.experienceYears != null ? `${app.experienceYears} yr${app.experienceYears !== 1 ? 's' : ''}` : '—'}
-                      </td>
-
-                      {/* Status */}
-                      <td className="px-4 py-3.5">
-                        <select
-                          value={app.status}
-                          onChange={e => updateStatus(app.id, e.target.value)}
-                          className={`text-xs font-semibold px-2 py-1 rounded-lg border focus:outline-none focus:ring-2 focus:ring-blue-400 cursor-pointer ${STATUS_BADGE[app.status] || 'bg-slate-100 text-slate-600 border-slate-200'}`}>
-                          {ALL_STATUSES.filter(s => s.key !== 'ALL').map(s => (
-                            <option key={s.key} value={s.key}>{s.label}</option>
+                {/* Applicant rows */}
+                {isOpen && (
+                  <div className="overflow-x-auto">
+                    <table className="w-full text-sm">
+                      <thead className="bg-slate-50 border-b border-slate-200">
+                        <tr>
+                          <th className="px-4 py-3 w-10">
+                            <input type="checkbox" checked={allGroupSelected}
+                              onChange={() => {
+                                setSelected(prev => {
+                                  const next = new Set(prev)
+                                  if (allGroupSelected) groupApps.forEach(a => next.delete(a.id))
+                                  else groupApps.forEach(a => next.add(a.id))
+                                  return next
+                                })
+                              }}
+                              className="w-4 h-4 rounded accent-blue-600 cursor-pointer" />
+                          </th>
+                          {['Candidate','Applied','Experience','Status','Score','Source','Emails','Actions'].map(h => (
+                            <th key={h} className="text-left px-4 py-3 text-xs font-semibold text-slate-500 uppercase tracking-wide whitespace-nowrap">{h}</th>
                           ))}
-                        </select>
-                      </td>
+                        </tr>
+                      </thead>
+                      <tbody className="divide-y divide-slate-100">
+                        {groupApps.map((app: any) => {
+                          const initials = `${app.firstName?.[0] || ''}${app.lastName?.[0] || ''}`.toUpperCase()
+                          const color = avatarColor(`${app.firstName}${app.lastName}`)
+                          const isSelected = selected.has(app.id)
 
-                      {/* Score */}
-                      <td className="px-4 py-3.5">
-                        {app.score != null ? (
-                          <div className="flex items-center gap-1.5">
-                            <Star className="w-3.5 h-3.5 text-amber-400 fill-amber-400 flex-shrink-0" />
-                            <span className="text-xs font-bold text-amber-600">{app.score}</span>
-                          </div>
-                        ) : (
-                          <span className="text-slate-300 text-xs">—</span>
-                        )}
-                      </td>
+                          return (
+                            <tr key={app.id}
+                              className={`hover:bg-slate-50 transition-colors ${isSelected ? 'bg-blue-50/50' : ''}`}>
+                              <td className="px-4 py-3.5 w-10">
+                                <input type="checkbox" checked={isSelected} onChange={() => toggleSelect(app.id)}
+                                  className="w-4 h-4 rounded accent-blue-600 cursor-pointer" />
+                              </td>
 
-                      {/* Source */}
-                      <td className="px-4 py-3.5">
-                        {app.source ? (
-                          <div className="flex flex-col gap-0.5">
-                            <span className="text-xs bg-slate-100 text-slate-600 px-2 py-0.5 rounded-lg font-medium">{app.source}</span>
-                            {app.source === 'MANAGER_REFERRAL' && (app as any).salesManager && (
-                              <span className="text-xs text-blue-600 font-medium">
-                                {(app as any).salesManager.firstName} {(app as any).salesManager.lastName}
-                              </span>
-                            )}
-                          </div>
-                        ) : (
-                          <span className="text-slate-300 text-xs">—</span>
-                        )}
-                      </td>
-
-                      {/* Emails sent indicators */}
-                      <td className="px-4 py-3.5">
-                        <div className="flex items-center gap-1">
-                          {app.interviewInviteSentAt && (
-                            <span title={`Interview invite sent ${formatDate(app.interviewInviteSentAt)}`}
-                              className="w-5 h-5 bg-blue-100 text-blue-600 rounded-full flex items-center justify-center">
-                              <CalendarCheck className="w-3 h-3" />
-                            </span>
-                          )}
-                          {app.onboardingRequestSentAt && (
-                            <span title={`Onboarding request sent ${formatDate(app.onboardingRequestSentAt)}`}
-                              className="w-5 h-5 bg-green-100 text-green-600 rounded-full flex items-center justify-center">
-                              <FileText className="w-3 h-3" />
-                            </span>
-                          )}
-                          {app.rejectionEmailSentAt && (
-                            <span title={`Rejection sent ${formatDate(app.rejectionEmailSentAt)}`}
-                              className="w-5 h-5 bg-red-100 text-red-500 rounded-full flex items-center justify-center">
-                              <UserX className="w-3 h-3" />
-                            </span>
-                          )}
-                          {!app.interviewInviteSentAt && !app.onboardingRequestSentAt && !app.rejectionEmailSentAt && (
-                            <span className="text-slate-300 text-xs">—</span>
-                          )}
-                        </div>
-                      </td>
-
-                      {/* Actions */}
-                      <td className="px-4 py-3.5">
-                        <div className="flex items-center gap-1">
-                          {/* Email button */}
-                          <div className="relative group">
-                            <button
-                              className="p-1.5 text-slate-400 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-colors"
-                              title="Send email">
-                              <Mail className="w-4 h-4" />
-                            </button>
-                            {/* Email dropdown */}
-                            <div className="absolute right-0 top-full mt-1 w-56 bg-white border border-slate-200 rounded-2xl shadow-xl z-20 opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-150 py-1.5">
-                              {EMAIL_TYPES.map(et => (
-                                <button key={et.key}
-                                  onClick={() => openEmail(app, et.key)}
-                                  className="w-full flex items-center gap-2.5 px-4 py-2.5 hover:bg-slate-50 text-left transition-colors">
-                                  <et.icon className={`w-4 h-4 ${et.color} flex-shrink-0`} />
-                                  <div>
-                                    <p className="text-sm font-semibold text-slate-800">{et.label}</p>
-                                    <p className="text-xs text-slate-400">{et.description}</p>
+                              {/* Candidate */}
+                              <td className="px-4 py-3.5">
+                                <div className="flex items-center gap-2.5">
+                                  <div className={`w-9 h-9 rounded-xl ${color} flex items-center justify-center text-white font-bold text-xs flex-shrink-0`}>
+                                    {initials}
                                   </div>
-                                </button>
-                              ))}
-                            </div>
-                          </div>
+                                  <div className="min-w-0">
+                                    <p className="font-semibold text-slate-900 truncate max-w-[140px]">{app.firstName} {app.lastName}</p>
+                                    <p className="text-slate-400 text-xs truncate max-w-[140px]">{app.email}</p>
+                                  </div>
+                                </div>
+                              </td>
 
-                          {app.job && (
-                            <Link href={`/dashboard/recruitment/jobs/${app.job.id}`}
-                              className="p-1.5 text-slate-400 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-colors"
-                              title="View in pipeline">
-                              <Eye className="w-4 h-4" />
-                            </Link>
-                          )}
-                          <Link
-                            href={`/dashboard/recruitment/applications/${app.id}/offer-letter`}
-                            className={`p-1.5 rounded-lg transition-colors ${
-                              app.offerLetterContent
-                                ? 'text-blue-600 bg-blue-50 hover:bg-blue-100'
-                                : 'text-slate-400 hover:text-blue-600 hover:bg-blue-50'
-                            }`}
-                            title={app.offerLetterContent ? 'View / Print Offer Letter' : 'Create Offer Letter PDF'}
-                          >
-                            <Printer className="w-4 h-4" />
-                          </Link>
-                          <button
-                            onClick={() => { setTalentPoolTarget(app); setTalentPoolCategory('FUTURE_PROSPECT') }}
-                            className="p-1.5 text-slate-400 hover:text-purple-600 hover:bg-purple-50 rounded-lg transition-colors"
-                            title="Add to talent pool">
-                            <Layers className="w-4 h-4" />
-                          </button>
-                        </div>
-                      </td>
-                    </tr>
-                  )
-                })}
-              </tbody>
-            </table>
-          </div>
-        )}
-      </div>
+                              <td className="px-4 py-3.5 text-slate-500 text-xs whitespace-nowrap">{formatDate(app.createdAt)}</td>
+
+                              <td className="px-4 py-3.5 text-slate-600 text-xs">
+                                {app.experienceYears != null ? `${app.experienceYears} yr${app.experienceYears !== 1 ? 's' : ''}` : '—'}
+                              </td>
+
+                              {/* Status */}
+                              <td className="px-4 py-3.5">
+                                <select
+                                  value={app.status}
+                                  onChange={e => updateStatus(app.id, e.target.value)}
+                                  className={`text-xs font-semibold px-2 py-1 rounded-lg border focus:outline-none focus:ring-2 focus:ring-blue-400 cursor-pointer ${STATUS_BADGE[app.status] || 'bg-slate-100 text-slate-600 border-slate-200'}`}>
+                                  {ALL_STATUSES.filter(s => s.key !== 'ALL').map(s => (
+                                    <option key={s.key} value={s.key}>{s.label}</option>
+                                  ))}
+                                </select>
+                              </td>
+
+                              {/* Score */}
+                              <td className="px-4 py-3.5">
+                                {app.score != null ? (
+                                  <div className="flex items-center gap-1.5">
+                                    <Star className="w-3.5 h-3.5 text-amber-400 fill-amber-400 flex-shrink-0" />
+                                    <span className="text-xs font-bold text-amber-600">{app.score}</span>
+                                  </div>
+                                ) : (
+                                  <span className="text-slate-300 text-xs">—</span>
+                                )}
+                              </td>
+
+                              {/* Source */}
+                              <td className="px-4 py-3.5">
+                                {app.source ? (
+                                  <div className="flex flex-col gap-0.5">
+                                    <span className="text-xs bg-slate-100 text-slate-600 px-2 py-0.5 rounded-lg font-medium">{app.source}</span>
+                                    {app.source === 'MANAGER_REFERRAL' && (app as any).salesManager && (
+                                      <span className="text-xs text-blue-600 font-medium">
+                                        {(app as any).salesManager.firstName} {(app as any).salesManager.lastName}
+                                      </span>
+                                    )}
+                                  </div>
+                                ) : (
+                                  <span className="text-slate-300 text-xs">—</span>
+                                )}
+                              </td>
+
+                              {/* Emails sent indicators */}
+                              <td className="px-4 py-3.5">
+                                <div className="flex items-center gap-1">
+                                  {app.interviewInviteSentAt && (
+                                    <span title={`Interview invite sent ${formatDate(app.interviewInviteSentAt)}`}
+                                      className="w-5 h-5 bg-blue-100 text-blue-600 rounded-full flex items-center justify-center">
+                                      <CalendarCheck className="w-3 h-3" />
+                                    </span>
+                                  )}
+                                  {app.onboardingRequestSentAt && (
+                                    <span title={`Onboarding request sent ${formatDate(app.onboardingRequestSentAt)}`}
+                                      className="w-5 h-5 bg-green-100 text-green-600 rounded-full flex items-center justify-center">
+                                      <FileText className="w-3 h-3" />
+                                    </span>
+                                  )}
+                                  {app.rejectionEmailSentAt && (
+                                    <span title={`Rejection sent ${formatDate(app.rejectionEmailSentAt)}`}
+                                      className="w-5 h-5 bg-red-100 text-red-500 rounded-full flex items-center justify-center">
+                                      <UserX className="w-3 h-3" />
+                                    </span>
+                                  )}
+                                  {!app.interviewInviteSentAt && !app.onboardingRequestSentAt && !app.rejectionEmailSentAt && (
+                                    <span className="text-slate-300 text-xs">—</span>
+                                  )}
+                                </div>
+                              </td>
+
+                              {/* Actions */}
+                              <td className="px-4 py-3.5">
+                                <div className="flex items-center gap-1">
+                                  {/* View Profile */}
+                                  <Link
+                                    href={`/dashboard/recruitment/applications/${app.id}`}
+                                    className="flex items-center gap-1 px-2.5 py-1.5 text-xs font-semibold text-blue-600 bg-blue-50 hover:bg-blue-100 rounded-lg transition-colors"
+                                    title="View full profile">
+                                    <Eye className="w-3.5 h-3.5" /> Profile
+                                  </Link>
+
+                                  {/* Email button */}
+                                  <div className="relative group">
+                                    <button
+                                      className="p-1.5 text-slate-400 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-colors"
+                                      title="Send email">
+                                      <Mail className="w-4 h-4" />
+                                    </button>
+                                    {/* Email dropdown */}
+                                    <div className="absolute right-0 top-full mt-1 w-56 bg-white border border-slate-200 rounded-2xl shadow-xl z-20 opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-150 py-1.5">
+                                      {EMAIL_TYPES.map(et => (
+                                        <button key={et.key}
+                                          onClick={() => openEmail(app, et.key)}
+                                          className="w-full flex items-center gap-2.5 px-4 py-2.5 hover:bg-slate-50 text-left transition-colors">
+                                          <et.icon className={`w-4 h-4 ${et.color} flex-shrink-0`} />
+                                          <div>
+                                            <p className="text-sm font-semibold text-slate-800">{et.label}</p>
+                                            <p className="text-xs text-slate-400">{et.description}</p>
+                                          </div>
+                                        </button>
+                                      ))}
+                                    </div>
+                                  </div>
+
+                                  <Link
+                                    href={`/dashboard/recruitment/applications/${app.id}/offer-letter`}
+                                    className={`p-1.5 rounded-lg transition-colors ${
+                                      app.offerLetterContent
+                                        ? 'text-blue-600 bg-blue-50 hover:bg-blue-100'
+                                        : 'text-slate-400 hover:text-blue-600 hover:bg-blue-50'
+                                    }`}
+                                    title={app.offerLetterContent ? 'View / Print Offer Letter' : 'Create Offer Letter PDF'}
+                                  >
+                                    <Printer className="w-4 h-4" />
+                                  </Link>
+                                  <button
+                                    onClick={() => { setTalentPoolTarget(app); setTalentPoolCategory('FUTURE_PROSPECT') }}
+                                    className="p-1.5 text-slate-400 hover:text-purple-600 hover:bg-purple-50 rounded-lg transition-colors"
+                                    title="Add to talent pool">
+                                    <Layers className="w-4 h-4" />
+                                  </button>
+                                </div>
+                              </td>
+                            </tr>
+                          )
+                        })}
+                      </tbody>
+                    </table>
+                  </div>
+                )}
+              </div>
+            )
+          })}
+        </div>
+      )}
 
       {/* ─── Email Compose Modal ──────────────────────────────────────────────── */}
       {emailTarget && emailType && emailTypeDef && (
