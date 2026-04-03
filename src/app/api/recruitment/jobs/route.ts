@@ -25,8 +25,18 @@ async function generateSlug(title: string): Promise<string> {
   }
 }
 
+/** Fire-and-forget expiry sweep — never blocks the response */
+function triggerExpiry() {
+  fetch(`${process.env.NEXTAUTH_URL ?? 'http://localhost:3000'}/api/cron/expire-jobs`, {
+    method: 'POST',
+  }).catch(() => {})
+}
+
 export async function GET(request: NextRequest) {
   try {
+    // Lazily expire overdue jobs in the background
+    triggerExpiry()
+
     const { searchParams } = new URL(request.url)
     const status = searchParams.get('status')
     const departmentId = searchParams.get('departmentId')
@@ -112,6 +122,15 @@ export async function POST(request: NextRequest) {
     const jobStatus: JobStatus = status ?? JobStatus.OPEN
     const postedAt = jobStatus === JobStatus.OPEN ? new Date() : null
 
+    // Default deadline: 30 days from posting date if not explicitly set
+    let resolvedDeadline: Date | null = null
+    if (deadline) {
+      resolvedDeadline = new Date(deadline)
+    } else if (jobStatus === JobStatus.OPEN) {
+      resolvedDeadline = new Date()
+      resolvedDeadline.setDate(resolvedDeadline.getDate() + 30)
+    }
+
     const job = await prisma.job.create({
       data: {
         title,
@@ -132,7 +151,7 @@ export async function POST(request: NextRequest) {
         hiringManagerId: hiringManagerId || null,
         status: jobStatus,
         postedAt,
-        deadline: deadline ? new Date(deadline) : null,
+        deadline: resolvedDeadline,
       },
       include: {
         department: true,

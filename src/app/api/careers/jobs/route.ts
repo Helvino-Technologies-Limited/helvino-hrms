@@ -10,6 +10,11 @@ export async function GET(request: NextRequest) {
 
     const where: Record<string, unknown> = {
       status: JobStatus.OPEN,
+      // Exclude jobs past their deadline from the public listing
+      OR: [
+        { deadline: null },
+        { deadline: { gte: new Date() } },
+      ],
     }
 
     if (departmentId) {

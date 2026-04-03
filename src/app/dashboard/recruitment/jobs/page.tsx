@@ -10,13 +10,54 @@ import toast from 'react-hot-toast'
 import { formatCurrency, formatDate } from '@/lib/utils'
 
 const JOB_STATUS_COLORS: Record<string, string> = {
-  OPEN: 'bg-green-100 text-green-700 border-green-200',
-  CLOSED: 'bg-red-100 text-red-700 border-red-200',
-  DRAFT: 'bg-slate-100 text-slate-600 border-slate-200',
+  OPEN:     'bg-green-100 text-green-700 border-green-200',
+  CLOSED:   'bg-red-100 text-red-700 border-red-200',
+  DRAFT:    'bg-slate-100 text-slate-600 border-slate-200',
   ARCHIVED: 'bg-gray-100 text-gray-500 border-gray-200',
+  EXPIRED:  'bg-orange-100 text-orange-700 border-orange-200',
 }
 
-const ALL_STATUSES = ['All', 'OPEN', 'CLOSED', 'DRAFT', 'ARCHIVED']
+const ALL_STATUSES = ['All', 'OPEN', 'CLOSED', 'DRAFT', 'ARCHIVED', 'EXPIRED']
+
+function daysUntilDeadline(deadline: string): number {
+  const diff = new Date(deadline).getTime() - Date.now()
+  return Math.ceil(diff / (1000 * 60 * 60 * 24))
+}
+
+function DeadlineBadge({ deadline }: { deadline: string | null }) {
+  if (!deadline) return null
+  const days = daysUntilDeadline(deadline)
+  if (days < 0) {
+    return (
+      <span className="flex items-center gap-1 text-xs font-medium text-red-500">
+        <Clock className="w-3.5 h-3.5" />
+        Expired
+      </span>
+    )
+  }
+  if (days === 0) {
+    return (
+      <span className="flex items-center gap-1 text-xs font-semibold text-red-600 animate-pulse">
+        <Clock className="w-3.5 h-3.5" />
+        Expires today
+      </span>
+    )
+  }
+  if (days <= 5) {
+    return (
+      <span className="flex items-center gap-1 text-xs font-semibold text-orange-600">
+        <Clock className="w-3.5 h-3.5" />
+        {days}d left
+      </span>
+    )
+  }
+  return (
+    <span className="flex items-center gap-1 text-xs text-slate-400">
+      <Clock className="w-3.5 h-3.5" />
+      {days}d left
+    </span>
+  )
+}
 
 const JOB_TYPES = ['Full-time', 'Part-time', 'Contract', 'Internship']
 const EXPERIENCE_LEVELS = ['Entry Level', 'Mid Level', 'Senior Level', 'Lead', 'Manager', 'Director', 'Executive']
@@ -146,7 +187,6 @@ export default function JobsPage() {
       ) : (
         <div className="grid md:grid-cols-2 gap-4">
           {filtered.map((job: any) => {
-            const isDeadlinePast = job.deadline && new Date(job.deadline) < new Date()
             const skills: string[] = Array.isArray(job.skills) ? job.skills : (job.skills ? String(job.skills).split(',').map((s: string) => s.trim()).filter(Boolean) : [])
             return (
               <div
@@ -256,13 +296,7 @@ export default function JobsPage() {
                       {job._count?.applicants ?? job.applicantCount ?? 0} applicants
                     </span>
                   </div>
-                  {job.deadline && (
-                    <span className={`flex items-center gap-1 text-xs font-medium ${isDeadlinePast ? 'text-red-500' : 'text-slate-400'}`}>
-                      <Clock className="w-3.5 h-3.5" />
-                      {isDeadlinePast ? 'Expired ' : 'Closes '}
-                      {formatDate(job.deadline)}
-                    </span>
-                  )}
+                  <DeadlineBadge deadline={job.deadline} />
                 </div>
 
                 {/* View Applicants */}
@@ -757,7 +791,12 @@ function CreateEditJobModal({ job, departments, onClose, onSave }: {
 
                 {/* Deadline */}
                 <div>
-                  <label className="block text-xs font-semibold text-slate-500 mb-1.5">Application Deadline</label>
+                  <label className="block text-xs font-semibold text-slate-500 mb-1.5">
+                    Application Deadline
+                    <span className="ml-1.5 text-slate-400 font-normal normal-case">
+                      (defaults to 30 days — job auto-expires on this date)
+                    </span>
+                  </label>
                   <input
                     type="date"
                     value={form.deadline}
