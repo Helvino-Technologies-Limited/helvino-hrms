@@ -69,6 +69,24 @@ export async function POST(req: NextRequest) {
 
     const body = await req.json()
 
+    // Duplicate detection: check by email or phone (if provided)
+    const duplicateChecks: any[] = []
+    if (body.email?.trim()) duplicateChecks.push({ email: { equals: body.email.trim(), mode: 'insensitive' } })
+    if (body.phone?.trim()) duplicateChecks.push({ phone: body.phone.trim() })
+
+    if (duplicateChecks.length > 0) {
+      const existing = await prisma.lead.findFirst({
+        where: { OR: duplicateChecks },
+        select: { leadNumber: true, contactPerson: true },
+      })
+      if (existing) {
+        return NextResponse.json(
+          { error: `A lead with this email or phone already exists (${existing.leadNumber} — ${existing.contactPerson})` },
+          { status: 409 }
+        )
+      }
+    }
+
     const last = await prisma.lead.findFirst({
       orderBy: { leadNumber: 'desc' },
       select: { leadNumber: true },

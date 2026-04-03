@@ -48,8 +48,13 @@ const SERVICES_LIST = [
   'IT Consultancy',
 ]
 
+const ADMIN_ROLES = ['SUPER_ADMIN', 'HR_MANAGER', 'SALES_MANAGER', 'FINANCE_OFFICER']
+
 export default function LeadsPage() {
   const { data: session } = useSession()
+  const role = (session?.user as any)?.role as string | undefined
+  const canSeeOwner = role ? ADMIN_ROLES.includes(role) : false
+
   const [leads, setLeads] = useState<any[]>([])
   const [employees, setEmployees] = useState<any[]>([])
   const [loading, setLoading] = useState(true)
@@ -198,7 +203,7 @@ export default function LeadsPage() {
             <table className="w-full text-sm">
               <thead className="bg-slate-50 border-b border-slate-200">
                 <tr>
-                  {['Lead #', 'Contact / Company', 'Phone', 'Services', 'Source', 'Priority', 'Status', 'Assigned To', 'Exp. Value', 'Actions'].map(h => (
+                  {['Lead #', 'Contact / Company', 'Phone', 'Services', 'Source', 'Priority', 'Status', 'Assigned To', ...(canSeeOwner ? ['Owner'] : []), 'Exp. Value', 'Actions'].map(h => (
                     <th key={h} className="text-left px-4 py-3 text-xs font-semibold text-slate-500 uppercase whitespace-nowrap">{h}</th>
                   ))}
                 </tr>
@@ -254,6 +259,11 @@ export default function LeadsPage() {
                       <td className="px-4 py-3.5 whitespace-nowrap text-xs text-slate-600">
                         {lead.assignedTo ? `${lead.assignedTo.firstName} ${lead.assignedTo.lastName}` : '—'}
                       </td>
+                      {canSeeOwner && (
+                        <td className="px-4 py-3.5 whitespace-nowrap text-xs text-slate-600">
+                          {lead.createdBy ? `${lead.createdBy.firstName} ${lead.createdBy.lastName}` : '—'}
+                        </td>
+                      )}
                       <td className="px-4 py-3.5 whitespace-nowrap text-xs font-semibold text-green-700">
                         {lead.expectedValue ? formatCurrency(lead.expectedValue) : '—'}
                       </td>
