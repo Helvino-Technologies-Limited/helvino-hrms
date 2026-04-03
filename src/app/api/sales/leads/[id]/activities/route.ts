@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
 import { prisma } from '@/lib/prisma'
+import { logAudit } from '@/lib/audit'
 
 const ALLOWED_ROLES = ['SUPER_ADMIN', 'HR_MANAGER', 'SALES_MANAGER', 'SALES_AGENT', 'FINANCE_OFFICER']
 
@@ -41,8 +42,8 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
     const { id } = await params
     const body = await req.json()
 
-    const leadExists = await prisma.lead.findUnique({ where: { id }, select: { id: true } })
-    if (!leadExists) return NextResponse.json({ error: 'Lead not found' }, { status: 404 })
+    const lead = await prisma.lead.findUnique({ where: { id }, select: { id: true, leadNumber: true, contactPerson: true } })
+    if (!lead) return NextResponse.json({ error: 'Lead not found' }, { status: 404 })
 
     const activity = await prisma.leadActivity.create({
       data: {
@@ -56,6 +57,17 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
       include: {
         performedBy: { select: { id: true, firstName: true, lastName: true, profilePhoto: true } },
       },
+    })
+
+    const empId = (session.user as any).employeeId as string | undefined
+    logAudit({
+      employeeId: empId,
+      action: 'LOGGED_ACTIVITY',
+      entity: 'LEAD_ACTIVITY',
+      entityId: activity.id,
+      label: `${lead.leadNumber} — ${body.type}: ${body.subject}`,
+      newValues: { leadId: id, leadNumber: lead.leadNumber, type: body.type, subject: body.subject },
+      req,
     })
 
     return NextResponse.json(activity, { status: 201 })

@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
 import { prisma } from '@/lib/prisma'
+import { logAudit } from '@/lib/audit'
 
 const ADMIN_ROLES = ['SUPER_ADMIN', 'HR_MANAGER', 'SALES_MANAGER']
 
@@ -34,7 +35,6 @@ export async function POST(req: NextRequest) {
 
     const body = await req.json()
 
-    // Generate letter number: LTR-YYYYMMDD-XXXX
     const dateStr = new Date().toISOString().slice(0, 10).replace(/-/g, '')
     const count = await prisma.letter.count()
     const letterNumber = `LTR-${dateStr}-${String(count + 1).padStart(4, '0')}`
@@ -54,6 +54,17 @@ export async function POST(req: NextRequest) {
         status: body.status || 'DRAFT',
         createdById: (session.user as any).employeeId || null,
       },
+    })
+
+    const empId = (session.user as any).employeeId as string | undefined
+    logAudit({
+      employeeId: empId,
+      action: 'CREATED',
+      entity: 'LETTER',
+      entityId: letter.id,
+      label: `${letter.letterNumber} — ${letter.subject} → ${letter.toName}`,
+      newValues: { letterNumber: letter.letterNumber, subject: letter.subject, toName: letter.toName, status: letter.status },
+      req,
     })
 
     return NextResponse.json(letter, { status: 201 })

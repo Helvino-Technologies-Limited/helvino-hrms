@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
 import { prisma } from '@/lib/prisma'
+import { logAudit } from '@/lib/audit'
 
 export async function GET(req: NextRequest) {
   try {
@@ -63,6 +64,17 @@ export async function POST(req: NextRequest) {
         pricing: body.pricing || null,
         features: body.features || [],
       },
+    })
+
+    const empId = (session.user as any).employeeId as string | undefined
+    logAudit({
+      employeeId: empId,
+      action: 'CREATED',
+      entity: 'PORTFOLIO',
+      entityId: item.id,
+      label: `${body.clientName} — ${body.serviceType}`,
+      newValues: { clientName: body.clientName, serviceType: body.serviceType, isPublished: item.isPublished, isProduct: item.isProduct },
+      req,
     })
 
     return NextResponse.json(item, { status: 201 })

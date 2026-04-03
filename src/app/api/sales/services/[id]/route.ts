@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
 import { prisma } from '@/lib/prisma'
+import { logAudit } from '@/lib/audit'
 
 const ALLOWED_ROLES = ['SUPER_ADMIN', 'HR_MANAGER', 'SALES_MANAGER', 'SALES_AGENT', 'FINANCE_OFFICER']
 
@@ -15,6 +16,11 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
 
     const { id } = await params
     const body = await req.json()
+
+    const before = await prisma.serviceCatalog.findUnique({
+      where: { id },
+      select: { name: true, category: true, isActive: true, basePrice: true },
+    })
 
     const updateData: any = {}
 
@@ -30,6 +36,18 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
     const service = await prisma.serviceCatalog.update({
       where: { id },
       data: updateData,
+    })
+
+    const empId = (session.user as any).employeeId as string | undefined
+    logAudit({
+      employeeId: empId,
+      action: 'UPDATED',
+      entity: 'SERVICE',
+      entityId: id,
+      label: before?.name ?? id,
+      oldValues: before,
+      newValues: updateData,
+      req,
     })
 
     return NextResponse.json(service)
@@ -53,7 +71,23 @@ export async function DELETE(req: NextRequest, { params }: { params: Promise<{ i
 
     const { id } = await params
 
+    const before = await prisma.serviceCatalog.findUnique({
+      where: { id },
+      select: { name: true, category: true },
+    })
+
     await prisma.serviceCatalog.delete({ where: { id } })
+
+    const empId = (session.user as any).employeeId as string | undefined
+    logAudit({
+      employeeId: empId,
+      action: 'DELETED',
+      entity: 'SERVICE',
+      entityId: id,
+      label: before?.name ?? id,
+      oldValues: before,
+      req,
+    })
 
     return NextResponse.json({ message: 'Service deleted successfully' })
   } catch (error: any) {

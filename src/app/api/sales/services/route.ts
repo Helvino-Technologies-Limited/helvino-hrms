@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
 import { prisma } from '@/lib/prisma'
+import { logAudit } from '@/lib/audit'
 
 const ALLOWED_ROLES = ['SUPER_ADMIN', 'HR_MANAGER', 'SALES_MANAGER', 'SALES_AGENT', 'FINANCE_OFFICER']
 
@@ -55,6 +56,17 @@ export async function POST(req: NextRequest) {
         packages: body.packages ?? null,
         isActive: body.isActive !== undefined ? Boolean(body.isActive) : true,
       },
+    })
+
+    const empId = (session.user as any).employeeId as string | undefined
+    logAudit({
+      employeeId: empId,
+      action: 'CREATED',
+      entity: 'SERVICE',
+      entityId: service.id,
+      label: `${service.name} (${service.category})`,
+      newValues: { name: service.name, category: service.category, basePrice: service.basePrice, isActive: service.isActive },
+      req,
     })
 
     return NextResponse.json(service, { status: 201 })

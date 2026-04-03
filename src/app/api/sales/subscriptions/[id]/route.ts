@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
 import { prisma } from '@/lib/prisma'
+import { logAudit } from '@/lib/audit'
 
 function deriveStatus(expiryDate: Date): 'ACTIVE' | 'EXPIRED' {
   return expiryDate > new Date() ? 'ACTIVE' : 'EXPIRED'
@@ -15,6 +16,11 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
     const { id } = await params
     const body = await req.json()
 
+    const before = await prisma.subscription.findUnique({
+      where: { id },
+      select: { serviceName: true, status: true, expiryDate: true, clientId: true },
+    })
+
     const updateData: any = {}
 
     if (body.serviceName !== undefined) updateData.serviceName = body.serviceName
@@ -27,8 +33,6 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
     if (body.expiryDate !== undefined) {
       const expiryDate = new Date(body.expiryDate)
       updateData.expiryDate = expiryDate
-      // Recalculate status automatically when expiryDate is updated,
-      // unless an explicit status override was also provided
       updateData.status = body.status !== undefined ? body.status : deriveStatus(expiryDate)
     } else if (body.status !== undefined) {
       updateData.status = body.status
@@ -42,6 +46,19 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
           select: { companyName: true, contactPerson: true, phone: true },
         },
       },
+    })
+
+    const empId = (session.user as any).employeeId as string | undefined
+    const action = before?.status !== subscription.status ? 'STATUS_CHANGED' : 'UPDATED'
+    logAudit({
+      employeeId: empId,
+      action,
+      entity: 'SUBSCRIPTION',
+      entityId: id,
+      label: `${before?.serviceName ?? id} — ${subscription.client.companyName}`,
+      oldValues: before ? { status: before.status, expiryDate: before.expiryDate } : null,
+      newValues: updateData,
+      req,
     })
 
     return NextResponse.json(subscription)
@@ -64,7 +81,23 @@ export async function DELETE(req: NextRequest, { params }: { params: Promise<{ i
 
     const { id } = await params
 
+    const before = await prisma.subscription.findUnique({
+      where: { id },
+      select: { serviceName: true, status: true },
+    })
+
     await prisma.subscription.delete({ where: { id } })
+
+    const empId = (session.user as any).employeeId as string | undefined
+    logAudit({
+      employeeId: empId,
+      action: 'DELETED',
+      entity: 'SUBSCRIPTION',
+      entityId: id,
+      label: before?.serviceName ?? id,
+      oldValues: before,
+      req,
+    })
 
     return NextResponse.json({ message: 'Subscription deleted successfully' })
   } catch (error: any) {

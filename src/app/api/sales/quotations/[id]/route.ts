@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
 import { prisma } from '@/lib/prisma'
+import { logAudit } from '@/lib/audit'
 
 const ALLOWED_ROLES = ['SUPER_ADMIN', 'HR_MANAGER', 'SALES_MANAGER', 'SALES_AGENT', 'FINANCE_OFFICER']
 
@@ -47,7 +48,10 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
     const { id } = await params
     const body = await req.json()
 
-    const existing = await prisma.quotation.findUnique({ where: { id }, select: { id: true, status: true } })
+    const existing = await prisma.quotation.findUnique({
+      where: { id },
+      select: { id: true, status: true, quotationNumber: true, clientName: true, totalAmount: true },
+    })
     if (!existing) return NextResponse.json({ error: 'Quotation not found' }, { status: 404 })
 
     const updateData: any = {}
@@ -83,7 +87,6 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
       }
     }
 
-    // Recalculate totals if items or financials are being updated
     const hasItemUpdate = Array.isArray(body.items)
     const hasFinancialUpdate = body.discountAmount !== undefined || body.taxRate !== undefined
 
@@ -112,7 +115,6 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
 
         const subtotal = items.reduce((sum: number, item: any) => sum + item.totalPrice, 0)
 
-        // Use incoming or existing tax/discount values for recalculation
         const currentQuotation = await tx.quotation.findUnique({
           where: { id },
           select: { taxRate: true, discountAmount: true },
@@ -154,6 +156,19 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
       })
     })
 
+    const empId = (session.user as any).employeeId as string | undefined
+    const action = body.status && body.status !== existing.status ? 'STATUS_CHANGED' : 'UPDATED'
+    logAudit({
+      employeeId: empId,
+      action,
+      entity: 'QUOTATION',
+      entityId: id,
+      label: `${existing.quotationNumber} — ${existing.clientName}`,
+      oldValues: { status: existing.status, totalAmount: existing.totalAmount },
+      newValues: updateData,
+      req,
+    })
+
     return NextResponse.json(quotation)
   } catch (error: any) {
     console.error(error)
@@ -174,7 +189,10 @@ export async function DELETE(req: NextRequest, { params }: { params: Promise<{ i
 
     const { id } = await params
 
-    const quotation = await prisma.quotation.findUnique({ where: { id }, select: { id: true, status: true } })
+    const quotation = await prisma.quotation.findUnique({
+      where: { id },
+      select: { id: true, status: true, quotationNumber: true, clientName: true, totalAmount: true },
+    })
     if (!quotation) return NextResponse.json({ error: 'Quotation not found' }, { status: 404 })
 
     if (quotation.status !== 'DRAFT' && session.user.role !== 'SUPER_ADMIN') {
@@ -185,6 +203,17 @@ export async function DELETE(req: NextRequest, { params }: { params: Promise<{ i
     }
 
     await prisma.quotation.delete({ where: { id } })
+
+    const empId = (session.user as any).employeeId as string | undefined
+    logAudit({
+      employeeId: empId,
+      action: 'DELETED',
+      entity: 'QUOTATION',
+      entityId: id,
+      label: `${quotation.quotationNumber} — ${quotation.clientName}`,
+      oldValues: { status: quotation.status, totalAmount: quotation.totalAmount },
+      req,
+    })
 
     return NextResponse.json({ message: 'Quotation deleted successfully' })
   } catch (error: any) {

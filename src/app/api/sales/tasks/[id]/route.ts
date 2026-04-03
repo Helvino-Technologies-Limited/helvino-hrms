@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
 import { prisma } from '@/lib/prisma'
+import { logAudit } from '@/lib/audit'
 
 export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   try {
@@ -10,6 +11,11 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
 
     const { id } = await params
     const body = await req.json()
+
+    const before = await prisma.salesTask.findUnique({
+      where: { id },
+      select: { title: true, status: true, priority: true },
+    })
 
     const updateData: any = {}
 
@@ -33,6 +39,19 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
       },
     })
 
+    const empId = (session.user as any).employeeId as string | undefined
+    const action = before?.status !== task.status ? 'STATUS_CHANGED' : 'UPDATED'
+    logAudit({
+      employeeId: empId,
+      action,
+      entity: 'SALES_TASK',
+      entityId: id,
+      label: before?.title ?? id,
+      oldValues: before ? { status: before.status, priority: before.priority } : null,
+      newValues: updateData,
+      req,
+    })
+
     return NextResponse.json(task)
   } catch (error: any) {
     console.error(error)
@@ -48,7 +67,23 @@ export async function DELETE(req: NextRequest, { params }: { params: Promise<{ i
 
     const { id } = await params
 
+    const before = await prisma.salesTask.findUnique({
+      where: { id },
+      select: { title: true, status: true },
+    })
+
     await prisma.salesTask.delete({ where: { id } })
+
+    const empId = (session.user as any).employeeId as string | undefined
+    logAudit({
+      employeeId: empId,
+      action: 'DELETED',
+      entity: 'SALES_TASK',
+      entityId: id,
+      label: before?.title ?? id,
+      oldValues: before,
+      req,
+    })
 
     return NextResponse.json({ message: 'Task deleted successfully' })
   } catch (error: any) {

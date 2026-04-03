@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
 import { prisma } from '@/lib/prisma'
+import { logAudit } from '@/lib/audit'
 
 export async function GET(req: NextRequest) {
   try {
@@ -65,6 +66,16 @@ export async function POST(req: NextRequest) {
         manager: { select: { firstName: true, lastName: true } },
         assignedTo: { select: { firstName: true, lastName: true } },
       },
+    })
+
+    logAudit({
+      employeeId: empId,
+      action: 'CREATED',
+      entity: 'TEAM_TASK',
+      entityId: task.id,
+      label: `${task.title} → ${task.assignedTo ? `${task.assignedTo.firstName} ${task.assignedTo.lastName}` : 'Unassigned'}`,
+      newValues: { title: task.title, priority: task.priority, assignedToId: body.assignedToId },
+      req,
     })
 
     return NextResponse.json(task, { status: 201 })

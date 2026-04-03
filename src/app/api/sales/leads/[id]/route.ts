@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
 import { prisma } from '@/lib/prisma'
+import { logAudit } from '@/lib/audit'
 
 const ALLOWED_ROLES = ['SUPER_ADMIN', 'HR_MANAGER', 'SALES_MANAGER', 'SALES_AGENT', 'FINANCE_OFFICER']
 
@@ -53,6 +54,12 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
     const { id } = await params
     const body = await req.json()
 
+    // Fetch current state for audit diff
+    const before = await prisma.lead.findUnique({
+      where: { id },
+      select: { leadNumber: true, contactPerson: true, companyName: true, status: true, priority: true, assignedToId: true },
+    })
+
     const allowedFields = [
       'companyName', 'contactPerson', 'phone', 'whatsapp', 'email',
       'location', 'industry', 'source', 'services', 'priority', 'status',
@@ -83,6 +90,19 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
       },
     })
 
+    const empId = (session.user as any).employeeId as string | undefined
+    const action = before?.status !== lead.status ? 'STATUS_CHANGED' : 'UPDATED'
+    logAudit({
+      employeeId: empId,
+      action,
+      entity: 'LEAD',
+      entityId: id,
+      label: `${before?.leadNumber} — ${before?.contactPerson}`,
+      oldValues: before ? { status: before.status, priority: before.priority, assignedToId: before.assignedToId } : null,
+      newValues: { status: lead.status, priority: lead.priority, assignedToId: lead.assignedToId, ...updateData },
+      req,
+    })
+
     return NextResponse.json(lead)
   } catch (error: any) {
     console.error(error)
@@ -104,7 +124,23 @@ export async function DELETE(req: NextRequest, { params }: { params: Promise<{ i
 
     const { id } = await params
 
+    const before = await prisma.lead.findUnique({
+      where: { id },
+      select: { leadNumber: true, contactPerson: true, companyName: true, status: true },
+    })
+
     await prisma.lead.delete({ where: { id } })
+
+    const empId = (session.user as any).employeeId as string | undefined
+    logAudit({
+      employeeId: empId,
+      action: 'DELETED',
+      entity: 'LEAD',
+      entityId: id,
+      label: before ? `${before.leadNumber} — ${before.contactPerson}` : id,
+      oldValues: before,
+      req,
+    })
 
     return NextResponse.json({ message: 'Lead deleted successfully' })
   } catch (error: any) {

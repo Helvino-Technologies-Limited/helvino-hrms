@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
 import { prisma } from '@/lib/prisma'
+import { logAudit } from '@/lib/audit'
 
 export async function GET(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   try {
@@ -16,9 +17,7 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ id: 
         assignedTo: { select: { id: true, firstName: true, lastName: true, profilePhoto: true, jobTitle: true } },
         createdBy: { select: { id: true, firstName: true, lastName: true } },
         services: {
-          include: {
-            tasks: true,
-          },
+          include: { tasks: true },
           orderBy: { createdAt: 'desc' },
         },
         subscriptions: {
@@ -59,7 +58,11 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
     const { id } = await params
     const body = await req.json()
 
-    // Exclude clientNumber from updates
+    const before = await prisma.client.findUnique({
+      where: { id },
+      select: { clientNumber: true, companyName: true, isActive: true, assignedToId: true },
+    })
+
     const { clientNumber, ...updateFields } = body
 
     const updateData: any = { ...updateFields }
@@ -70,6 +73,18 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
     const client = await prisma.client.update({
       where: { id },
       data: updateData,
+    })
+
+    const empId = (session.user as any).employeeId as string | undefined
+    logAudit({
+      employeeId: empId,
+      action: 'UPDATED',
+      entity: 'CLIENT',
+      entityId: id,
+      label: before ? `${before.clientNumber} — ${before.companyName}` : id,
+      oldValues: before ? { assignedToId: before.assignedToId } : null,
+      newValues: updateData,
+      req,
     })
 
     return NextResponse.json(client)
@@ -92,9 +107,26 @@ export async function DELETE(req: NextRequest, { params }: { params: Promise<{ i
 
     const { id } = await params
 
+    const before = await prisma.client.findUnique({
+      where: { id },
+      select: { clientNumber: true, companyName: true },
+    })
+
     await prisma.client.update({
       where: { id },
       data: { isActive: false },
+    })
+
+    const empId = (session.user as any).employeeId as string | undefined
+    logAudit({
+      employeeId: empId,
+      action: 'DEACTIVATED',
+      entity: 'CLIENT',
+      entityId: id,
+      label: before ? `${before.clientNumber} — ${before.companyName}` : id,
+      oldValues: { isActive: true },
+      newValues: { isActive: false },
+      req,
     })
 
     return NextResponse.json({ message: 'Client deactivated successfully' })

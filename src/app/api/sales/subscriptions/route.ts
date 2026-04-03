@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
 import { prisma } from '@/lib/prisma'
+import { logAudit } from '@/lib/audit'
 
 function computeDaysUntilExpiry(expiryDate: Date): number {
   const now = new Date()
@@ -94,6 +95,17 @@ export async function POST(req: NextRequest) {
           select: { companyName: true, contactPerson: true, phone: true },
         },
       },
+    })
+
+    const empId = (session.user as any).employeeId as string | undefined
+    logAudit({
+      employeeId: empId,
+      action: 'CREATED',
+      entity: 'SUBSCRIPTION',
+      entityId: subscription.id,
+      label: `${body.serviceName} — ${subscription.client.companyName}`,
+      newValues: { serviceName: body.serviceName, billingCycle: body.billingCycle, renewalPrice: subscription.renewalPrice, status, expiryDate: body.expiryDate },
+      req,
     })
 
     return NextResponse.json(subscription, { status: 201 })

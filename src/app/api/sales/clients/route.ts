@@ -3,6 +3,7 @@ import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
 import { prisma } from '@/lib/prisma'
 import { getSalesScope, buildOwnerFilter } from '@/lib/sales-scope'
+import { logAudit } from '@/lib/audit'
 
 const ALLOWED_ROLES = ['SUPER_ADMIN', 'HR_MANAGER', 'SALES_MANAGER', 'SALES_AGENT', 'FINANCE_OFFICER']
 
@@ -93,6 +94,16 @@ export async function POST(req: NextRequest) {
         assignedToId: body.assignedToId || null,
         createdById: scope.empId || null,
       },
+    })
+
+    logAudit({
+      employeeId: scope.empId,
+      action: 'CREATED',
+      entity: 'CLIENT',
+      entityId: client.id,
+      label: `${client.clientNumber} — ${client.companyName}`,
+      newValues: { clientNumber: client.clientNumber, companyName: client.companyName, contactPerson: client.contactPerson, category: client.category },
+      req,
     })
 
     return NextResponse.json(client, { status: 201 })

@@ -3,6 +3,7 @@ import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
 import { prisma } from '@/lib/prisma'
 import { sendEmail, quotationEmailHtml } from '@/lib/email'
+import { logAudit } from '@/lib/audit'
 
 function formatDate(d: Date | string) {
   return new Date(d).toLocaleDateString('en-KE', { day: '2-digit', month: 'short', year: 'numeric' })
@@ -66,6 +67,17 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
       data: { status: 'SENT', sentAt: new Date() },
     })
   }
+
+  const empId = (session.user as any).employeeId as string | undefined
+  logAudit({
+    employeeId: empId,
+    action: 'SENT',
+    entity: 'QUOTATION',
+    entityId: id,
+    label: `${quotation.quotationNumber} — ${quotation.clientName} → ${recipientEmail}`,
+    newValues: { quotationNumber: quotation.quotationNumber, sentTo: recipientEmail },
+    req,
+  })
 
   return NextResponse.json({ success: true })
 }

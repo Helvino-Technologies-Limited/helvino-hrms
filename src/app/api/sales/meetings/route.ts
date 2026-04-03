@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
 import { prisma } from '@/lib/prisma'
+import { logAudit } from '@/lib/audit'
 
 export async function GET(req: NextRequest) {
   try {
@@ -16,7 +17,6 @@ export async function GET(req: NextRequest) {
     if (role === 'SALES_MANAGER' && empId) {
       where.managerId = empId
     } else if (role === 'SALES_AGENT' && empId) {
-      // Agent sees meetings organised by their manager
       const emp = await prisma.employee.findUnique({ where: { id: empId }, select: { managerId: true } })
       if (emp?.managerId) where.managerId = emp.managerId
       else return NextResponse.json([])
@@ -68,6 +68,16 @@ export async function POST(req: NextRequest) {
       include: {
         manager: { select: { firstName: true, lastName: true, profilePhoto: true } },
       },
+    })
+
+    logAudit({
+      employeeId: empId,
+      action: 'CREATED',
+      entity: 'MEETING',
+      entityId: meeting.id,
+      label: `${meeting.title} — ${new Date(body.meetingDate).toLocaleDateString()}`,
+      newValues: { title: meeting.title, meetingDate: body.meetingDate, type: body.type, status: 'SCHEDULED' },
+      req,
     })
 
     return NextResponse.json(meeting, { status: 201 })

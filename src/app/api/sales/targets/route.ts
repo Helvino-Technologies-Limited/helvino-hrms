@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
 import { prisma } from '@/lib/prisma'
+import { logAudit } from '@/lib/audit'
 
 const DEFAULTS = {
   SALES_AGENT:   { clientTarget: 5,  revenueTarget: 250000 },
@@ -72,6 +73,17 @@ export async function PATCH(req: NextRequest) {
         })
       )
     )
+
+    const empId = (session.user as any).employeeId as string | undefined
+    logAudit({
+      employeeId: empId,
+      action: 'UPDATED',
+      entity: 'SALES_TARGET',
+      entityId: null,
+      label: `Sales Targets updated for: ${(body as any[]).map((i: any) => i.role).join(', ')}`,
+      newValues: { targets: body },
+      req,
+    })
 
     return NextResponse.json(updates)
   } catch (error: any) {

@@ -103,6 +103,8 @@ const salesNavItems = [
     roles: ['SUPER_ADMIN', 'HR_MANAGER', 'SALES_MANAGER', 'SALES_AGENT'] },
   { href: '/dashboard/sales/targets', icon: Target, label: 'Sales Targets',
     roles: ['SUPER_ADMIN', 'HR_MANAGER'] },
+  { href: '/dashboard/sales/audit-log', icon: Shield, label: 'Audit Log',
+    roles: ['SUPER_ADMIN', 'HR_MANAGER', 'SALES_MANAGER'] },
 ]
 
 const accountingNavItems = [

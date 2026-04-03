@@ -3,6 +3,7 @@ import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
 import { prisma } from '@/lib/prisma'
 import { getSalesScope, buildAssigneeFilter } from '@/lib/sales-scope'
+import { logAudit } from '@/lib/audit'
 
 export async function GET(req: NextRequest) {
   try {
@@ -70,6 +71,16 @@ export async function POST(req: NextRequest) {
         client: { select: { companyName: true } },
         clientService: { select: { serviceName: true } },
       },
+    })
+
+    logAudit({
+      employeeId: scope.empId,
+      action: 'CREATED',
+      entity: 'SALES_TASK',
+      entityId: task.id,
+      label: task.title,
+      newValues: { title: task.title, priority: task.priority, status: task.status, clientId: body.clientId },
+      req,
     })
 
     return NextResponse.json(task, { status: 201 })
