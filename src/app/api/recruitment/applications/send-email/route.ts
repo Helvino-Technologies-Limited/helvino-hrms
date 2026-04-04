@@ -10,7 +10,7 @@ import {
 } from '@/lib/email'
 import crypto from 'crypto'
 
-const ADMIN_ROLES = ['SUPER_ADMIN', 'HR_MANAGER', 'SALES_MANAGER']
+const ADMIN_ROLES = ['SUPER_ADMIN', 'HR_MANAGER', 'SALES_MANAGER', 'HEAD_OF_SALES']
 
 export async function POST(req: NextRequest) {
   const session = await getServerSession(authOptions)

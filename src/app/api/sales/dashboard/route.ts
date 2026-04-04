@@ -18,9 +18,10 @@ export async function GET(req: NextRequest) {
     const role: string = (freshUser?.role as string) ?? session.user.role
     const empId: string | undefined = freshUser?.employeeId ?? (session.user as any).employeeId
 
-    const VIEW_ALL = ['SUPER_ADMIN', 'HR_MANAGER']
+    const VIEW_ALL = ['SUPER_ADMIN', 'HR_MANAGER', 'HEAD_OF_SALES']
     const IS_MANAGER = role === 'SALES_MANAGER'
     const IS_AGENT = role === 'SALES_AGENT'
+    const IS_HEAD_OF_SALES = role === 'HEAD_OF_SALES'
 
     // Build scoped filters for each entity
     const leadFilter: any = {}
@@ -326,6 +327,52 @@ export async function GET(req: NextRequest) {
       })
     }
 
+    // HEAD_OF_SALES: build per-manager performance breakdown
+    let managersPerformance: Array<{
+      id: string; name: string; agentCount: number;
+      clientsThisMonth: number; revenueThisMonth: number; totalLeads: number;
+    }> = []
+
+    if (IS_HEAD_OF_SALES) {
+      const allManagers = await prisma.employee.findMany({
+        where: { user: { role: 'SALES_MANAGER' } },
+        select: { id: true, firstName: true, lastName: true },
+      })
+      if (allManagers.length > 0) {
+        const mgrIds = allManagers.map((m) => m.id)
+        const [agentCounts, mgClientCounts, mgRevenueSums, mgLeadCounts] = await Promise.all([
+          prisma.employee.groupBy({ by: ['managerId'], where: { managerId: { in: mgrIds } }, _count: { id: true } }),
+          prisma.client.groupBy({
+            by: ['createdById'],
+            where: { createdById: { in: mgrIds }, createdAt: { gte: monthStart, lt: monthEnd } },
+            _count: { id: true },
+          }),
+          prisma.quotation.groupBy({
+            by: ['createdById'],
+            where: { createdById: { in: mgrIds }, status: 'APPROVED', createdAt: { gte: monthStart, lt: monthEnd } },
+            _sum: { totalAmount: true },
+          }),
+          prisma.lead.groupBy({
+            by: ['createdById'],
+            where: { createdById: { in: mgrIds } },
+            _count: { id: true },
+          }),
+        ])
+        const agentCountMap = new Map(agentCounts.map((r) => [r.managerId, r._count.id]))
+        const mgClientMap = new Map(mgClientCounts.map((r) => [r.createdById, r._count.id]))
+        const mgRevenueMap = new Map(mgRevenueSums.map((r) => [r.createdById, Number(r._sum.totalAmount ?? 0)]))
+        const mgLeadMap = new Map(mgLeadCounts.map((r) => [r.createdById, r._count.id]))
+        managersPerformance = allManagers.map((m) => ({
+          id: m.id,
+          name: `${m.firstName} ${m.lastName}`,
+          agentCount: agentCountMap.get(m.id) ?? 0,
+          clientsThisMonth: mgClientMap.get(m.id) ?? 0,
+          revenueThisMonth: mgRevenueMap.get(m.id) ?? 0,
+          totalLeads: mgLeadMap.get(m.id) ?? 0,
+        }))
+      }
+    }
+
     return NextResponse.json({
       role: IS_MANAGER ? 'SALES_MANAGER' : IS_AGENT ? 'SALES_AGENT' : role,
       stats: {
@@ -369,6 +416,7 @@ export async function GET(req: NextRequest) {
       teamPerformance: IS_MANAGER ? teamPerformance : undefined,
       applicantStats: IS_MANAGER ? applicantStats : undefined,
       activeAgentsCount: IS_MANAGER ? teamAgents.length : undefined,
+      managersPerformance: IS_HEAD_OF_SALES ? managersPerformance : undefined,
       recentLeads,
       recentClients,
       statusBreakdown,

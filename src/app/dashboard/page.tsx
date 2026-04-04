@@ -33,6 +33,7 @@ export default function DashboardPage() {
   const isAdminHR = ['SUPER_ADMIN', 'HR_MANAGER', 'DEPARTMENT_HEAD'].includes(role)
   const isFinance = role === 'FINANCE_OFFICER'
   const isSales = ['SALES_MANAGER', 'SALES_AGENT'].includes(role)
+  const isHeadOfSales = role === 'HEAD_OF_SALES'
   const isEmployee = role === 'EMPLOYEE'
 
   useEffect(() => {
@@ -44,7 +45,7 @@ export default function DashboardPage() {
           fetches.push(fetch('/api/analytics').then(r => r.json()))
           fetches.push(fetch('/api/leaves?status=PENDING').then(r => r.json()))
         }
-        if (isSales || isAdminHR) {
+        if (isSales || isAdminHR || isHeadOfSales) {
           fetches.push(fetch('/api/sales/dashboard').then(r => r.json()))
         }
         if (isEmployee) {
@@ -64,7 +65,7 @@ export default function DashboardPage() {
           setPendingLeaves(Array.isArray(results[2]) ? results[2].slice(0, 5) : [])
           if ((isAdminHR) && results[3]) setSalesData(results[3])
         }
-        if (isSales && results[1]) setSalesData(results[1])
+        if ((isSales || isHeadOfSales) && results[1]) setSalesData(results[1])
         if (isEmployee) {
           setMyLeaves(Array.isArray(results[1]) ? results[1].slice(0, 5) : [])
           setMyAttendance(Array.isArray(results[2]) ? results[2] : [])
@@ -125,6 +126,7 @@ export default function DashboardPage() {
                role === 'FINANCE_OFFICER' ? 'Finance Officer' :
                role === 'SALES_MANAGER' ? 'Sales Manager' :
                role === 'SALES_AGENT' ? 'Sales Agent' :
+               role === 'HEAD_OF_SALES' ? 'Head of Sales' :
                'Employee'} · Helvino Technologies Ltd
             </p>
           </div>
@@ -405,6 +407,175 @@ export default function DashboardPage() {
               )}
             </div>
 
+            <AnnouncementsCard announcements={announcements} />
+          </div>
+        </>
+      )}
+
+      {/* ── HEAD OF SALES VIEW ── */}
+      {isHeadOfSales && (
+        <>
+          {/* KPI Cards */}
+          <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+            {[
+              { label: 'Total Revenue', value: salesData?.stats?.totalRevenue ? formatCurrency(salesData.stats.totalRevenue) : 'KES 0', sub: `${formatCurrency(salesData?.quick?.revenueThisMonth || 0)} this month`, icon: TrendingUp, color: 'from-emerald-500 to-teal-600', href: '/dashboard/sales/reports' },
+              { label: 'Active Leads', value: salesData?.stats?.activeLeads || 0, sub: `${salesData?.quick?.leadsThisMonth || 0} new this month`, icon: Target, color: 'from-blue-500 to-blue-600', href: '/dashboard/sales/leads' },
+              { label: 'Total Clients', value: salesData?.stats?.activeClients || 0, sub: `${salesData?.quick?.clientsThisMonth || 0} added this month`, icon: Users, color: 'from-purple-500 to-purple-600', href: '/dashboard/sales/clients' },
+              { label: 'Won Deals', value: salesData?.stats?.wonDeals || 0, sub: `${salesData?.stats?.totalQuotations || 0} total quotations`, icon: CheckCircle, color: 'from-rose-500 to-rose-600', href: '/dashboard/sales/quotations' },
+            ].map(kpi => (
+              <Link key={kpi.label} href={kpi.href}
+                className="bg-white rounded-2xl p-5 shadow-sm border border-slate-100 hover:shadow-md hover:border-blue-200 transition-all group">
+                <div className="flex items-center justify-between mb-4">
+                  <div className={`bg-gradient-to-br ${kpi.color} w-11 h-11 rounded-xl flex items-center justify-center shadow-md`}>
+                    <kpi.icon className="w-5 h-5 text-white" />
+                  </div>
+                  <ArrowRight className="w-4 h-4 text-slate-300 group-hover:text-blue-500 group-hover:translate-x-1 transition-all" />
+                </div>
+                <div className="text-2xl font-black text-slate-900 truncate">{kpi.value}</div>
+                <div className="text-slate-600 text-sm font-semibold mt-0.5">{kpi.label}</div>
+                <div className="text-slate-400 text-xs mt-1">{kpi.sub}</div>
+              </Link>
+            ))}
+          </div>
+
+          {/* Quick stats row */}
+          <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
+            {[
+              { label: "Today's Tasks", value: salesData?.quick?.todaysTasks || 0, color: 'text-blue-600 bg-blue-50', href: '/dashboard/sales/tasks' },
+              { label: 'Overdue Tasks', value: salesData?.quick?.overdueTasks || 0, color: salesData?.quick?.overdueTasks > 0 ? 'text-red-600 bg-red-50' : 'text-slate-600 bg-slate-50', href: '/dashboard/sales/tasks' },
+              { label: 'Pending Quotes', value: salesData?.quick?.pendingQuotations || 0, color: 'text-amber-600 bg-amber-50', href: '/dashboard/sales/quotations' },
+              { label: 'Expiring Subs', value: salesData?.stats?.expiringSubscriptions || 0, color: salesData?.stats?.expiringSubscriptions > 0 ? 'text-orange-600 bg-orange-50' : 'text-slate-600 bg-slate-50', href: '/dashboard/sales/subscriptions' },
+            ].map(s => (
+              <Link key={s.label} href={s.href} className="bg-white rounded-xl px-4 py-3 shadow-sm border border-slate-100 hover:border-blue-200 transition-all flex items-center justify-between">
+                <span className="text-slate-600 text-sm font-medium">{s.label}</span>
+                <span className={`text-lg font-black px-2 py-0.5 rounded-lg ${s.color}`}>{s.value}</span>
+              </Link>
+            ))}
+          </div>
+
+          {/* Managers Performance Table */}
+          {salesData?.managersPerformance?.length > 0 && (
+            <div className="bg-white rounded-2xl shadow-sm border border-slate-100 overflow-hidden">
+              <div className="flex items-center justify-between px-6 py-4 border-b border-slate-100">
+                <div>
+                  <h3 className="font-bold text-slate-900">Sales Managers Performance</h3>
+                  <p className="text-slate-400 text-xs mt-0.5">Current month · all teams</p>
+                </div>
+                <Link href="/dashboard/sales/team" className="text-blue-600 text-xs font-semibold hover:underline">Full team view →</Link>
+              </div>
+              <div className="overflow-x-auto">
+                <table className="w-full text-sm">
+                  <thead className="bg-slate-50">
+                    <tr>
+                      {['Manager', 'Agents', 'Leads', 'Clients (Month)', 'Revenue (Month)', 'Performance'].map(h => (
+                        <th key={h} className="text-left px-4 py-3 text-xs font-semibold text-slate-500 uppercase tracking-wide whitespace-nowrap">{h}</th>
+                      ))}
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-slate-100">
+                    {salesData.managersPerformance.map((mgr: any) => {
+                      const pct = mgr.revenueThisMonth > 0 ? Math.min(100, Math.round((mgr.revenueThisMonth / 500000) * 100)) : 0
+                      return (
+                        <tr key={mgr.id} className="hover:bg-slate-50 transition-colors">
+                          <td className="px-4 py-3.5">
+                            <div className="flex items-center gap-2.5">
+                              <div className="w-8 h-8 rounded-xl bg-gradient-to-br from-amber-400 to-orange-500 flex items-center justify-center text-white font-bold text-xs flex-shrink-0">
+                                {mgr.name.split(' ').map((n: string) => n[0]).join('').slice(0, 2)}
+                              </div>
+                              <span className="font-semibold text-slate-900">{mgr.name}</span>
+                            </div>
+                          </td>
+                          <td className="px-4 py-3.5 text-slate-600 font-medium">{mgr.agentCount}</td>
+                          <td className="px-4 py-3.5 text-slate-600">{mgr.totalLeads}</td>
+                          <td className="px-4 py-3.5">
+                            <span className="font-bold text-slate-900">{mgr.clientsThisMonth}</span>
+                          </td>
+                          <td className="px-4 py-3.5">
+                            <span className="font-bold text-emerald-700">{formatCurrency(mgr.revenueThisMonth)}</span>
+                          </td>
+                          <td className="px-4 py-3.5 min-w-[120px]">
+                            <div className="flex items-center gap-2">
+                              <div className="flex-1 h-2 bg-slate-100 rounded-full overflow-hidden">
+                                <div className={`h-full rounded-full transition-all ${pct >= 80 ? 'bg-green-500' : pct >= 40 ? 'bg-amber-400' : 'bg-red-400'}`} style={{ width: `${pct}%` }} />
+                              </div>
+                              <span className="text-xs font-bold text-slate-600 w-9 text-right">{pct}%</span>
+                            </div>
+                          </td>
+                        </tr>
+                      )
+                    })}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          )}
+
+          {/* Charts + recent */}
+          <div className="grid lg:grid-cols-3 gap-6">
+            {/* Pipeline funnel */}
+            {salesData?.statusBreakdown?.length > 0 && (
+              <div className="bg-white rounded-2xl p-6 shadow-sm border border-slate-100">
+                <h3 className="font-bold text-slate-900 mb-4">Lead Pipeline</h3>
+                <ResponsiveContainer width="100%" height={220}>
+                  <BarChart data={salesData.statusBreakdown} layout="vertical" barSize={18}>
+                    <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" horizontal={false} />
+                    <XAxis type="number" tick={{ fontSize: 10 }} allowDecimals={false} />
+                    <YAxis type="category" dataKey="status" tick={{ fontSize: 10 }} width={80} />
+                    <Tooltip contentStyle={{ borderRadius: '12px', border: '1px solid #e2e8f0' }} />
+                    <Bar dataKey="count" fill="#3b82f6" radius={[0, 6, 6, 0]} name="Leads" />
+                  </BarChart>
+                </ResponsiveContainer>
+              </div>
+            )}
+
+            {/* Monthly trends */}
+            {salesData?.monthlyLeads?.length > 0 && (
+              <div className="lg:col-span-2 bg-white rounded-2xl p-6 shadow-sm border border-slate-100">
+                <h3 className="font-bold text-slate-900 mb-4">Monthly Lead Activity (6 Months)</h3>
+                <ResponsiveContainer width="100%" height={220}>
+                  <LineChart data={salesData.monthlyLeads}>
+                    <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" />
+                    <XAxis dataKey="month" tick={{ fontSize: 11 }} />
+                    <YAxis tick={{ fontSize: 11 }} allowDecimals={false} />
+                    <Tooltip contentStyle={{ borderRadius: '12px', border: '1px solid #e2e8f0' }} />
+                    <Legend />
+                    <Line type="monotone" dataKey="leads" stroke="#3b82f6" strokeWidth={2.5} dot={{ fill: '#3b82f6', r: 4 }} name="New Leads" />
+                    <Line type="monotone" dataKey="won" stroke="#10b981" strokeWidth={2.5} dot={{ fill: '#10b981', r: 4 }} name="Won" />
+                  </LineChart>
+                </ResponsiveContainer>
+              </div>
+            )}
+          </div>
+
+          {/* Recent leads + announcements */}
+          <div className="grid lg:grid-cols-2 gap-6">
+            <div className="bg-white rounded-2xl p-6 shadow-sm border border-slate-100">
+              <div className="flex items-center justify-between mb-4">
+                <h3 className="font-bold text-slate-900">Recent Leads</h3>
+                <Link href="/dashboard/sales/leads" className="text-blue-600 text-xs font-semibold hover:underline">View all →</Link>
+              </div>
+              {(salesData?.recentLeads || []).length === 0 ? (
+                <div className="text-center py-8 text-slate-400"><Target className="w-10 h-10 mx-auto mb-2 text-slate-200" /><p>No leads yet.</p></div>
+              ) : (
+                <div className="space-y-2.5">
+                  {(salesData.recentLeads || []).slice(0, 6).map((lead: any) => (
+                    <Link key={lead.id} href={`/dashboard/sales/leads/${lead.id}`}
+                      className="flex items-center justify-between p-3 bg-slate-50 rounded-xl hover:bg-blue-50 transition-colors">
+                      <div>
+                        <div className="font-semibold text-slate-900 text-sm">{lead.name}</div>
+                        <div className="text-slate-500 text-xs">{lead.company || lead.email}</div>
+                      </div>
+                      <span className={`text-xs font-bold px-2 py-1 rounded-full ${
+                        lead.status === 'WON' ? 'bg-green-100 text-green-700' :
+                        lead.status === 'LOST' ? 'bg-red-100 text-red-700' :
+                        lead.status === 'NEW' ? 'bg-blue-100 text-blue-700' :
+                        'bg-slate-100 text-slate-700'
+                      }`}>{lead.status}</span>
+                    </Link>
+                  ))}
+                </div>
+              )}
+            </div>
             <AnnouncementsCard announcements={announcements} />
           </div>
         </>

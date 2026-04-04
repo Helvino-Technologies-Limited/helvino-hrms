@@ -18,20 +18,25 @@ export async function getSalesScope(userId: string) {
   const role = (user?.role as string) ?? 'EMPLOYEE'
   const empId = user?.employeeId ?? null
 
+  if (role === 'HEAD_OF_SALES') {
+    // HEAD_OF_SALES sees all sales data — no scoping needed
+    return { role, empId, teamIds: [], isManager: false, isAgent: false, isHeadOfSales: true }
+  }
+
   if (role === 'SALES_MANAGER' && empId) {
     const agents = await prisma.employee.findMany({
       where: { managerId: empId },
       select: { id: true },
     })
     const teamIds = [empId, ...agents.map((a) => a.id)]
-    return { role, empId, teamIds, isManager: true, isAgent: false }
+    return { role, empId, teamIds, isManager: true, isAgent: false, isHeadOfSales: false }
   }
 
   if (role === 'SALES_AGENT' && empId) {
-    return { role, empId, teamIds: [empId], isManager: false, isAgent: true }
+    return { role, empId, teamIds: [empId], isManager: false, isAgent: true, isHeadOfSales: false }
   }
 
-  return { role, empId, teamIds: empId ? [empId] : [], isManager: false, isAgent: false }
+  return { role, empId, teamIds: empId ? [empId] : [], isManager: false, isAgent: false, isHeadOfSales: false }
 }
 
 /**
@@ -43,7 +48,7 @@ export function buildOwnerFilter(
   fields: { assignedTo: string; createdBy: string } = { assignedTo: 'assignedToId', createdBy: 'createdById' }
 ) {
   const { role, empId, teamIds } = scope
-  if (['SUPER_ADMIN', 'HR_MANAGER', 'FINANCE_OFFICER'].includes(role)) return {}
+  if (['SUPER_ADMIN', 'HR_MANAGER', 'FINANCE_OFFICER', 'HEAD_OF_SALES'].includes(role)) return {}
 
   if (role === 'SALES_MANAGER' && teamIds.length > 0) {
     return {
@@ -65,7 +70,7 @@ export function buildOwnerFilter(
 
 export function buildCreatorFilter(scope: Awaited<ReturnType<typeof getSalesScope>>) {
   const { role, empId, teamIds } = scope
-  if (['SUPER_ADMIN', 'HR_MANAGER', 'FINANCE_OFFICER'].includes(role)) return {}
+  if (['SUPER_ADMIN', 'HR_MANAGER', 'FINANCE_OFFICER', 'HEAD_OF_SALES'].includes(role)) return {}
 
   if (role === 'SALES_MANAGER' && teamIds.length > 0) {
     return { createdById: { in: teamIds } }
@@ -77,7 +82,7 @@ export function buildCreatorFilter(scope: Awaited<ReturnType<typeof getSalesScop
 
 export function buildAssigneeFilter(scope: Awaited<ReturnType<typeof getSalesScope>>) {
   const { role, empId, teamIds } = scope
-  if (['SUPER_ADMIN', 'HR_MANAGER', 'FINANCE_OFFICER'].includes(role)) return {}
+  if (['SUPER_ADMIN', 'HR_MANAGER', 'FINANCE_OFFICER', 'HEAD_OF_SALES'].includes(role)) return {}
 
   if (role === 'SALES_MANAGER' && teamIds.length > 0) {
     return { assignedToId: { in: teamIds } }

@@ -12,7 +12,7 @@ export async function GET(req: NextRequest) {
     const empId = (session.user as any).employeeId as string | undefined
     if (!empId) return NextResponse.json({ error: 'No employee profile' }, { status: 400 })
 
-    if (!['SUPER_ADMIN', 'HR_MANAGER', 'SALES_MANAGER'].includes(session.user.role)) {
+    if (!['SUPER_ADMIN', 'HR_MANAGER', 'SALES_MANAGER', 'HEAD_OF_SALES'].includes(session.user.role)) {
       return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
     }
 
@@ -42,7 +42,7 @@ export async function POST(req: NextRequest) {
     const empId = (session.user as any).employeeId as string | undefined
     if (!empId) return NextResponse.json({ error: 'No employee profile' }, { status: 400 })
 
-    if (!['SUPER_ADMIN', 'HR_MANAGER', 'SALES_MANAGER'].includes(session.user.role)) {
+    if (!['SUPER_ADMIN', 'HR_MANAGER', 'SALES_MANAGER', 'HEAD_OF_SALES'].includes(session.user.role)) {
       return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
     }
 

@@ -3,7 +3,7 @@ import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
 import { sendEmail, employeeOfferLetterEmailHtml } from '@/lib/email'
 
-const ALLOWED_ROLES = ['SUPER_ADMIN', 'HR_MANAGER']
+const ALLOWED_ROLES = ['SUPER_ADMIN', 'HR_MANAGER', 'HEAD_OF_SALES']
 
 function fmtSalary(n: number) {
   return new Intl.NumberFormat('en-KE', { style: 'currency', currency: 'KES', maximumFractionDigits: 0 }).format(n)

@@ -27,6 +27,7 @@ const ALL_ROLES = [
   { value: 'HR_MANAGER',       label: 'HR Manager',       color: 'bg-blue-100 text-blue-800 border-blue-200',         dot: 'bg-blue-500' },
   { value: 'DEPARTMENT_HEAD',  label: 'Department Head',  color: 'bg-indigo-100 text-indigo-800 border-indigo-200',   dot: 'bg-indigo-500' },
   { value: 'FINANCE_OFFICER',  label: 'Finance Officer',  color: 'bg-emerald-100 text-emerald-800 border-emerald-200',dot: 'bg-emerald-500' },
+  { value: 'HEAD_OF_SALES',    label: 'Head of Sales',    color: 'bg-rose-100 text-rose-800 border-rose-200',         dot: 'bg-rose-500' },
   { value: 'SALES_MANAGER',    label: 'Sales Manager',    color: 'bg-amber-100 text-amber-800 border-amber-200',      dot: 'bg-amber-500' },
   { value: 'SALES_AGENT',      label: 'Sales Agent',      color: 'bg-orange-100 text-orange-800 border-orange-200',   dot: 'bg-orange-500' },
   { value: 'EMPLOYEE',         label: 'Employee',         color: 'bg-slate-100 text-slate-700 border-slate-200',      dot: 'bg-slate-400' },

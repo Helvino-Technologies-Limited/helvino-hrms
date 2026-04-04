@@ -4,7 +4,7 @@ import { authOptions } from '@/lib/auth'
 import { prisma } from '@/lib/prisma'
 import { sendEmail, onboardingApprovedEmailHtml } from '@/lib/email'
 
-const ADMIN_ROLES = ['SUPER_ADMIN', 'HR_MANAGER']
+const ADMIN_ROLES = ['SUPER_ADMIN', 'HR_MANAGER', 'HEAD_OF_SALES']
 
 export async function POST(req: NextRequest) {
   const session = await getServerSession(authOptions)

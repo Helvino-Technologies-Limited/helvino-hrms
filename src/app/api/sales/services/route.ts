@@ -4,7 +4,7 @@ import { authOptions } from '@/lib/auth'
 import { prisma } from '@/lib/prisma'
 import { logAudit } from '@/lib/audit'
 
-const ALLOWED_ROLES = ['SUPER_ADMIN', 'HR_MANAGER', 'SALES_MANAGER', 'SALES_AGENT', 'FINANCE_OFFICER']
+const ALLOWED_ROLES = ['SUPER_ADMIN', 'HR_MANAGER', 'SALES_MANAGER', 'SALES_AGENT', 'FINANCE_OFFICER', 'HEAD_OF_SALES']
 
 export async function GET(req: NextRequest) {
   try {
@@ -37,7 +37,7 @@ export async function POST(req: NextRequest) {
     const session = await getServerSession(authOptions)
     if (!session) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 
-    if (!['SUPER_ADMIN', 'HR_MANAGER'].includes(session.user.role)) {
+    if (!['SUPER_ADMIN', 'HR_MANAGER', 'HEAD_OF_SALES'].includes(session.user.role)) {
       return NextResponse.json({ error: 'Forbidden: only Admin or HR can manage services' }, { status: 403 })
     }
 

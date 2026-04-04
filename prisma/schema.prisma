@@ -87,6 +87,7 @@ enum UserRole {
   EMPLOYEE
   SALES_MANAGER
   SALES_AGENT
+  HEAD_OF_SALES
   CLIENT
 }
 

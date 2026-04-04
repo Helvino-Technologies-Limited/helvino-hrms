@@ -11,7 +11,7 @@ export async function GET(req: NextRequest) {
     const role = session.user.role
     const empId = (session.user as any).employeeId as string | undefined
 
-    if (!['SUPER_ADMIN', 'HR_MANAGER', 'SALES_MANAGER'].includes(role)) {
+    if (!['SUPER_ADMIN', 'HR_MANAGER', 'SALES_MANAGER', 'HEAD_OF_SALES'].includes(role)) {
       return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
     }
 
