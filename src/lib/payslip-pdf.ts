@@ -271,7 +271,7 @@ export function generatePayslipHtml(p: PayslipPdfData): string {
               <td style="padding:5px 0;font-size:12px;color:#475569;">Basic Salary</td>
               <td style="padding:5px 0;text-align:right;font-size:12px;font-weight:600;color:#1e293b;">${fmtKes(p.basicSalary)}</td>
             </tr>
-            ${p.allowances > 0 ? `<tr><td style="padding:5px 0;font-size:12px;color:#475569;">Allowances (15%)</td><td style="padding:5px 0;text-align:right;font-size:12px;font-weight:600;color:#1e293b;">${fmtKes(p.allowances)}</td></tr>` : ''}
+            ${p.allowances > 0 ? `<tr><td style="padding:5px 0;font-size:12px;color:#475569;">Allowances</td><td style="padding:5px 0;text-align:right;font-size:12px;font-weight:600;color:#1e293b;">${fmtKes(p.allowances)}</td></tr>` : ''}
             ${extraEarnings}
             <tr style="border-top:2px solid #1e293b;">
               <td style="padding:7px 0 3px;font-size:13px;font-weight:900;color:#1e293b;">Gross Salary</td>

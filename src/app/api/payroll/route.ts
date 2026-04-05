@@ -51,14 +51,18 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: 'Forbidden: only Admin or HR can generate payroll' }, { status: 403 })
     }
 
-    const { month, year } = await req.json()
+    const { month, year, regenerate } = await req.json()
     if (!month || !year) {
       return NextResponse.json({ error: 'Month and year are required' }, { status: 400 })
     }
 
     const existing = await prisma.payroll.findFirst({ where: { month, year } })
-    if (existing) {
-      return NextResponse.json({ error: `Payroll for this period already exists. Delete existing records to regenerate.` }, { status: 409 })
+    if (existing && !regenerate) {
+      return NextResponse.json({ error: `Payroll for this period already exists.` }, { status: 409 })
+    }
+
+    if (existing && regenerate) {
+      await prisma.payroll.deleteMany({ where: { month, year } })
     }
 
     const employees = await prisma.employee.findMany({
@@ -71,10 +75,10 @@ export async function POST(req: NextRequest) {
 
     const records = employees.map(emp => {
       const basicSalary = emp.basicSalary!
-      const allowances = basicSalary * 0.15
+      const allowances = 0  // salary is already inclusive of allowances
       const overtime = 0
       const bonuses = 0
-      const grossSalary = basicSalary + allowances + overtime + bonuses
+      const grossSalary = basicSalary + overtime + bonuses
       const paye = calculatePAYE(grossSalary)
       const nhif = calculateNHIF(grossSalary)
       const nssf = calculateNSSF(grossSalary)
@@ -102,14 +106,14 @@ export async function POST(req: NextRequest) {
 
     await prisma.auditLog.create({
       data: {
-        action: 'GENERATE_PAYROLL',
+        action: regenerate ? 'REGENERATE_PAYROLL' : 'GENERATE_PAYROLL',
         entity: 'Payroll',
         newValues: { month, year, employeeCount: employees.length },
       },
     })
 
     return NextResponse.json({
-      message: `Payroll generated for ${employees.length} employees`,
+      message: `Payroll ${regenerate ? 'regenerated' : 'generated'} for ${employees.length} employees`,
       count: employees.length,
       month,
       year,

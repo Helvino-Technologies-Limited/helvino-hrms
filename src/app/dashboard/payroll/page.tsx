@@ -140,16 +140,16 @@ function AdminPayrollView() {
 
   useEffect(() => { loadPayroll() }, [selectedMonth, selectedYear])
 
-  async function generatePayroll() {
+  async function generatePayroll(regenerate = false) {
     setGenerating(true)
     const res = await fetch('/api/payroll', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ month: selectedMonth, year: selectedYear }),
+      body: JSON.stringify({ month: selectedMonth, year: selectedYear, regenerate }),
     })
     const data = await res.json()
     if (!res.ok) { toast.error(data.error); setGenerating(false); return }
-    toast.success(`${data.message}`)
+    toast.success(data.message)
     loadPayroll()
     setGenerating(false)
   }
@@ -218,12 +218,21 @@ function AdminPayrollView() {
               className="px-3 py-2 text-sm border border-slate-200 rounded-xl bg-white focus:outline-none focus:ring-2 focus:ring-blue-500">
               {[2024, 2025, 2026].map(y => <option key={y} value={y}>{y}</option>)}
             </select>
-            <button onClick={generatePayroll}
-              disabled={generating || payrolls.length > 0}
-              className="bg-blue-600 hover:bg-blue-700 disabled:bg-slate-300 disabled:cursor-not-allowed text-white px-4 py-2 rounded-xl font-semibold flex items-center gap-2 text-sm transition-colors">
-              {generating ? <RefreshCw className="w-4 h-4 animate-spin" /> : <DollarSign className="w-4 h-4" />}
-              {payrolls.length > 0 ? 'Already Generated' : 'Generate Payroll'}
-            </button>
+            {payrolls.length === 0 ? (
+              <button onClick={() => generatePayroll(false)}
+                disabled={generating}
+                className="bg-blue-600 hover:bg-blue-700 disabled:opacity-60 disabled:cursor-not-allowed text-white px-4 py-2 rounded-xl font-semibold flex items-center gap-2 text-sm transition-colors">
+                {generating ? <RefreshCw className="w-4 h-4 animate-spin" /> : <DollarSign className="w-4 h-4" />}
+                {generating ? 'Generating…' : 'Generate Payroll'}
+              </button>
+            ) : (
+              <button onClick={() => generatePayroll(true)}
+                disabled={generating}
+                className="bg-orange-500 hover:bg-orange-600 disabled:opacity-60 disabled:cursor-not-allowed text-white px-4 py-2 rounded-xl font-semibold flex items-center gap-2 text-sm transition-colors">
+                {generating ? <RefreshCw className="w-4 h-4 animate-spin" /> : <RefreshCw className="w-4 h-4" />}
+                {generating ? 'Regenerating…' : 'Regenerate Payroll'}
+              </button>
+            )}
           </div>
 
           {/* Summary cards */}
@@ -369,6 +378,8 @@ function EmployeePayslipView() {
   const [targetLoading, setTargetLoading] = useState(false)
 
   const isSalesWithTarget = role ? SALES_ROLES_WITH_TARGETS.includes(role) : false
+  const isAdmin = role ? ADMIN_ROLES.includes(role) : false
+  const empId = (session?.user as any)?.employeeId as string | undefined
   const months = ['January','February','March','April','May','June','July','August','September','October','November','December']
 
   const signerName = ''  // employee downloads don't show a signer
@@ -376,7 +387,11 @@ function EmployeePayslipView() {
 
   async function loadPayslip() {
     setLoading(true)
-    const res = await fetch(`/api/payroll?month=${selectedMonth}&year=${selectedYear}`)
+    // Admins see ALL payrolls by default — when viewing their own payslip we
+    // must explicitly filter to their employeeId, otherwise list[0] is
+    // whoever sorts first (e.g. Evaline Akoth instead of Kevin Odhiambo).
+    const empFilter = isAdmin && empId ? `&employeeId=${empId}` : ''
+    const res = await fetch(`/api/payroll?month=${selectedMonth}&year=${selectedYear}${empFilter}`)
     const data = await res.json()
     const list = Array.isArray(data) ? data : []
     setSelected(list[0] ?? null)
@@ -581,7 +596,7 @@ function EmployeePayslipView() {
                 </div>
                 {selected.allowances > 0 && (
                   <div className="flex justify-between text-sm">
-                    <span className="text-slate-600">Allowances (15%)</span>
+                    <span className="text-slate-600">Allowances</span>
                     <span className="font-semibold text-slate-900">{formatCurrency(selected.allowances)}</span>
                   </div>
                 )}
