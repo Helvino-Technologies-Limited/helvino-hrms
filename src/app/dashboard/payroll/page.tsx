@@ -1,11 +1,12 @@
 'use client'
 import { useEffect, useState } from 'react'
 import { useSession } from 'next-auth/react'
-import { DollarSign, RefreshCw, TrendingUp, TrendingDown, Users, FileText } from 'lucide-react'
+import { DollarSign, RefreshCw, TrendingUp, TrendingDown, Users, FileText, Lock, CheckCircle, Info, Download } from 'lucide-react'
 import { formatCurrency } from '@/lib/utils'
 import toast from 'react-hot-toast'
 
 const ADMIN_ROLES = ['SUPER_ADMIN', 'HR_MANAGER']
+const SALES_ROLES_WITH_TARGETS = ['SALES_AGENT', 'SALES_MANAGER']
 
 export default function PayrollPage() {
   const { data: session } = useSession()
@@ -183,11 +184,29 @@ function AdminPayrollView() {
 // ─── Employee payslip view ──────────────────────────────────────────────────────
 
 function EmployeePayslipView() {
+  const { data: session } = useSession()
+  const role = (session?.user as any)?.role as string | undefined
+
   const [payslips, setPayslips] = useState<any[]>([])
   const [selected, setSelected] = useState<any>(null)
   const [loading, setLoading] = useState(true)
   const [selectedMonth, setSelectedMonth] = useState(new Date().getMonth() + 1)
   const [selectedYear, setSelectedYear] = useState(new Date().getFullYear())
+
+  // Sales target gate state
+  const [targetCheck, setTargetCheck] = useState<{
+    isSalesRole: boolean
+    hasTarget: boolean
+    targetMet: boolean
+    clientTarget?: number
+    revenueTarget?: number
+    clientsAchieved?: number
+    revenueAchieved?: number
+    targetPeriodEnd?: string
+  } | null>(null)
+  const [targetLoading, setTargetLoading] = useState(false)
+
+  const isSalesWithTarget = role ? SALES_ROLES_WITH_TARGETS.includes(role) : false
 
   const months = ['January','February','March','April','May','June','July','August','September','October','November','December']
 
@@ -201,7 +220,28 @@ function EmployeePayslipView() {
     setLoading(false)
   }
 
-  useEffect(() => { loadPayslips() }, [selectedMonth, selectedYear])
+  async function loadTargetCheck() {
+    if (!isSalesWithTarget) return
+    setTargetLoading(true)
+    const res = await fetch(`/api/payroll/target-check?month=${selectedMonth}&year=${selectedYear}`)
+    const data = await res.json()
+    setTargetCheck(data)
+    setTargetLoading(false)
+  }
+
+  useEffect(() => {
+    loadPayslips()
+    loadTargetCheck()
+  }, [selectedMonth, selectedYear])
+
+  // Determine last day of target month for display
+  const lastDayOfMonth = new Date(selectedYear, selectedMonth, 0).getDate()
+  const releaseDate = `${months[selectedMonth % 12]} 1, ${selectedMonth === 12 ? selectedYear + 1 : selectedYear}`
+  const paymentWindow = `${months[selectedMonth % 12]} 2–5, ${selectedMonth === 12 ? selectedYear + 1 : selectedYear}`
+
+  // Is the target period still in progress? (current month = selected month/year)
+  const now = new Date()
+  const isCurrentMonth = now.getMonth() + 1 === selectedMonth && now.getFullYear() === selectedYear
 
   return (
     <div className="space-y-5">
@@ -222,84 +262,183 @@ function EmployeePayslipView() {
         </div>
       </div>
 
-      {loading ? (
+      {/* Sales schedule info banner — always shown for sales roles */}
+      {isSalesWithTarget && (
+        <div className="bg-blue-50 border border-blue-200 rounded-2xl px-5 py-4 flex gap-3">
+          <Info className="w-5 h-5 text-blue-500 flex-shrink-0 mt-0.5" />
+          <div className="text-sm text-blue-800 space-y-0.5">
+            <p className="font-semibold">Payslip release policy for sales team</p>
+            <p>Your target period runs from the <strong>1st to the last day</strong> of each month. Payslips are released on the <strong>1st of the following month</strong> — but only if your monthly target has been achieved. Salary payments are made between the <strong>2nd and 5th</strong> of each month.</p>
+          </div>
+        </div>
+      )}
+
+      {loading || targetLoading ? (
         <div className="flex items-center justify-center h-48">
           <div className="w-7 h-7 border-4 border-blue-600 border-t-transparent rounded-full animate-spin" />
+        </div>
+      ) : isSalesWithTarget && targetCheck?.hasTarget && !targetCheck.targetMet ? (
+        /* ── Target not met: payslip is locked ── */
+        <div className="bg-white rounded-2xl shadow-sm border border-slate-100 overflow-hidden">
+          <div className="bg-gradient-to-r from-orange-500 to-red-500 px-6 py-5 text-white flex items-center gap-3">
+            <Lock className="w-6 h-6 flex-shrink-0" />
+            <div>
+              <div className="text-lg font-black">Payslip Locked — Target Not Yet Met</div>
+              <div className="text-orange-100 text-sm">
+                {isCurrentMonth
+                  ? `Your target period ends on ${months[selectedMonth-1]} ${lastDayOfMonth}, ${selectedYear}. Meet your targets to unlock your payslip on ${releaseDate}.`
+                  : `You did not meet your ${months[selectedMonth-1]} ${selectedYear} targets. Your payslip remains locked.`}
+              </div>
+            </div>
+          </div>
+
+          <div className="px-6 py-5 space-y-5">
+            <p className="text-sm text-slate-500">
+              {isCurrentMonth
+                ? `You still have until ${months[selectedMonth-1]} ${lastDayOfMonth}, ${selectedYear} to achieve your targets. Once met, your payslip will be available from ${releaseDate} and salary paid between ${paymentWindow}.`
+                : `Your ${months[selectedMonth-1]} ${selectedYear} payslip is permanently locked because the monthly targets were not achieved.`}
+            </p>
+
+            {/* Progress cards */}
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              {/* Clients */}
+              <div className="bg-slate-50 rounded-xl p-4 border border-slate-200">
+                <div className="flex items-center justify-between mb-2">
+                  <span className="text-xs font-semibold text-slate-500 uppercase tracking-wide">Clients Acquired</span>
+                  {(targetCheck.clientsAchieved ?? 0) >= (targetCheck.clientTarget ?? 1)
+                    ? <CheckCircle className="w-4 h-4 text-green-500" />
+                    : <Lock className="w-4 h-4 text-red-400" />}
+                </div>
+                <div className="text-2xl font-black text-slate-900">
+                  {targetCheck.clientsAchieved ?? 0}
+                  <span className="text-base font-medium text-slate-400"> / {targetCheck.clientTarget}</span>
+                </div>
+                <div className="mt-2 h-2 bg-slate-200 rounded-full overflow-hidden">
+                  <div
+                    className="h-full bg-blue-500 rounded-full transition-all"
+                    style={{ width: `${Math.min(100, ((targetCheck.clientsAchieved ?? 0) / (targetCheck.clientTarget ?? 1)) * 100)}%` }}
+                  />
+                </div>
+                {(targetCheck.clientsAchieved ?? 0) < (targetCheck.clientTarget ?? 1) && (
+                  <p className="text-xs text-red-500 mt-1.5 font-medium">
+                    {(targetCheck.clientTarget ?? 0) - (targetCheck.clientsAchieved ?? 0)} more client{((targetCheck.clientTarget ?? 0) - (targetCheck.clientsAchieved ?? 0)) !== 1 ? 's' : ''} needed
+                  </p>
+                )}
+              </div>
+
+              {/* Revenue */}
+              <div className="bg-slate-50 rounded-xl p-4 border border-slate-200">
+                <div className="flex items-center justify-between mb-2">
+                  <span className="text-xs font-semibold text-slate-500 uppercase tracking-wide">Revenue</span>
+                  {(targetCheck.revenueAchieved ?? 0) >= (targetCheck.revenueTarget ?? 1)
+                    ? <CheckCircle className="w-4 h-4 text-green-500" />
+                    : <Lock className="w-4 h-4 text-red-400" />}
+                </div>
+                <div className="text-2xl font-black text-slate-900">
+                  {formatCurrency(targetCheck.revenueAchieved ?? 0)}
+                  <span className="text-base font-medium text-slate-400"> / {formatCurrency(targetCheck.revenueTarget ?? 0)}</span>
+                </div>
+                <div className="mt-2 h-2 bg-slate-200 rounded-full overflow-hidden">
+                  <div
+                    className="h-full bg-blue-500 rounded-full transition-all"
+                    style={{ width: `${Math.min(100, ((targetCheck.revenueAchieved ?? 0) / (targetCheck.revenueTarget ?? 1)) * 100)}%` }}
+                  />
+                </div>
+                {(targetCheck.revenueAchieved ?? 0) < (targetCheck.revenueTarget ?? 1) && (
+                  <p className="text-xs text-red-500 mt-1.5 font-medium">
+                    {formatCurrency((targetCheck.revenueTarget ?? 0) - (targetCheck.revenueAchieved ?? 0))} more needed
+                  </p>
+                )}
+              </div>
+            </div>
+          </div>
         </div>
       ) : !selected ? (
         <div className="bg-white rounded-2xl shadow-sm border border-slate-100 text-center py-16 text-slate-400">
           <FileText className="w-12 h-12 mx-auto mb-3 text-slate-200" />
           <p className="font-semibold text-slate-600">No payslip for {months[selectedMonth-1]} {selectedYear}</p>
-          <p className="text-sm mt-1">Your payslip will appear here once payroll is processed</p>
+          <p className="text-sm mt-1">Your payslip will appear here once payroll is processed by HR</p>
         </div>
       ) : (
-        <div className="max-w-2xl mx-auto bg-white rounded-2xl shadow-sm border border-slate-100 overflow-hidden">
-          {/* Header */}
-          <div className="bg-gradient-to-r from-blue-600 to-blue-700 px-6 py-5 text-white">
-            <div className="flex items-center justify-between">
-              <div>
-                <div className="text-xl font-black">{selected.employee?.firstName} {selected.employee?.lastName}</div>
-                <div className="text-blue-200 text-sm">{selected.employee?.jobTitle} · {selected.employee?.department?.name}</div>
-              </div>
-              <div className="text-right">
-                <div className="text-sm text-blue-200">Payslip</div>
-                <div className="font-bold">{months[selectedMonth-1]} {selectedYear}</div>
-                <span className={`mt-1 inline-block px-2 py-0.5 rounded-full text-xs font-bold ${selected.status === 'PAID' ? 'bg-green-400 text-green-900' : 'bg-blue-400 text-blue-900'}`}>
-                  {selected.status}
-                </span>
-              </div>
+        <div className="max-w-2xl mx-auto space-y-3">
+          {/* Target met badge for sales roles */}
+          {isSalesWithTarget && targetCheck?.targetMet && (
+            <div className="bg-green-50 border border-green-200 rounded-xl px-4 py-3 flex items-center gap-2">
+              <CheckCircle className="w-4 h-4 text-green-600 flex-shrink-0" />
+              <p className="text-sm text-green-800 font-medium">
+                Monthly target achieved — payslip unlocked. Salary payment: {paymentWindow}.
+              </p>
             </div>
-          </div>
+          )}
 
-          {/* Earnings */}
-          <div className="px-6 py-4 border-b border-slate-100">
-            <div className="text-xs font-semibold text-slate-400 uppercase tracking-wider mb-3">Earnings</div>
-            <div className="space-y-2">
-              <div className="flex justify-between text-sm">
-                <span className="text-slate-600">Basic Salary</span>
-                <span className="font-semibold text-slate-900">{formatCurrency(selected.basicSalary)}</span>
-              </div>
-              {selected.allowances > 0 && (
-                <div className="flex justify-between text-sm">
-                  <span className="text-slate-600">Allowances</span>
-                  <span className="font-semibold text-slate-900">{formatCurrency(selected.allowances)}</span>
+          <div className="bg-white rounded-2xl shadow-sm border border-slate-100 overflow-hidden">
+            {/* Header */}
+            <div className="bg-gradient-to-r from-blue-600 to-blue-700 px-6 py-5 text-white">
+              <div className="flex items-center justify-between">
+                <div>
+                  <div className="text-xl font-black">{selected.employee?.firstName} {selected.employee?.lastName}</div>
+                  <div className="text-blue-200 text-sm">{selected.employee?.jobTitle} · {selected.employee?.department?.name}</div>
                 </div>
-              )}
-              <div className="flex justify-between text-sm pt-1 border-t border-slate-100">
-                <span className="font-semibold text-slate-900">Gross Salary</span>
-                <span className="font-bold text-slate-900">{formatCurrency(selected.grossSalary)}</span>
+                <div className="text-right">
+                  <div className="text-sm text-blue-200">Payslip</div>
+                  <div className="font-bold">{months[selectedMonth-1]} {selectedYear}</div>
+                  <span className={`mt-1 inline-block px-2 py-0.5 rounded-full text-xs font-bold ${selected.status === 'PAID' ? 'bg-green-400 text-green-900' : 'bg-blue-400 text-blue-900'}`}>
+                    {selected.status}
+                  </span>
+                </div>
               </div>
             </div>
-          </div>
 
-          {/* Deductions */}
-          <div className="px-6 py-4 border-b border-slate-100">
-            <div className="text-xs font-semibold text-slate-400 uppercase tracking-wider mb-3">Deductions</div>
-            <div className="space-y-2">
-              <div className="flex justify-between text-sm">
-                <span className="text-slate-600">PAYE Tax</span>
-                <span className="font-semibold text-red-600">-{formatCurrency(selected.paye)}</span>
-              </div>
-              <div className="flex justify-between text-sm">
-                <span className="text-slate-600">NHIF</span>
-                <span className="font-semibold text-red-600">-{formatCurrency(selected.nhif)}</span>
-              </div>
-              <div className="flex justify-between text-sm">
-                <span className="text-slate-600">NSSF</span>
-                <span className="font-semibold text-red-600">-{formatCurrency(selected.nssf)}</span>
-              </div>
-              <div className="flex justify-between text-sm pt-1 border-t border-slate-100">
-                <span className="font-semibold text-slate-900">Total Deductions</span>
-                <span className="font-bold text-red-600">-{formatCurrency(selected.paye + selected.nhif + selected.nssf)}</span>
+            {/* Earnings */}
+            <div className="px-6 py-4 border-b border-slate-100">
+              <div className="text-xs font-semibold text-slate-400 uppercase tracking-wider mb-3">Earnings</div>
+              <div className="space-y-2">
+                <div className="flex justify-between text-sm">
+                  <span className="text-slate-600">Basic Salary</span>
+                  <span className="font-semibold text-slate-900">{formatCurrency(selected.basicSalary)}</span>
+                </div>
+                {selected.allowances > 0 && (
+                  <div className="flex justify-between text-sm">
+                    <span className="text-slate-600">Allowances</span>
+                    <span className="font-semibold text-slate-900">{formatCurrency(selected.allowances)}</span>
+                  </div>
+                )}
+                <div className="flex justify-between text-sm pt-1 border-t border-slate-100">
+                  <span className="font-semibold text-slate-900">Gross Salary</span>
+                  <span className="font-bold text-slate-900">{formatCurrency(selected.grossSalary)}</span>
+                </div>
               </div>
             </div>
-          </div>
 
-          {/* Net Pay */}
-          <div className="px-6 py-5 bg-green-50">
-            <div className="flex justify-between items-center">
-              <span className="text-lg font-black text-slate-900">Net Pay</span>
-              <span className="text-2xl font-black text-green-600">{formatCurrency(selected.netSalary)}</span>
+            {/* Deductions */}
+            <div className="px-6 py-4 border-b border-slate-100">
+              <div className="text-xs font-semibold text-slate-400 uppercase tracking-wider mb-3">Deductions</div>
+              <div className="space-y-2">
+                <div className="flex justify-between text-sm">
+                  <span className="text-slate-600">PAYE Tax</span>
+                  <span className="font-semibold text-red-600">-{formatCurrency(selected.paye)}</span>
+                </div>
+                <div className="flex justify-between text-sm">
+                  <span className="text-slate-600">NHIF</span>
+                  <span className="font-semibold text-red-600">-{formatCurrency(selected.nhif)}</span>
+                </div>
+                <div className="flex justify-between text-sm">
+                  <span className="text-slate-600">NSSF</span>
+                  <span className="font-semibold text-red-600">-{formatCurrency(selected.nssf)}</span>
+                </div>
+                <div className="flex justify-between text-sm pt-1 border-t border-slate-100">
+                  <span className="font-semibold text-slate-900">Total Deductions</span>
+                  <span className="font-bold text-red-600">-{formatCurrency(selected.paye + selected.nhif + selected.nssf)}</span>
+                </div>
+              </div>
+            </div>
+
+            {/* Net Pay */}
+            <div className="px-6 py-5 bg-green-50">
+              <div className="flex justify-between items-center">
+                <span className="text-lg font-black text-slate-900">Net Pay</span>
+                <span className="text-2xl font-black text-green-600">{formatCurrency(selected.netSalary)}</span>
+              </div>
             </div>
           </div>
         </div>
