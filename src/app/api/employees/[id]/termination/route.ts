@@ -59,32 +59,40 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
       issuedByTitle: issuedByTitle || 'HR Director',
     })
 
-    const letter = await prisma.terminationLetter.upsert({
-      where: { employeeId: id },
-      update: {
-        reason,
-        reasonDetails: reasonDetails || null,
-        lastWorkingDay: new Date(lastWorkingDay),
-        noticeDays: Number(noticeDays) || 30,
-        payInLieu: Boolean(payInLieu),
-        issuedBy,
-        issuedByTitle: issuedByTitle || 'HR Director',
-        letterHtml,
-        sentAt: send ? new Date() : undefined,
-      },
-      create: {
-        employeeId: id,
-        reason,
-        reasonDetails: reasonDetails || null,
-        lastWorkingDay: new Date(lastWorkingDay),
-        noticeDays: Number(noticeDays) || 30,
-        payInLieu: Boolean(payInLieu),
-        issuedBy,
-        issuedByTitle: issuedByTitle || 'HR Director',
-        letterHtml,
-        sentAt: send ? new Date() : null,
-      },
-    })
+    const newStatus = reason === 'RESIGNATION' ? 'RESIGNED' : 'TERMINATED'
+
+    const [letter] = await prisma.$transaction([
+      prisma.terminationLetter.upsert({
+        where: { employeeId: id },
+        update: {
+          reason,
+          reasonDetails: reasonDetails || null,
+          lastWorkingDay: new Date(lastWorkingDay),
+          noticeDays: Number(noticeDays) || 30,
+          payInLieu: Boolean(payInLieu),
+          issuedBy,
+          issuedByTitle: issuedByTitle || 'HR Director',
+          letterHtml,
+          sentAt: send ? new Date() : undefined,
+        },
+        create: {
+          employeeId: id,
+          reason,
+          reasonDetails: reasonDetails || null,
+          lastWorkingDay: new Date(lastWorkingDay),
+          noticeDays: Number(noticeDays) || 30,
+          payInLieu: Boolean(payInLieu),
+          issuedBy,
+          issuedByTitle: issuedByTitle || 'HR Director',
+          letterHtml,
+          sentAt: send ? new Date() : null,
+        },
+      }),
+      prisma.employee.update({
+        where: { id },
+        data: { employmentStatus: newStatus },
+      }),
+    ])
 
     if (send) {
       const recipient = employee.personalEmail || employee.email

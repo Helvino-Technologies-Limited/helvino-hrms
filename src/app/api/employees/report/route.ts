@@ -14,6 +14,9 @@ export async function GET() {
     }
 
     const employees = await prisma.employee.findMany({
+      where: {
+        employmentStatus: { notIn: ['TERMINATED', 'RESIGNED'] },
+      },
       include: {
         department: { select: { name: true } },
         manager: { select: { firstName: true, lastName: true, jobTitle: true } },

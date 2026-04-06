@@ -16,10 +16,26 @@ export async function GET(req: NextRequest) {
     const department = searchParams.get('department')
     const status = searchParams.get('status')
     const search = searchParams.get('search')
+    const tab = searchParams.get('tab') // 'active' | 'past'
+
+    const SEPARATED = ['TERMINATED', 'RESIGNED']
 
     const where: any = {}
     if (department) where.departmentId = department
-    if (status) where.employmentStatus = status
+
+    if (tab === 'past') {
+      // Past employees: only TERMINATED / RESIGNED
+      where.employmentStatus = { in: SEPARATED }
+    } else if (tab === 'active') {
+      // Active roster: exclude separated employees; respect optional status sub-filter
+      where.employmentStatus = status
+        ? status
+        : { notIn: SEPARATED }
+    } else {
+      // Legacy / no-tab callers — honour explicit status param if present
+      if (status) where.employmentStatus = status
+    }
+
     if (search) {
       where.OR = [
         { firstName: { contains: search, mode: 'insensitive' } },
@@ -42,8 +58,11 @@ export async function GET(req: NextRequest) {
         user: { select: { role: true } },
         manager: { select: { firstName: true, lastName: true, profilePhoto: true, jobTitle: true } },
         _count: { select: { directReports: true, leaves: true, attendances: true } },
+        ...(tab === 'past' ? { terminationLetter: true } : {}),
       },
-      orderBy: { createdAt: 'desc' },
+      orderBy: tab === 'past'
+        ? { updatedAt: 'desc' }
+        : { createdAt: 'desc' },
     })
 
     return NextResponse.json(employees)

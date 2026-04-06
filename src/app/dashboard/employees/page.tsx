@@ -1,7 +1,7 @@
 'use client'
 import { useEffect, useState, useCallback, useRef } from 'react'
 import Link from 'next/link'
-import { Plus, Search, Eye, Edit, Mail, Phone, UserX, Upload, X, FileText, Image, Send, Download } from 'lucide-react'
+import { Plus, Search, Eye, Edit, Mail, Phone, UserX, Upload, X, FileText, Image, Send, Download, ShieldOff, AlertTriangle } from 'lucide-react'
 import { formatDate } from '@/lib/utils'
 import toast from 'react-hot-toast'
 import { generateEmployeeReportHtml } from '@/lib/employee-report-pdf'
@@ -748,7 +748,10 @@ const STATUS_COLORS: Record<string, string> = {
   PROBATION: 'bg-blue-100 text-blue-700 border-blue-200',
 }
 
+type Tab = 'active' | 'past'
+
 export default function EmployeesPage() {
+  const [tab, setTab] = useState<Tab>('active')
   const [employees, setEmployees] = useState<any[]>([])
   const [departments, setDepartments] = useState<any[]>([])
   const [loading, setLoading] = useState(true)
@@ -758,6 +761,18 @@ export default function EmployeesPage() {
   const [showForm, setShowForm] = useState(false)
   const [editingEmployee, setEditingEmployee] = useState<any>(null)
   const [downloadingReport, setDownloadingReport] = useState(false)
+  const [terminatingEmp, setTerminatingEmp] = useState<any>(null)
+  const [termForm, setTermForm] = useState({
+    reason: 'GROSS_MISCONDUCT',
+    reasonDetails: '',
+    lastWorkingDay: '',
+    noticeDays: '30',
+    payInLieu: false,
+    issuedBy: '',
+    issuedByTitle: 'HR Director',
+    send: false,
+  })
+  const [termSubmitting, setTermSubmitting] = useState(false)
 
   async function downloadEmployeeReport() {
     setDownloadingReport(true)
@@ -770,78 +785,58 @@ export default function EmployeesPage() {
       const data = await res.json()
       const html = generateEmployeeReportHtml(data)
 
-      const [{ default: html2canvas }, { default: jsPDF }] = await Promise.all([
-        import('html2canvas'),
-        import('jspdf'),
-      ])
-
-      const container = document.createElement('div')
-      container.style.cssText = 'position:fixed;left:-9999px;top:0;width:1100px;background:#fff;z-index:-1;'
-      container.innerHTML = html
-      document.body.appendChild(container)
-
-      const img = container.querySelector('img') as HTMLImageElement | null
-      if (img && !img.complete) {
-        await new Promise<void>(resolve => {
-          img.onload = () => resolve()
-          img.onerror = () => resolve()
-          setTimeout(resolve, 3000)
-        })
-      } else {
-        await new Promise(r => setTimeout(r, 300))
-      }
-
-      const canvas = await html2canvas(container, {
-        scale: 2,
-        useCORS: true,
-        backgroundColor: '#ffffff',
-        logging: false,
-        width: container.offsetWidth,
-        height: container.scrollHeight,
-        windowWidth: container.offsetWidth,
+      const win = window.open('', '_blank', 'width=1100,height=800')
+      if (!win) throw new Error('Pop-up blocked — please allow pop-ups and try again')
+      win.document.write(html)
+      win.document.close()
+      // Give images a moment to load before printing
+      win.addEventListener('load', () => {
+        setTimeout(() => {
+          win.focus()
+          win.print()
+        }, 600)
       })
-      document.body.removeChild(container)
-
-      const pdf = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4' })
-      const pageW = pdf.internal.pageSize.getWidth()
-      const pageH = pdf.internal.pageSize.getHeight()
-      const imgData = canvas.toDataURL('image/jpeg', 0.95)
-      const totalImgH = (canvas.height * pageW) / canvas.width
-
-      let cutY = 0
-      let pageNum = 0
-      while (cutY < totalImgH) {
-        if (pageNum > 0) pdf.addPage()
-        const sliceH = Math.min(pageH, totalImgH - cutY)
-        const srcY = (cutY / totalImgH) * canvas.height
-        const srcH = (sliceH / totalImgH) * canvas.height
-        const sliceCanvas = document.createElement('canvas')
-        sliceCanvas.width = canvas.width
-        sliceCanvas.height = srcH
-        const ctx = sliceCanvas.getContext('2d')!
-        ctx.drawImage(canvas, 0, srcY, canvas.width, srcH, 0, 0, canvas.width, srcH)
-        pdf.addImage(sliceCanvas.toDataURL('image/jpeg', 0.95), 'JPEG', 0, 0, pageW, sliceH)
-        cutY += pageH
-        pageNum++
-      }
-
-      const today = new Date().toISOString().slice(0, 10)
-      pdf.save(`Employee-Register-${today}.pdf`)
-      toast.success('Employee register downloaded')
+      toast.success('Print dialog opened — choose "Save as PDF"')
     } catch (err: any) {
       console.error(err)
-      toast.error(err.message ?? 'Failed to generate PDF')
+      toast.error(err.message ?? 'Failed to generate report')
     } finally {
       setDownloadingReport(false)
+    }
+  }
+
+  async function submitTermination() {
+    if (!terminatingEmp) return
+    if (!termForm.lastWorkingDay || !termForm.issuedBy) {
+      toast.error('Last Working Day and Issued By are required')
+      return
+    }
+    setTermSubmitting(true)
+    try {
+      const res = await fetch(`/api/employees/${terminatingEmp.id}/termination`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ ...termForm, noticeDays: Number(termForm.noticeDays) || 30 }),
+      })
+      const data = await res.json()
+      if (!res.ok) throw new Error(data.error ?? 'Failed')
+      toast.success(termForm.send ? 'Employee terminated & letter sent' : 'Employee terminated')
+      setTerminatingEmp(null)
+      loadData()
+    } catch (err: any) {
+      toast.error(err.message ?? 'Error')
+    } finally {
+      setTermSubmitting(false)
     }
   }
 
   const loadData = useCallback(async () => {
     setLoading(true)
     const params = new URLSearchParams()
+    params.set('tab', tab)
     if (search) params.set('search', search)
     if (filterDept) params.set('department', filterDept)
-    if (filterStatus) params.set('status', filterStatus)
+    if (tab === 'active' && filterStatus) params.set('status', filterStatus)
     try {
       const [empRes, deptRes] = await Promise.all([
         fetch(`/api/employees?${params}`),
@@ -852,7 +847,7 @@ export default function EmployeesPage() {
       setDepartments(Array.isArray(deptData) ? deptData : [])
     } catch (e) { console.error(e) }
     setLoading(false)
-  }, [search, filterDept, filterStatus])
+  }, [tab, search, filterDept, filterStatus])
 
   useEffect(() => {
     const t = setTimeout(loadData, 300)
@@ -863,8 +858,10 @@ export default function EmployeesPage() {
     <div className="space-y-5">
       <div className="flex items-center justify-between flex-wrap gap-3">
         <div>
-          <h1 className="text-2xl font-black text-slate-900">Employees</h1>
-          <p className="text-slate-500 text-sm">{employees.length} total records</p>
+          <h1 className="text-2xl font-black text-slate-900">
+            {tab === 'active' ? 'Employees' : 'Past Employees'}
+          </h1>
+          <p className="text-slate-500 text-sm">{employees.length} {tab === 'active' ? 'active' : 'separated'} records</p>
         </div>
         <div className="flex items-center gap-2">
           <button
@@ -878,12 +875,30 @@ export default function EmployeesPage() {
               : <><Download className="w-4 h-4" />Employee Register PDF</>
             }
           </button>
-          <button onClick={() => { setEditingEmployee(null); setShowForm(true) }}
-            className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2.5 rounded-xl font-semibold flex items-center gap-2 transition-colors shadow-md hover:shadow-blue-200 text-sm">
-            <Plus className="w-4 h-4" />
-            Add Employee
-          </button>
+          {tab === 'active' && (
+            <button onClick={() => { setEditingEmployee(null); setShowForm(true) }}
+              className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2.5 rounded-xl font-semibold flex items-center gap-2 transition-colors shadow-md hover:shadow-blue-200 text-sm">
+              <Plus className="w-4 h-4" />
+              Add Employee
+            </button>
+          )}
         </div>
+      </div>
+
+      {/* Tabs */}
+      <div className="flex gap-1 bg-slate-100 rounded-xl p-1 w-fit">
+        <button
+          onClick={() => { setTab('active'); setSearch(''); setFilterDept(''); setFilterStatus('') }}
+          className={`px-5 py-2 rounded-lg text-sm font-semibold transition-all ${tab === 'active' ? 'bg-white text-slate-900 shadow-sm' : 'text-slate-500 hover:text-slate-700'}`}
+        >
+          Active Employees
+        </button>
+        <button
+          onClick={() => { setTab('past'); setSearch(''); setFilterDept(''); setFilterStatus('') }}
+          className={`px-5 py-2 rounded-lg text-sm font-semibold transition-all ${tab === 'past' ? 'bg-white text-slate-900 shadow-sm' : 'text-slate-500 hover:text-slate-700'}`}
+        >
+          Past Employees
+        </button>
       </div>
 
       {/* Filters */}
@@ -900,13 +915,15 @@ export default function EmployeesPage() {
             <option value="">All Departments</option>
             {departments.map((d: any) => <option key={d.id} value={d.id}>{d.name}</option>)}
           </select>
-          <select value={filterStatus} onChange={e => setFilterStatus(e.target.value)}
-            className="px-3 py-2 text-sm border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white">
-            <option value="">All Status</option>
-            {['ACTIVE','PROBATION','ON_LEAVE','SUSPENDED','RESIGNED','TERMINATED'].map(s => (
-              <option key={s} value={s}>{s.replace('_', ' ')}</option>
-            ))}
-          </select>
+          {tab === 'active' && (
+            <select value={filterStatus} onChange={e => setFilterStatus(e.target.value)}
+              className="px-3 py-2 text-sm border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white">
+              <option value="">All Status</option>
+              {['ACTIVE','PROBATION','ON_LEAVE','SUSPENDED'].map(s => (
+                <option key={s} value={s}>{s.replace('_', ' ')}</option>
+              ))}
+            </select>
+          )}
         </div>
       </div>
 
@@ -922,10 +939,15 @@ export default function EmployeesPage() {
             <div className="w-16 h-16 bg-slate-100 rounded-2xl flex items-center justify-center mb-4">
               <UserX className="w-8 h-8 text-slate-300" />
             </div>
-            <p className="text-lg font-semibold">No employees found</p>
-            <p className="text-sm mt-1">Add your first employee to get started</p>
+            <p className="text-lg font-semibold">
+              {tab === 'active' ? 'No employees found' : 'No past employees found'}
+            </p>
+            <p className="text-sm mt-1">
+              {tab === 'active' ? 'Add your first employee to get started' : 'Terminated or resigned employees will appear here'}
+            </p>
           </div>
-        ) : (
+        ) : tab === 'active' ? (
+          /* ── ACTIVE EMPLOYEES TABLE ─────────────────────── */
           <div className="overflow-x-auto">
             <table className="w-full">
               <thead className="bg-slate-50 border-b border-slate-200">
@@ -984,10 +1006,107 @@ export default function EmployeesPage() {
                           className="p-1.5 text-slate-400 hover:text-green-600 hover:bg-green-50 rounded-lg transition-colors" title="Call">
                           <Phone className="w-4 h-4" />
                         </a>
+                        <button
+                          onClick={() => {
+                            setTerminatingEmp(emp)
+                            setTermForm({ reason: 'GROSS_MISCONDUCT', reasonDetails: '', lastWorkingDay: '', noticeDays: '30', payInLieu: false, issuedBy: '', issuedByTitle: 'HR Director', send: false })
+                          }}
+                          className="p-1.5 text-slate-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors" title="Terminate Employee">
+                          <ShieldOff className="w-4 h-4" />
+                        </button>
                       </div>
                     </td>
                   </tr>
                 ))}
+              </tbody>
+            </table>
+          </div>
+        ) : (
+          /* ── PAST EMPLOYEES TABLE ───────────────────────── */
+          <div className="overflow-x-auto">
+            <table className="w-full">
+              <thead className="bg-slate-50 border-b border-slate-200">
+                <tr>
+                  {['Employee', 'Department', 'Date Hired', 'Last Working Day', 'Tenure', 'Separation', 'Reason', 'Actions'].map(h => (
+                    <th key={h} className="text-left px-5 py-3.5 text-xs font-semibold text-slate-500 uppercase tracking-wider">{h}</th>
+                  ))}
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-slate-100">
+                {employees.map((emp: any) => {
+                  const letter = emp.terminationLetter
+                  const lastDay = letter?.lastWorkingDay ? new Date(letter.lastWorkingDay) : null
+                  const hired = emp.dateHired ? new Date(emp.dateHired) : null
+                  const endDate = lastDay ?? (emp.updatedAt ? new Date(emp.updatedAt) : null)
+                  const tenureMonths = hired && endDate
+                    ? Math.max(0, Math.round((endDate.getTime() - hired.getTime()) / (1000 * 60 * 60 * 24 * 30)))
+                    : null
+                  const tenureLabel = tenureMonths === null ? '—'
+                    : tenureMonths < 12 ? `${tenureMonths}m`
+                    : `${Math.floor(tenureMonths / 12)}y ${tenureMonths % 12}m`
+
+                  return (
+                    <tr key={emp.id} className="hover:bg-slate-50 transition-colors group">
+                      <td className="px-5 py-4">
+                        <div className="flex items-center gap-3">
+                          <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-slate-400 to-slate-600 flex items-center justify-center text-white font-bold text-sm flex-shrink-0 overflow-hidden shadow-sm">
+                            {emp.profilePhoto ? (
+                              <img src={emp.profilePhoto} alt="" className="w-full h-full object-cover opacity-70" />
+                            ) : `${emp.firstName[0]}${emp.lastName[0]}`}
+                          </div>
+                          <div>
+                            <div className="font-semibold text-slate-700 text-sm">{emp.firstName} {emp.lastName}</div>
+                            <div className="text-slate-400 text-xs">{emp.employeeCode} · {emp.jobTitle}</div>
+                            <div className="text-slate-400 text-xs">{emp.email}</div>
+                          </div>
+                        </div>
+                      </td>
+                      <td className="px-5 py-4">
+                        <span className="text-slate-600 text-sm">{emp.department?.name || <span className="text-slate-400 italic">—</span>}</span>
+                      </td>
+                      <td className="px-5 py-4">
+                        <span className="text-slate-500 text-sm">{formatDate(emp.dateHired)}</span>
+                      </td>
+                      <td className="px-5 py-4">
+                        <span className="text-slate-700 text-sm font-medium">
+                          {lastDay ? formatDate(lastDay.toISOString()) : <span className="text-slate-400 italic">—</span>}
+                        </span>
+                      </td>
+                      <td className="px-5 py-4">
+                        <span className="text-slate-500 text-sm">{tenureLabel}</span>
+                      </td>
+                      <td className="px-5 py-4">
+                        <span className={`inline-block px-2.5 py-1 rounded-full text-xs font-semibold border ${STATUS_COLORS[emp.employmentStatus] || 'bg-gray-100 text-gray-600'}`}>
+                          {emp.employmentStatus}
+                        </span>
+                      </td>
+                      <td className="px-5 py-4 max-w-48">
+                        {letter ? (
+                          <div>
+                            <div className="text-slate-700 text-xs font-semibold">{letter.reason.replace(/_/g, ' ')}</div>
+                            {letter.reasonDetails && (
+                              <div className="text-slate-400 text-xs mt-0.5 truncate max-w-40" title={letter.reasonDetails}>{letter.reasonDetails}</div>
+                            )}
+                          </div>
+                        ) : (
+                          <span className="text-slate-400 text-xs italic">No letter on file</span>
+                        )}
+                      </td>
+                      <td className="px-5 py-4">
+                        <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                          <Link href={`/dashboard/employees/${emp.id}`}
+                            className="p-1.5 text-slate-400 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-colors" title="View Profile">
+                            <Eye className="w-4 h-4" />
+                          </Link>
+                          <Link href={`/dashboard/hr/letters`}
+                            className="p-1.5 text-slate-400 hover:text-amber-600 hover:bg-amber-50 rounded-lg transition-colors" title="View Termination Letter">
+                            <FileText className="w-4 h-4" />
+                          </Link>
+                        </div>
+                      </td>
+                    </tr>
+                  )
+                })}
               </tbody>
             </table>
           </div>
@@ -1002,6 +1121,115 @@ export default function EmployeesPage() {
           onClose={() => setShowForm(false)}
           onSave={() => { setShowForm(false); loadData(); toast.success(editingEmployee ? 'Employee updated!' : 'Employee added successfully!') }}
         />
+      )}
+
+      {/* ── Termination Modal ─────────────────────────────────────── */}
+      {terminatingEmp && (
+        <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
+          <div className="bg-white rounded-2xl shadow-2xl w-full max-w-lg">
+            {/* Header */}
+            <div className="flex items-center justify-between px-6 py-4 border-b border-slate-100 bg-red-50 rounded-t-2xl">
+              <div className="flex items-center gap-3">
+                <div className="w-9 h-9 bg-red-100 rounded-xl flex items-center justify-center">
+                  <AlertTriangle className="w-5 h-5 text-red-600" />
+                </div>
+                <div>
+                  <div className="font-bold text-slate-900 text-sm">Terminate Employee</div>
+                  <div className="text-xs text-slate-500">{terminatingEmp.firstName} {terminatingEmp.lastName} · {terminatingEmp.employeeCode}</div>
+                </div>
+              </div>
+              <button onClick={() => setTerminatingEmp(null)} className="p-2 text-slate-400 hover:text-slate-600 rounded-lg">
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+
+            {/* Form */}
+            <div className="p-6 space-y-4">
+              <div className="bg-red-50 border border-red-200 rounded-xl p-3 text-xs text-red-700">
+                <strong>Warning:</strong> This action will set the employee status to <strong>TERMINATED</strong> and generate a termination letter. This cannot be easily undone.
+              </div>
+
+              <div className="grid grid-cols-2 gap-4">
+                <div className="col-span-2">
+                  <label className="block text-xs font-semibold text-slate-600 mb-1.5">Reason for Termination *</label>
+                  <select value={termForm.reason} onChange={e => setTermForm(f => ({ ...f, reason: e.target.value }))}
+                    className="w-full px-3 py-2 text-sm border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-red-400">
+                    {[
+                      ['GROSS_MISCONDUCT', 'Gross Misconduct'],
+                      ['REDUNDANCY', 'Redundancy'],
+                      ['PERFORMANCE', 'Poor Performance'],
+                      ['RESIGNATION', 'Resignation Accepted'],
+                      ['CONTRACT_EXPIRY', 'Contract Expiry'],
+                      ['PROBATION_FAILURE', 'Probation Failure'],
+                      ['MUTUAL_AGREEMENT', 'Mutual Agreement'],
+                      ['OTHER', 'Other'],
+                    ].map(([v, l]) => <option key={v} value={v}>{l}</option>)}
+                  </select>
+                </div>
+
+                <div className="col-span-2">
+                  <label className="block text-xs font-semibold text-slate-600 mb-1.5">Additional Details</label>
+                  <textarea value={termForm.reasonDetails} onChange={e => setTermForm(f => ({ ...f, reasonDetails: e.target.value }))}
+                    rows={2} placeholder="Optional — describe circumstances..."
+                    className="w-full px-3 py-2 text-sm border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-red-400 resize-none" />
+                </div>
+
+                <div>
+                  <label className="block text-xs font-semibold text-slate-600 mb-1.5">Last Working Day *</label>
+                  <input type="date" value={termForm.lastWorkingDay} onChange={e => setTermForm(f => ({ ...f, lastWorkingDay: e.target.value }))}
+                    className="w-full px-3 py-2 text-sm border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-red-400" />
+                </div>
+
+                <div>
+                  <label className="block text-xs font-semibold text-slate-600 mb-1.5">Notice Period (days)</label>
+                  <input type="number" value={termForm.noticeDays} onChange={e => setTermForm(f => ({ ...f, noticeDays: e.target.value }))}
+                    min={0} className="w-full px-3 py-2 text-sm border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-red-400" />
+                </div>
+
+                <div>
+                  <label className="block text-xs font-semibold text-slate-600 mb-1.5">Issued By *</label>
+                  <input type="text" value={termForm.issuedBy} onChange={e => setTermForm(f => ({ ...f, issuedBy: e.target.value }))}
+                    placeholder="Full name of HR signatory"
+                    className="w-full px-3 py-2 text-sm border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-red-400" />
+                </div>
+
+                <div>
+                  <label className="block text-xs font-semibold text-slate-600 mb-1.5">Issuer Title</label>
+                  <input type="text" value={termForm.issuedByTitle} onChange={e => setTermForm(f => ({ ...f, issuedByTitle: e.target.value }))}
+                    placeholder="e.g. HR Director"
+                    className="w-full px-3 py-2 text-sm border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-red-400" />
+                </div>
+
+                <div className="col-span-2 flex items-center gap-6">
+                  <label className="flex items-center gap-2 text-sm text-slate-700 cursor-pointer">
+                    <input type="checkbox" checked={termForm.payInLieu} onChange={e => setTermForm(f => ({ ...f, payInLieu: e.target.checked }))}
+                      className="rounded border-slate-300 text-red-600 focus:ring-red-400" />
+                    Pay in lieu of notice
+                  </label>
+                  <label className="flex items-center gap-2 text-sm text-slate-700 cursor-pointer">
+                    <input type="checkbox" checked={termForm.send} onChange={e => setTermForm(f => ({ ...f, send: e.target.checked }))}
+                      className="rounded border-slate-300 text-red-600 focus:ring-red-400" />
+                    Send letter to employee by email
+                  </label>
+                </div>
+              </div>
+            </div>
+
+            {/* Footer */}
+            <div className="flex items-center justify-end gap-3 px-6 py-4 border-t border-slate-100">
+              <button onClick={() => setTerminatingEmp(null)} className="px-4 py-2 text-sm text-slate-600 hover:bg-slate-100 rounded-xl font-medium transition-colors">
+                Cancel
+              </button>
+              <button onClick={submitTermination} disabled={termSubmitting}
+                className="px-5 py-2 bg-red-600 hover:bg-red-700 text-white text-sm font-semibold rounded-xl flex items-center gap-2 transition-colors disabled:opacity-60">
+                {termSubmitting
+                  ? <><svg className="w-4 h-4 animate-spin" viewBox="0 0 24 24" fill="none"><circle cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" className="opacity-25"/><path fill="currentColor" d="M4 12a8 8 0 018-8v8z" className="opacity-75"/></svg>Processing…</>
+                  : <><ShieldOff className="w-4 h-4" />Terminate Employee</>
+                }
+              </button>
+            </div>
+          </div>
+        </div>
       )}
     </div>
   )
