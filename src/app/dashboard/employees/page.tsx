@@ -783,23 +783,102 @@ export default function EmployeesPage() {
         throw new Error(err.error ?? 'Failed to fetch report data')
       }
       const data = await res.json()
+      if (!data.length) { toast.error('No employees to export'); return }
+
       const html = generateEmployeeReportHtml(data)
 
-      const win = window.open('', '_blank', 'width=1100,height=800')
-      if (!win) throw new Error('Pop-up blocked — please allow pop-ups and try again')
-      win.document.write(html)
-      win.document.close()
-      // Give images a moment to load before printing
-      win.addEventListener('load', () => {
-        setTimeout(() => {
-          win.focus()
-          win.print()
-        }, 600)
-      })
-      toast.success('Print dialog opened — choose "Save as PDF"')
+      const [{ default: html2canvas }, { default: jsPDF }] = await Promise.all([
+        import('html2canvas'),
+        import('jspdf'),
+      ])
+
+      // Mount hidden container
+      const wrap = document.createElement('div')
+      wrap.style.cssText = 'position:fixed;left:-9999px;top:0;width:1050px;background:#fff;z-index:-1;visibility:hidden;'
+      wrap.innerHTML = html
+      document.body.appendChild(wrap)
+
+      // Wait for logo image
+      const img = wrap.querySelector('img') as HTMLImageElement | null
+      if (img && !img.complete) {
+        await new Promise<void>(r => { img.onload = () => r(); img.onerror = () => r(); setTimeout(r, 3000) })
+      }
+      await new Promise(r => setTimeout(r, 200))
+
+      const pdf = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4' })
+      const pageW = pdf.internal.pageSize.getWidth()   // 210 mm
+      const pageH = pdf.internal.pageSize.getHeight()  // 297 mm
+      const marginX = 0   // sections include their own padding
+      const contentW = pageW - marginX * 2
+      let curY = 0        // current Y position on current page (mm)
+
+      // Helper: render one DOM element → add to current PDF page(s).
+      // canSplit=true: element is a table, naive vertical slicing is fine.
+      // canSplit=false: element must land on a single page intact.
+      async function addSection(el: HTMLElement, canSplit: boolean) {
+        const canvas = await html2canvas(el, {
+          scale: 2,
+          useCORS: true,
+          allowTaint: false,
+          backgroundColor: '#ffffff',
+          logging: false,
+          width: el.offsetWidth,
+          height: el.scrollHeight,
+          windowWidth: el.offsetWidth,
+        })
+        const imgW = canvas.width
+        const imgH = canvas.height
+        // mm height of this element when scaled to content width
+        const elHeightMm = (imgH / imgW) * contentW
+
+        if (!canSplit) {
+          // Force whole block onto one page — start new page if it won't fit
+          if (curY > 0 && curY + elHeightMm > pageH) {
+            pdf.addPage()
+            curY = 0
+          }
+          pdf.addImage(canvas.toDataURL('image/jpeg', 0.92), 'JPEG', marginX, curY, contentW, elHeightMm)
+          curY += elHeightMm
+        } else {
+          // Naive slice: just cut at page boundaries (ok for tables)
+          let remainH = elHeightMm
+          let srcYfraction = 0
+          while (remainH > 0) {
+            const sliceH = Math.min(remainH, pageH - curY)
+            const srcY  = Math.round(srcYfraction * imgH)
+            const srcH  = Math.round((sliceH / elHeightMm) * imgH)
+
+            const slice = document.createElement('canvas')
+            slice.width  = imgW
+            slice.height = Math.max(1, srcH)
+            slice.getContext('2d')!.drawImage(canvas, 0, srcY, imgW, Math.max(1, srcH), 0, 0, imgW, Math.max(1, srcH))
+            pdf.addImage(slice.toDataURL('image/jpeg', 0.92), 'JPEG', marginX, curY, contentW, sliceH)
+
+            curY         += sliceH
+            remainH      -= sliceH
+            srcYfraction += sliceH / elHeightMm
+
+            if (remainH > 0.5) { pdf.addPage(); curY = 0 }
+          }
+        }
+      }
+
+      const sections = wrap.querySelectorAll('[data-section]')
+      for (const sec of Array.from(sections)) {
+        const kind = (sec as HTMLElement).dataset.section!
+        const isTable  = kind === 'summary'   // tables: naive slice ok
+        const isCard   = kind === 'card'      // cards: must never split
+        await addSection(sec as HTMLElement, isTable && !isCard)
+      }
+
+      document.body.removeChild(wrap)
+
+      const today = new Date().toISOString().slice(0, 10)
+      pdf.save(`Employee-Register-${today}.pdf`)
+      toast.success('Employee register downloaded')
     } catch (err: any) {
       console.error(err)
-      toast.error(err.message ?? 'Failed to generate report')
+      toast.error(err.message ?? 'Failed to generate PDF')
     } finally {
       setDownloadingReport(false)
     }
