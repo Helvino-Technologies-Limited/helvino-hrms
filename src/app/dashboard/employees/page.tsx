@@ -792,9 +792,10 @@ export default function EmployeesPage() {
         import('jspdf'),
       ])
 
-      // Mount hidden container
+      // Mount hidden container — 900 px wide matches landscape A4 at ~96 dpi
+      const CONTAINER_W = 900
       const wrap = document.createElement('div')
-      wrap.style.cssText = 'position:fixed;left:-9999px;top:0;width:1050px;background:#fff;z-index:-1;opacity:0;pointer-events:none;'
+      wrap.style.cssText = `position:fixed;left:-9999px;top:0;width:${CONTAINER_W}px;background:#fff;z-index:-1;opacity:0;pointer-events:none;`
       wrap.innerHTML = html
       document.body.appendChild(wrap)
 
@@ -803,18 +804,21 @@ export default function EmployeesPage() {
       if (img && !img.complete) {
         await new Promise<void>(r => { img.onload = () => r(); img.onerror = () => r(); setTimeout(r, 3000) })
       }
-      await new Promise(r => setTimeout(r, 200))
+      await new Promise(r => setTimeout(r, 300))
 
-      const pdf = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4' })
-      const pageW = pdf.internal.pageSize.getWidth()   // 210 mm
-      const pageH = pdf.internal.pageSize.getHeight()  // 297 mm
-      const marginX = 0   // sections include their own padding
-      const contentW = pageW - marginX * 2
-      let curY = 0        // current Y position on current page (mm)
+      // Landscape A4 → 297 × 210 mm — gives ~0.31 mm/px → ~9 pt text (readable)
+      const pdf = new jsPDF({ orientation: 'landscape', unit: 'mm', format: 'a4' })
+      const pageW = pdf.internal.pageSize.getWidth()    // 297 mm
+      const pageH = pdf.internal.pageSize.getHeight()   // 210 mm
+      const margin = 7       // 7 mm margins on all sides
+      const contentW = pageW - margin * 2               // 283 mm
+      let curY = margin      // start below top margin
 
-      // Helper: render one DOM element → add to current PDF page(s).
-      // canSplit=true: element is a table, naive vertical slicing is fine.
-      // canSplit=false: element must land on a single page intact.
+      // Render one DOM element and place it on the PDF, handling page breaks.
+      // canSplit=true: slice vertically at page boundaries (used for the wide
+      //   summary table so rows always start at the top of each slice).
+      // canSplit=false: treat the element as an atomic block that must not be
+      //   broken mid-element (used for every employee card).
       async function addSection(el: HTMLElement, canSplit: boolean) {
         const canvas = await html2canvas(el, {
           scale: 2,
@@ -822,53 +826,53 @@ export default function EmployeesPage() {
           allowTaint: false,
           backgroundColor: '#ffffff',
           logging: false,
-          width: el.offsetWidth || 1050,
+          width: el.offsetWidth || CONTAINER_W,
           height: el.scrollHeight,
-          windowWidth: 1050,
+          windowWidth: CONTAINER_W,
         })
         const imgW = canvas.width
         const imgH = canvas.height
-        // mm height of this element when scaled to content width
+        // Physical height (mm) of this element at contentW scale
         const elHeightMm = (imgH / imgW) * contentW
 
         if (!canSplit) {
-          // Force whole block onto one page — start new page if it won't fit
-          if (curY > 0 && curY + elHeightMm > pageH) {
+          // Start a new page if the block won't fit on what's left
+          if (curY > margin && curY + elHeightMm > pageH - margin) {
             pdf.addPage()
-            curY = 0
+            curY = margin
           }
-          pdf.addImage(canvas.toDataURL('image/jpeg', 0.92), 'JPEG', marginX, curY, contentW, elHeightMm)
+          pdf.addImage(canvas.toDataURL('image/jpeg', 0.93), 'JPEG', margin, curY, contentW, elHeightMm)
           curY += elHeightMm
         } else {
-          // Naive slice: just cut at page boundaries (ok for tables)
-          let remainH = elHeightMm
+          // Slice at page boundaries — acceptable for tables where rows repeat
+          let remainH      = elHeightMm
           let srcYfraction = 0
-          while (remainH > 0) {
-            const sliceH = Math.min(remainH, pageH - curY)
-            const srcY  = Math.round(srcYfraction * imgH)
-            const srcH  = Math.round((sliceH / elHeightMm) * imgH)
+          while (remainH > 0.5) {
+            const availH = pageH - margin - curY
+            const sliceH = Math.min(remainH, availH)
+            const srcY   = Math.round(srcYfraction * imgH)
+            const srcH   = Math.round((sliceH / elHeightMm) * imgH)
 
             const slice = document.createElement('canvas')
             slice.width  = imgW
             slice.height = Math.max(1, srcH)
             slice.getContext('2d')!.drawImage(canvas, 0, srcY, imgW, Math.max(1, srcH), 0, 0, imgW, Math.max(1, srcH))
-            pdf.addImage(slice.toDataURL('image/jpeg', 0.92), 'JPEG', marginX, curY, contentW, sliceH)
+            pdf.addImage(slice.toDataURL('image/jpeg', 0.93), 'JPEG', margin, curY, contentW, sliceH)
 
             curY         += sliceH
             remainH      -= sliceH
             srcYfraction += sliceH / elHeightMm
 
-            if (remainH > 0.5) { pdf.addPage(); curY = 0 }
+            if (remainH > 0.5) { pdf.addPage(); curY = margin }
           }
         }
       }
 
       const sections = wrap.querySelectorAll('[data-section]')
       for (const sec of Array.from(sections)) {
-        const kind = (sec as HTMLElement).dataset.section!
-        const isTable  = kind === 'summary'   // tables: naive slice ok
-        const isCard   = kind === 'card'      // cards: must never split
-        await addSection(sec as HTMLElement, isTable && !isCard)
+        const kind    = (sec as HTMLElement).dataset.section!
+        const isTable = kind === 'summary'
+        await addSection(sec as HTMLElement, isTable)
       }
 
       document.body.removeChild(wrap)
