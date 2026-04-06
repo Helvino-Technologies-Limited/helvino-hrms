@@ -1,9 +1,10 @@
 'use client'
 import { useEffect, useState, useCallback, useRef } from 'react'
 import Link from 'next/link'
-import { Plus, Search, Eye, Edit, Mail, Phone, UserX, Upload, X, FileText, Image, Send } from 'lucide-react'
+import { Plus, Search, Eye, Edit, Mail, Phone, UserX, Upload, X, FileText, Image, Send, Download } from 'lucide-react'
 import { formatDate } from '@/lib/utils'
 import toast from 'react-hot-toast'
+import { generateEmployeeReportHtml } from '@/lib/employee-report-pdf'
 
 // ─── Kenya bank branch data { branchName → code } ────────────────────────────
 type BranchInfo = { name: string; code: string }
@@ -756,6 +757,84 @@ export default function EmployeesPage() {
   const [filterStatus, setFilterStatus] = useState('')
   const [showForm, setShowForm] = useState(false)
   const [editingEmployee, setEditingEmployee] = useState<any>(null)
+  const [downloadingReport, setDownloadingReport] = useState(false)
+
+  async function downloadEmployeeReport() {
+    setDownloadingReport(true)
+    try {
+      const res = await fetch('/api/employees/report')
+      if (!res.ok) {
+        const err = await res.json()
+        throw new Error(err.error ?? 'Failed to fetch report data')
+      }
+      const data = await res.json()
+      const html = generateEmployeeReportHtml(data)
+
+      const [{ default: html2canvas }, { default: jsPDF }] = await Promise.all([
+        import('html2canvas'),
+        import('jspdf'),
+      ])
+
+      const container = document.createElement('div')
+      container.style.cssText = 'position:fixed;left:-9999px;top:0;width:1100px;background:#fff;z-index:-1;'
+      container.innerHTML = html
+      document.body.appendChild(container)
+
+      const img = container.querySelector('img') as HTMLImageElement | null
+      if (img && !img.complete) {
+        await new Promise<void>(resolve => {
+          img.onload = () => resolve()
+          img.onerror = () => resolve()
+          setTimeout(resolve, 3000)
+        })
+      } else {
+        await new Promise(r => setTimeout(r, 300))
+      }
+
+      const canvas = await html2canvas(container, {
+        scale: 2,
+        useCORS: true,
+        backgroundColor: '#ffffff',
+        logging: false,
+        width: container.offsetWidth,
+        height: container.scrollHeight,
+        windowWidth: container.offsetWidth,
+      })
+      document.body.removeChild(container)
+
+      const pdf = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4' })
+      const pageW = pdf.internal.pageSize.getWidth()
+      const pageH = pdf.internal.pageSize.getHeight()
+      const imgData = canvas.toDataURL('image/jpeg', 0.95)
+      const totalImgH = (canvas.height * pageW) / canvas.width
+
+      let cutY = 0
+      let pageNum = 0
+      while (cutY < totalImgH) {
+        if (pageNum > 0) pdf.addPage()
+        const sliceH = Math.min(pageH, totalImgH - cutY)
+        const srcY = (cutY / totalImgH) * canvas.height
+        const srcH = (sliceH / totalImgH) * canvas.height
+        const sliceCanvas = document.createElement('canvas')
+        sliceCanvas.width = canvas.width
+        sliceCanvas.height = srcH
+        const ctx = sliceCanvas.getContext('2d')!
+        ctx.drawImage(canvas, 0, srcY, canvas.width, srcH, 0, 0, canvas.width, srcH)
+        pdf.addImage(sliceCanvas.toDataURL('image/jpeg', 0.95), 'JPEG', 0, 0, pageW, sliceH)
+        cutY += pageH
+        pageNum++
+      }
+
+      const today = new Date().toISOString().slice(0, 10)
+      pdf.save(`Employee-Register-${today}.pdf`)
+      toast.success('Employee register downloaded')
+    } catch (err: any) {
+      console.error(err)
+      toast.error(err.message ?? 'Failed to generate PDF')
+    } finally {
+      setDownloadingReport(false)
+    }
+  }
 
   const loadData = useCallback(async () => {
     setLoading(true)
@@ -787,11 +866,24 @@ export default function EmployeesPage() {
           <h1 className="text-2xl font-black text-slate-900">Employees</h1>
           <p className="text-slate-500 text-sm">{employees.length} total records</p>
         </div>
-        <button onClick={() => { setEditingEmployee(null); setShowForm(true) }}
-          className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2.5 rounded-xl font-semibold flex items-center gap-2 transition-colors shadow-md hover:shadow-blue-200 text-sm">
-          <Plus className="w-4 h-4" />
-          Add Employee
-        </button>
+        <div className="flex items-center gap-2">
+          <button
+            onClick={downloadEmployeeReport}
+            disabled={downloadingReport}
+            className="border border-slate-200 bg-white hover:bg-slate-50 text-slate-700 px-4 py-2.5 rounded-xl font-semibold flex items-center gap-2 transition-colors shadow-sm text-sm disabled:opacity-60 disabled:cursor-not-allowed"
+            title="Download comprehensive employee register PDF (HR/Admin only)"
+          >
+            {downloadingReport
+              ? <><svg className="w-4 h-4 animate-spin" viewBox="0 0 24 24" fill="none"><circle cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" className="opacity-25"/><path fill="currentColor" d="M4 12a8 8 0 018-8v8z" className="opacity-75"/></svg>Generating…</>
+              : <><Download className="w-4 h-4" />Employee Register PDF</>
+            }
+          </button>
+          <button onClick={() => { setEditingEmployee(null); setShowForm(true) }}
+            className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2.5 rounded-xl font-semibold flex items-center gap-2 transition-colors shadow-md hover:shadow-blue-200 text-sm">
+            <Plus className="w-4 h-4" />
+            Add Employee
+          </button>
+        </div>
       </div>
 
       {/* Filters */}
