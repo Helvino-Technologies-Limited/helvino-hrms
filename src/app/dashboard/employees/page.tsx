@@ -794,7 +794,7 @@ export default function EmployeesPage() {
 
       // Mount hidden container
       const wrap = document.createElement('div')
-      wrap.style.cssText = 'position:fixed;left:-9999px;top:0;width:1050px;background:#fff;z-index:-1;visibility:hidden;'
+      wrap.style.cssText = 'position:fixed;left:-9999px;top:0;width:1050px;background:#fff;z-index:-1;opacity:0;pointer-events:none;'
       wrap.innerHTML = html
       document.body.appendChild(wrap)
 
@@ -822,9 +822,9 @@ export default function EmployeesPage() {
           allowTaint: false,
           backgroundColor: '#ffffff',
           logging: false,
-          width: el.offsetWidth,
+          width: el.offsetWidth || 1050,
           height: el.scrollHeight,
-          windowWidth: el.offsetWidth,
+          windowWidth: 1050,
         })
         const imgW = canvas.width
         const imgH = canvas.height

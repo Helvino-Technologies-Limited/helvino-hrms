@@ -207,8 +207,7 @@ export function generateEmployeeReportHtml(employees: Employee[]): string {
     .sc .l{font-size:8px;color:#64748b;margin-top:1px;}
   `
 
-  return `<!DOCTYPE html><html lang="en"><head><meta charset="UTF-8"/>
-<style>${css}</style></head><body><div class="wrap">
+  return `<style>${css}</style><div class="wrap">
 
 <div data-section="header" style="padding:20px 28px 0;">
   <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:16px;padding-bottom:10px;">
@@ -310,5 +309,5 @@ ${employees.map((e, i) => `
   </div>
 </div>
 
-</div></body></html>`
+</div>`
 }
