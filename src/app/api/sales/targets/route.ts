@@ -5,14 +5,14 @@ import { prisma } from '@/lib/prisma'
 import { logAudit } from '@/lib/audit'
 
 const DEFAULTS = {
-  SALES_AGENT:   { clientTarget: 5,  revenueTarget: 250000 },
-  SALES_MANAGER: { clientTarget: 10, revenueTarget: 500000 },
+  SALES_AGENT:   { leadTarget: 10, clientTarget: 5,  revenueTarget: 250000 },
+  SALES_MANAGER: { leadTarget: 20, clientTarget: 10, revenueTarget: 500000 },
 }
 
 // Seed missing rows so callers always get both roles back
 async function ensureDefaults() {
   await Promise.all(
-    (Object.entries(DEFAULTS) as [string, { clientTarget: number; revenueTarget: number }][]).map(
+    (Object.entries(DEFAULTS) as [string, { leadTarget: number; clientTarget: number; revenueTarget: number }][]).map(
       ([role, vals]) =>
         prisma.salesTarget.upsert({
           where: { role },
@@ -56,16 +56,18 @@ export async function PATCH(req: NextRequest) {
     // body: [{ role: 'SALES_AGENT', clientTarget: 5, revenueTarget: 250000 }, ...]
 
     const updates = await Promise.all(
-      (body as { role: string; clientTarget: number; revenueTarget: number }[]).map((item) =>
+      (body as { role: string; leadTarget: number; clientTarget: number; revenueTarget: number }[]).map((item) =>
         prisma.salesTarget.upsert({
           where: { role: item.role },
           create: {
             role: item.role,
+            leadTarget: Number(item.leadTarget),
             clientTarget: Number(item.clientTarget),
             revenueTarget: Number(item.revenueTarget),
             updatedBy: session.user.id,
           },
           update: {
+            leadTarget: Number(item.leadTarget),
             clientTarget: Number(item.clientTarget),
             revenueTarget: Number(item.revenueTarget),
             updatedBy: session.user.id,

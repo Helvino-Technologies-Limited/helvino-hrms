@@ -8,6 +8,7 @@ import { formatCurrency } from '@/lib/utils'
 type TargetRow = {
   id: string
   role: string
+  leadTarget: number
   clientTarget: number
   revenueTarget: number
   updatedAt: string
@@ -18,15 +19,15 @@ const ROLE_LABELS: Record<string, string> = {
   SALES_MANAGER: 'Sales Manager',
 }
 
-const DEFAULTS: Record<string, { clientTarget: number; revenueTarget: number }> = {
-  SALES_AGENT:   { clientTarget: 5,  revenueTarget: 250000 },
-  SALES_MANAGER: { clientTarget: 10, revenueTarget: 500000 },
+const DEFAULTS: Record<string, { leadTarget: number; clientTarget: number; revenueTarget: number }> = {
+  SALES_AGENT:   { leadTarget: 10, clientTarget: 5,  revenueTarget: 250000 },
+  SALES_MANAGER: { leadTarget: 20, clientTarget: 10, revenueTarget: 500000 },
 }
 
 export default function SalesTargetsPage() {
   const { data: session } = useSession()
   const [targets, setTargets] = useState<TargetRow[]>([])
-  const [form, setForm] = useState<Record<string, { clientTarget: string; revenueTarget: string }>>({})
+  const [form, setForm] = useState<Record<string, { leadTarget: string; clientTarget: string; revenueTarget: string }>>({})
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
 
@@ -42,6 +43,7 @@ export default function SalesTargetsPage() {
         const init: typeof form = {}
         data.forEach((t: TargetRow) => {
           init[t.role] = {
+            leadTarget: String(t.leadTarget ?? DEFAULTS[t.role]?.leadTarget ?? 10),
             clientTarget: String(t.clientTarget),
             revenueTarget: String(t.revenueTarget),
           }
@@ -61,7 +63,7 @@ export default function SalesTargetsPage() {
     if (!def) return
     setForm(prev => ({
       ...prev,
-      [role]: { clientTarget: String(def.clientTarget), revenueTarget: String(def.revenueTarget) },
+      [role]: { leadTarget: String(def.leadTarget), clientTarget: String(def.clientTarget), revenueTarget: String(def.revenueTarget) },
     }))
   }
 
@@ -70,6 +72,7 @@ export default function SalesTargetsPage() {
     try {
       const payload = Object.entries(form).map(([role, vals]) => ({
         role,
+        leadTarget: parseInt(vals.leadTarget) || 0,
         clientTarget: parseInt(vals.clientTarget) || 0,
         revenueTarget: parseFloat(vals.revenueTarget) || 0,
       }))
@@ -111,7 +114,7 @@ export default function SalesTargetsPage() {
         <div className="space-y-4">
           {roles.map((role) => {
             const current = targets.find(t => t.role === role)
-            const f = form[role] ?? { clientTarget: '', revenueTarget: '' }
+            const f = form[role] ?? { leadTarget: '', clientTarget: '', revenueTarget: '' }
             const def = DEFAULTS[role]
 
             return (
@@ -141,7 +144,34 @@ export default function SalesTargetsPage() {
                   )}
                 </div>
 
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                  {/* Lead target */}
+                  <div>
+                    <label className="block text-xs font-semibold text-slate-600 mb-1.5">
+                      Monthly Lead Target
+                    </label>
+                    {isAdmin ? (
+                      <div className="relative">
+                        <input
+                          type="number"
+                          min="0"
+                          value={f.leadTarget}
+                          onChange={e => setForm(prev => ({
+                            ...prev,
+                            [role]: { ...prev[role], leadTarget: e.target.value },
+                          }))}
+                          className="w-full px-3 py-2.5 text-sm border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 pr-14"
+                        />
+                        <span className="absolute right-3 top-1/2 -translate-y-1/2 text-xs text-slate-400 font-medium">leads</span>
+                      </div>
+                    ) : (
+                      <div className="px-3 py-2.5 bg-slate-50 rounded-xl text-sm font-semibold text-slate-800">
+                        {current?.leadTarget ?? def.leadTarget} leads
+                      </div>
+                    )}
+                    <p className="text-xs text-slate-400 mt-1">Default: {def.leadTarget} leads</p>
+                  </div>
+
                   {/* Client target */}
                   <div>
                     <label className="block text-xs font-semibold text-slate-600 mb-1.5">
@@ -200,6 +230,10 @@ export default function SalesTargetsPage() {
 
                 {/* Preview */}
                 <div className="mt-4 p-3 bg-blue-50 rounded-xl flex flex-wrap gap-4 text-xs">
+                  <span className="text-blue-700">
+                    <span className="font-semibold">Lead target:</span>{' '}
+                    {parseInt(f.leadTarget) || 0} leads / month
+                  </span>
                   <span className="text-blue-700">
                     <span className="font-semibold">Client target:</span>{' '}
                     {parseInt(f.clientTarget) || 0} new clients / month

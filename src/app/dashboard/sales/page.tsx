@@ -59,10 +59,11 @@ function SkeletonCard() {
 }
 
 // ─── Agent performance card ───────────────────────────────────────────────────
-function AgentCard({ agent }: { agent: { id: string; name: string; clientsThisMonth: number; revenueThisMonth: number; clientTarget: number; revenueTarget: number } }) {
+function AgentCard({ agent }: { agent: { id: string; name: string; leadsThisMonth: number; clientsThisMonth: number; revenueThisMonth: number; leadTarget: number; clientTarget: number; revenueTarget: number } }) {
+  const lp = pct(agent.leadsThisMonth, agent.leadTarget)
   const cp = pct(agent.clientsThisMonth, agent.clientTarget)
   const rp = pct(agent.revenueThisMonth, agent.revenueTarget)
-  const overall = Math.round((cp + rp) / 2)
+  const overall = Math.round((lp + cp + rp) / 3)
   const status = overall >= 80 ? 'On Track' : overall >= 40 ? 'In Progress' : 'Needs Attention'
   const statusColor = overall >= 80 ? 'bg-green-100 text-green-700' : overall >= 40 ? 'bg-amber-100 text-amber-700' : 'bg-red-100 text-red-700'
   const initials = agent.name.split(' ').map(n => n[0]).join('').toUpperCase().slice(0, 2)
@@ -87,6 +88,23 @@ function AgentCard({ agent }: { agent: { id: string; name: string; clientsThisMo
 
       {/* Metrics */}
       <div className="space-y-3">
+        {/* Leads */}
+        <div>
+          <div className="flex items-center justify-between mb-1.5">
+            <span className="text-xs font-semibold text-slate-500 flex items-center gap-1">
+              <TrendingUp className="w-3 h-3" /> Leads
+            </span>
+            <span className="text-xs font-bold text-slate-800">{agent.leadsThisMonth} / {agent.leadTarget}</span>
+          </div>
+          <div className="h-2 bg-slate-100 rounded-full overflow-hidden">
+            <div className={`h-full rounded-full transition-all duration-500 ${lp >= 100 ? 'bg-green-500' : lp >= 60 ? 'bg-indigo-500' : 'bg-amber-400'}`} style={{ width: `${lp}%` }} />
+          </div>
+          <div className="flex items-center justify-between mt-0.5">
+            <span className="text-xs text-slate-400">{lp >= 100 ? '✅ Target met' : `${agent.leadTarget - agent.leadsThisMonth} remaining`}</span>
+            <span className="text-xs font-bold text-slate-500">{lp}%</span>
+          </div>
+        </div>
+
         {/* Clients */}
         <div>
           <div className="flex items-center justify-between mb-1.5">
@@ -179,17 +197,19 @@ function ManagerDashboard({ data, loading }: { data: any; loading: boolean }) {
   const activeAgentsCount: number = data?.activeAgentsCount ?? teamPerformance.length
 
   // Manager's own personal target (their individual KPI)
-  const managerTarget = data?.managerTarget ?? { clientTarget: 10, revenueTarget: 500000, clientsThisMonth: 0, revenueThisMonth: 0, clientsRemaining: 10, revenueRemaining: 500000 }
+  const managerTarget = data?.managerTarget ?? { leadTarget: 20, clientTarget: 10, revenueTarget: 500000, leadsThisMonth: 0, clientsThisMonth: 0, revenueThisMonth: 0, leadsRemaining: 20, clientsRemaining: 10, revenueRemaining: 500000 }
+  const lp = pct(managerTarget.leadsThisMonth, managerTarget.leadTarget)
   const cp = pct(managerTarget.clientsThisMonth, managerTarget.clientTarget)
   const rp = pct(managerTarget.revenueThisMonth, managerTarget.revenueTarget)
   // Team combined totals (sum of all agents + manager)
+  const teamLeadsThisMonth: number = quick.leadsThisMonth ?? 0
   const teamClientsThisMonth: number = quick.clientsThisMonth ?? 0
   const teamRevenueThisMonth: number = quick.revenueThisMonth ?? 0
 
   const topAgent = teamPerformance.length > 0
     ? teamPerformance.reduce((best, a) => {
-        const score = pct(a.clientsThisMonth, a.clientTarget) + pct(a.revenueThisMonth, a.revenueTarget)
-        const bestScore = pct(best.clientsThisMonth, best.clientTarget) + pct(best.revenueThisMonth, best.revenueTarget)
+        const score = pct(a.leadsThisMonth, a.leadTarget) + pct(a.clientsThisMonth, a.clientTarget) + pct(a.revenueThisMonth, a.revenueTarget)
+        const bestScore = pct(best.leadsThisMonth, best.leadTarget) + pct(best.clientsThisMonth, best.clientTarget) + pct(best.revenueThisMonth, best.revenueTarget)
         return score > bestScore ? a : best
       }, teamPerformance[0])
     : null
@@ -237,11 +257,11 @@ function ManagerDashboard({ data, loading }: { data: any; loading: boolean }) {
               <div>
                 <div className="text-white font-black text-base">My Monthly Target — {monthName}</div>
                 <div className="text-blue-300 text-xs font-medium">
-                  Personal KPI · 10 clients · KSh 500,000 revenue
+                  Personal KPI · {managerTarget.leadTarget} leads · {managerTarget.clientTarget} clients
                 </div>
               </div>
             </div>
-            {cp >= 100 && rp >= 100 && (
+            {lp >= 100 && cp >= 100 && rp >= 100 && (
               <div className="bg-green-500/20 text-green-300 text-xs font-bold px-3 py-1.5 rounded-full border border-green-500/30">
                 🎉 TARGET MET!
               </div>
@@ -250,7 +270,33 @@ function ManagerDashboard({ data, loading }: { data: any; loading: boolean }) {
 
           {/* Progress section */}
           <div className="bg-gradient-to-br from-blue-600 to-blue-800 px-6 py-5">
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-5">
+              {/* Leads */}
+              <div className="bg-white/10 backdrop-blur rounded-xl p-4">
+                <div className="flex items-center justify-between mb-3">
+                  <div className="flex items-center gap-2">
+                    <TrendingUp className="w-4 h-4 text-blue-200" />
+                    <span className="text-blue-100 text-sm font-semibold">Leads This Month</span>
+                  </div>
+                  <div className="text-right">
+                    <span className="text-white font-black text-2xl">{managerTarget.leadsThisMonth}</span>
+                    <span className="text-blue-300 font-semibold text-lg"> / {managerTarget.leadTarget}</span>
+                  </div>
+                </div>
+                <div className="h-3 bg-white/15 rounded-full overflow-hidden mb-2">
+                  <div
+                    className={`h-full rounded-full transition-all duration-700 ${lp >= 100 ? 'bg-green-400' : lp >= 60 ? 'bg-amber-300' : 'bg-red-400'}`}
+                    style={{ width: `${lp}%` }}
+                  />
+                </div>
+                <div className="flex items-center justify-between">
+                  <span className="text-blue-200 text-xs">
+                    {lp >= 100 ? '✅ Target achieved!' : `${managerTarget.leadsRemaining} more needed`}
+                  </span>
+                  <span className="text-white text-sm font-black">{lp}%</span>
+                </div>
+              </div>
+
               {/* Clients */}
               <div className="bg-white/10 backdrop-blur rounded-xl p-4">
                 <div className="flex items-center justify-between mb-3">
@@ -310,6 +356,9 @@ function ManagerDashboard({ data, loading }: { data: any; loading: boolean }) {
                 <Users className="w-3.5 h-3.5" /> Team combined this month:
               </span>
               <div className="flex items-center gap-4">
+                <span className="text-white text-xs font-bold">
+                  <span className="text-blue-300">Leads: </span>{teamLeadsThisMonth}
+                </span>
                 <span className="text-white text-xs font-bold">
                   <span className="text-blue-300">Clients: </span>{teamClientsThisMonth}
                 </span>
@@ -706,6 +755,7 @@ function AgentDashboard({ data, loading }: { data: any; loading: boolean }) {
 
   const maxStatus = statusBreakdown.reduce((m, s) => Math.max(m, s.count), 1)
   const maxSource = leadSources.reduce((m, s) => Math.max(m, s.count), 1)
+  const alp = target ? pct(target.leadsThisMonth, target.leadTarget) : 0
   const cp = target ? pct(target.clientsThisMonth, target.clientTarget) : 0
   const rp = target ? pct(target.revenueThisMonth, target.revenueTarget) : 0
 
@@ -793,29 +843,48 @@ function AgentDashboard({ data, loading }: { data: any; loading: boolean }) {
           <div className="flex items-center gap-2 mb-4">
             <Target className="w-5 h-5 text-blue-200" />
             <h3 className="font-bold text-lg">My Monthly Target</h3>
+            {alp >= 100 && cp >= 100 && rp >= 100 && (
+              <span className="ml-1 text-xs bg-green-500/20 text-green-300 px-2.5 py-1 rounded-full border border-green-500/30 font-bold">🎉 ALL MET!</span>
+            )}
             <span className="ml-auto text-xs text-blue-300 font-medium">{new Date().toLocaleString('default', { month: 'long', year: 'numeric' })}</span>
           </div>
-          <div className="grid grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+            {/* Leads */}
             <div className="bg-white/10 rounded-xl p-4">
               <div className="flex items-center justify-between mb-2">
-                <span className="text-blue-100 text-sm font-semibold">Clients</span>
+                <span className="text-blue-100 text-sm font-semibold flex items-center gap-1.5"><TrendingUp className="w-3.5 h-3.5" /> Leads</span>
+                <span className="text-white font-black text-lg">{target.leadsThisMonth} / {target.leadTarget}</span>
+              </div>
+              <div className="h-2.5 bg-white/20 rounded-full overflow-hidden">
+                <div className={`h-full rounded-full ${alp >= 100 ? 'bg-green-400' : alp >= 60 ? 'bg-indigo-300' : 'bg-amber-300'}`} style={{ width: `${alp}%` }} />
+              </div>
+              <div className="flex justify-between mt-1.5 text-xs text-blue-200">
+                <span>{alp >= 100 ? '✅ Done!' : `${target.leadTarget - target.leadsThisMonth} to go`}</span>
+                <span className="font-bold">{alp}%</span>
+              </div>
+            </div>
+            {/* Clients */}
+            <div className="bg-white/10 rounded-xl p-4">
+              <div className="flex items-center justify-between mb-2">
+                <span className="text-blue-100 text-sm font-semibold flex items-center gap-1.5"><Building2 className="w-3.5 h-3.5" /> Clients</span>
                 <span className="text-white font-black text-lg">{target.clientsThisMonth} / {target.clientTarget}</span>
               </div>
               <div className="h-2.5 bg-white/20 rounded-full overflow-hidden">
-                <div className={`h-full rounded-full ${cp >= 100 ? 'bg-green-400' : 'bg-amber-300'}`} style={{ width: `${cp}%` }} />
+                <div className={`h-full rounded-full ${cp >= 100 ? 'bg-green-400' : cp >= 60 ? 'bg-blue-300' : 'bg-amber-300'}`} style={{ width: `${cp}%` }} />
               </div>
               <div className="flex justify-between mt-1.5 text-xs text-blue-200">
                 <span>{cp >= 100 ? '✅ Done!' : `${target.clientTarget - target.clientsThisMonth} to go`}</span>
                 <span className="font-bold">{cp}%</span>
               </div>
             </div>
+            {/* Revenue */}
             <div className="bg-white/10 rounded-xl p-4">
               <div className="flex items-center justify-between mb-2">
-                <span className="text-blue-100 text-sm font-semibold">Revenue</span>
+                <span className="text-blue-100 text-sm font-semibold flex items-center gap-1.5"><DollarSign className="w-3.5 h-3.5" /> Revenue</span>
                 <span className="text-white font-black text-base">{formatCurrency(target.revenueThisMonth)}</span>
               </div>
               <div className="h-2.5 bg-white/20 rounded-full overflow-hidden">
-                <div className={`h-full rounded-full ${rp >= 100 ? 'bg-green-400' : 'bg-amber-300'}`} style={{ width: `${rp}%` }} />
+                <div className={`h-full rounded-full ${rp >= 100 ? 'bg-green-400' : rp >= 60 ? 'bg-emerald-300' : 'bg-amber-300'}`} style={{ width: `${rp}%` }} />
               </div>
               <div className="flex justify-between mt-1.5 text-xs text-blue-200">
                 <span>Target: {formatCurrency(target.revenueTarget)}</span>

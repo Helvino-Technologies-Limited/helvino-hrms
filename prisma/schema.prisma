@@ -1378,6 +1378,7 @@ model SalesTeamTask {
 model SalesTarget {
   id            String   @id @default(cuid())
   role          String   @unique // 'SALES_AGENT' | 'SALES_MANAGER'
+  leadTarget    Int      @default(10)
   clientTarget  Int      @default(5)
   revenueTarget Float    @default(250000)
   updatedBy     String?  // userId of last admin who changed it
@@ -1389,6 +1390,7 @@ model SalesEmployeeTarget {
   id            String   @id @default(cuid())
   employeeId    String   @unique
   employee      Employee @relation(fields: [employeeId], references: [id], onDelete: Cascade)
+  leadTarget    Int      @default(10)
   clientTarget  Int
   revenueTarget Float
   updatedBy     String?  // userId of admin who last changed it
