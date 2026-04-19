@@ -30,9 +30,9 @@ export async function GET(req: NextRequest) {
     let teamAgents: { id: string; firstName: string; lastName: string }[] = []
 
     if (IS_MANAGER && empId) {
-      // Manager sees own + all agents assigned to them
+      // Manager sees own + all active agents assigned to them (exclude terminated/resigned)
       const agents = await prisma.employee.findMany({
-        where: { managerId: empId },
+        where: { managerId: empId, employmentStatus: 'ACTIVE' },
         select: { id: true, firstName: true, lastName: true },
       })
       teamAgents = agents
@@ -296,10 +296,10 @@ export async function GET(req: NextRequest) {
       applicantStats = { total: totalApplicants, newThisWeek: newApplicantsThisWeek, shortlisted: shortlistedApplicants, hired: hiredApplicants, byStatus }
     }
 
-    // If no agents are formally assigned, show all SALES_AGENT employees as the team
+    // If no agents are formally assigned, show all active SALES_AGENT employees as the team
     if (IS_MANAGER && teamAgents.length === 0) {
       const allAgents = await prisma.employee.findMany({
-        where: { user: { role: 'SALES_AGENT' } },
+        where: { user: { role: 'SALES_AGENT' }, employmentStatus: 'ACTIVE' },
         select: { id: true, firstName: true, lastName: true },
       })
       teamAgents = allAgents
@@ -359,7 +359,7 @@ export async function GET(req: NextRequest) {
 
     if (IS_VIEW_ALL) {
       const allAgents = await prisma.employee.findMany({
-        where: { user: { role: 'SALES_AGENT' } },
+        where: { user: { role: 'SALES_AGENT' }, employmentStatus: 'ACTIVE' },
         select: { id: true, firstName: true, lastName: true },
       })
       if (allAgents.length > 0) {
