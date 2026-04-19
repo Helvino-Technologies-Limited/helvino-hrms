@@ -171,6 +171,7 @@ export async function GET(req: NextRequest) {
         orderBy: { createdAt: 'desc' },
         include: {
           assignedTo: { select: { firstName: true, lastName: true } },
+          createdBy: { select: { firstName: true, lastName: true } },
         },
       }),
       prisma.client.findMany({
@@ -347,48 +348,57 @@ export async function GET(req: NextRequest) {
       })
     }
 
-    // HEAD_OF_SALES: build per-manager performance breakdown
-    let managersPerformance: Array<{
-      id: string; name: string; agentCount: number;
-      clientsThisMonth: number; revenueThisMonth: number; totalLeads: number;
+    // VIEW_ALL roles: build per-agent performance breakdown (all agents)
+    const IS_VIEW_ALL = VIEW_ALL.includes(role)
+    let agentsPerformance: Array<{
+      id: string; name: string; totalLeads: number; leadsThisMonth: number;
+      activeClients: number; paidClients: number; revenueTotal: number;
     }> = []
 
-    if (IS_HEAD_OF_SALES) {
-      const allManagers = await prisma.employee.findMany({
-        where: { user: { role: 'SALES_MANAGER' } },
+    if (IS_VIEW_ALL) {
+      const allAgents = await prisma.employee.findMany({
+        where: { user: { role: 'SALES_AGENT' } },
         select: { id: true, firstName: true, lastName: true },
       })
-      if (allManagers.length > 0) {
-        const mgrIds = allManagers.map((m) => m.id)
-        const [agentCounts, mgClientCounts, mgRevenueSums, mgLeadCounts] = await Promise.all([
-          prisma.employee.groupBy({ by: ['managerId'], where: { managerId: { in: mgrIds } }, _count: { id: true } }),
+      if (allAgents.length > 0) {
+        const agentIds = allAgents.map((a) => a.id)
+        const [
+          agentTotalLeads,
+          agentMonthLeads,
+          agentActiveClients,
+          agentPaidClients,
+          agentRevenue,
+        ] = await Promise.all([
+          prisma.lead.groupBy({ by: ['createdById'], where: { createdById: { in: agentIds } }, _count: { id: true } }),
+          prisma.lead.groupBy({ by: ['createdById'], where: { createdById: { in: agentIds }, createdAt: { gte: monthStart, lt: monthEnd } }, _count: { id: true } }),
+          prisma.client.groupBy({ by: ['createdById'], where: { createdById: { in: agentIds }, isActive: true }, _count: { id: true } }),
           prisma.client.groupBy({
             by: ['createdById'],
-            where: { createdById: { in: mgrIds }, createdAt: { gte: monthStart, lt: monthEnd } },
+            where: {
+              createdById: { in: agentIds },
+              invoices: { some: { status: 'PAID' } },
+            },
             _count: { id: true },
           }),
           prisma.quotation.groupBy({
             by: ['createdById'],
-            where: { createdById: { in: mgrIds }, status: 'APPROVED', createdAt: { gte: monthStart, lt: monthEnd } },
+            where: { createdById: { in: agentIds }, status: 'APPROVED' },
             _sum: { totalAmount: true },
           }),
-          prisma.lead.groupBy({
-            by: ['createdById'],
-            where: { createdById: { in: mgrIds } },
-            _count: { id: true },
-          }),
         ])
-        const agentCountMap = new Map(agentCounts.map((r) => [r.managerId, r._count.id]))
-        const mgClientMap = new Map(mgClientCounts.map((r) => [r.createdById, r._count.id]))
-        const mgRevenueMap = new Map(mgRevenueSums.map((r) => [r.createdById, Number(r._sum.totalAmount ?? 0)]))
-        const mgLeadMap = new Map(mgLeadCounts.map((r) => [r.createdById, r._count.id]))
-        managersPerformance = allManagers.map((m) => ({
-          id: m.id,
-          name: `${m.firstName} ${m.lastName}`,
-          agentCount: agentCountMap.get(m.id) ?? 0,
-          clientsThisMonth: mgClientMap.get(m.id) ?? 0,
-          revenueThisMonth: mgRevenueMap.get(m.id) ?? 0,
-          totalLeads: mgLeadMap.get(m.id) ?? 0,
+        const totalLeadMap = new Map(agentTotalLeads.map((r) => [r.createdById, r._count.id]))
+        const monthLeadMap = new Map(agentMonthLeads.map((r) => [r.createdById, r._count.id]))
+        const activeClientMap = new Map(agentActiveClients.map((r) => [r.createdById, r._count.id]))
+        const paidClientMap = new Map(agentPaidClients.map((r) => [r.createdById, r._count.id]))
+        const revenueMap = new Map(agentRevenue.map((r) => [r.createdById, Number(r._sum.totalAmount ?? 0)]))
+        agentsPerformance = allAgents.map((a) => ({
+          id: a.id,
+          name: `${a.firstName} ${a.lastName}`,
+          totalLeads: totalLeadMap.get(a.id) ?? 0,
+          leadsThisMonth: monthLeadMap.get(a.id) ?? 0,
+          activeClients: activeClientMap.get(a.id) ?? 0,
+          paidClients: paidClientMap.get(a.id) ?? 0,
+          revenueTotal: revenueMap.get(a.id) ?? 0,
         }))
       }
     }
@@ -441,7 +451,7 @@ export async function GET(req: NextRequest) {
       teamPerformance: IS_MANAGER ? teamPerformance : undefined,
       applicantStats: IS_MANAGER ? applicantStats : undefined,
       activeAgentsCount: IS_MANAGER ? teamAgents.length : undefined,
-      managersPerformance: IS_HEAD_OF_SALES ? managersPerformance : undefined,
+      agentsPerformance: IS_VIEW_ALL ? agentsPerformance : undefined,
       recentLeads,
       recentClients,
       statusBreakdown,

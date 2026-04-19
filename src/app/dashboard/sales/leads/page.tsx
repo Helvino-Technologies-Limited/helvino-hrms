@@ -48,7 +48,7 @@ const SERVICES_LIST = [
   'IT Consultancy',
 ]
 
-const ADMIN_ROLES = ['SUPER_ADMIN', 'HR_MANAGER', 'SALES_MANAGER', 'FINANCE_OFFICER']
+const ADMIN_ROLES = ['SUPER_ADMIN', 'HR_MANAGER', 'SALES_MANAGER', 'FINANCE_OFFICER', 'HEAD_OF_SALES']
 
 export default function LeadsPage() {
   const { data: session } = useSession()

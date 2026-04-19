@@ -1002,6 +1002,318 @@ function AgentDashboard({ data, loading }: { data: any; loading: boolean }) {
 }
 
 // ═══════════════════════════════════════════════════════════════════════════════
+// HEAD OF SALES / ADMIN / HR DASHBOARD
+// ═══════════════════════════════════════════════════════════════════════════════
+function HeadOfSalesDashboard({ data, loading }: { data: any; loading: boolean }) {
+  const { data: session } = useSession()
+  const role: string = (session?.user as any)?.role ?? ''
+  const stats = data?.stats ?? {}
+  const quick = data?.quick ?? {}
+  const agentsPerformance: any[] = data?.agentsPerformance ?? []
+  const recentLeads: any[] = data?.recentLeads ?? []
+  const recentClients: any[] = data?.recentClients ?? []
+  const statusBreakdown: { status: string; count: number }[] = data?.statusBreakdown ?? []
+  const monthlyLeads: { month: string; count: number }[] = data?.monthlyLeads ?? []
+  const leadSources: { source: string; count: number }[] = data?.leadSources ?? []
+  const maxStatus = statusBreakdown.reduce((m, s) => Math.max(m, s.count), 1)
+  const maxSource = leadSources.reduce((m, s) => Math.max(m, s.count), 1)
+
+  const totalPaidClients = agentsPerformance.reduce((s, a) => s + a.paidClients, 0)
+  const now = new Date()
+  const roleLabel = role === 'HEAD_OF_SALES' ? 'Head of Sales' : role === 'HR_MANAGER' ? 'HR Manager' : 'Super Admin'
+
+  return (
+    <div className="space-y-6">
+      {/* Header */}
+      <div className="flex items-start justify-between flex-wrap gap-3">
+        <div>
+          <h1 className="text-2xl font-black text-slate-900">Sales Overview</h1>
+          <p className="text-slate-500 text-sm">{roleLabel} · {now.toLocaleDateString('en-KE', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' })}</p>
+        </div>
+        <div className="flex gap-2 flex-wrap">
+          <Link href="/dashboard/sales/leads" className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2.5 rounded-xl font-semibold flex items-center gap-2 text-sm shadow-sm transition-colors">
+            <TrendingUp className="w-4 h-4" /> All Leads
+          </Link>
+          <Link href="/dashboard/sales/clients" className="bg-white hover:bg-slate-50 border border-slate-200 text-slate-700 px-4 py-2.5 rounded-xl font-semibold flex items-center gap-2 text-sm transition-colors">
+            <Building2 className="w-4 h-4" /> All Clients
+          </Link>
+          <Link href="/dashboard/sales/reports" className="bg-white hover:bg-slate-50 border border-slate-200 text-slate-700 px-4 py-2.5 rounded-xl font-semibold flex items-center gap-2 text-sm transition-colors">
+            <BarChart3 className="w-4 h-4" /> Reports
+          </Link>
+        </div>
+      </div>
+
+      {/* KPI summary */}
+      {loading ? (
+        <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">{[...Array(4)].map((_, i) => <SkeletonCard key={i} />)}</div>
+      ) : (
+        <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+          <div className="bg-white rounded-2xl p-5 shadow-sm border border-slate-100">
+            <div className="w-10 h-10 bg-blue-100 rounded-xl flex items-center justify-center mb-3"><TrendingUp className="w-5 h-5 text-blue-600" /></div>
+            <div className="text-3xl font-black text-slate-900">{stats.totalLeads ?? 0}</div>
+            <div className="text-slate-700 text-sm font-semibold">Total Leads</div>
+            <div className="text-xs text-slate-400 mt-0.5">{stats.activeLeads ?? 0} active · {stats.wonDeals ?? 0} won · {stats.lostLeads ?? 0} lost</div>
+          </div>
+          <div className="bg-white rounded-2xl p-5 shadow-sm border border-slate-100">
+            <div className="w-10 h-10 bg-green-100 rounded-xl flex items-center justify-center mb-3"><Trophy className="w-5 h-5 text-green-600" /></div>
+            <div className="text-3xl font-black text-slate-900">{stats.activeClients ?? 0}</div>
+            <div className="text-slate-700 text-sm font-semibold">Active Clients</div>
+            <div className="text-xs text-slate-400 mt-0.5">+{quick.clientsThisMonth ?? 0} this month</div>
+          </div>
+          <div className="bg-white rounded-2xl p-5 shadow-sm border border-slate-100">
+            <div className="w-10 h-10 bg-emerald-100 rounded-xl flex items-center justify-center mb-3"><CheckSquare className="w-5 h-5 text-emerald-600" /></div>
+            <div className="text-3xl font-black text-slate-900">{totalPaidClients}</div>
+            <div className="text-slate-700 text-sm font-semibold">Paid Clients</div>
+            <div className="text-xs text-slate-400 mt-0.5">Clients with paid invoice</div>
+          </div>
+          <div className="bg-white rounded-2xl p-5 shadow-sm border border-slate-100">
+            <div className="w-10 h-10 bg-purple-100 rounded-xl flex items-center justify-center mb-3"><Users className="w-5 h-5 text-purple-600" /></div>
+            <div className="text-3xl font-black text-slate-900">{agentsPerformance.length}</div>
+            <div className="text-slate-700 text-sm font-semibold">Sales Agents</div>
+            <div className="text-xl font-black text-slate-400 mt-0.5 text-sm">{formatCurrency(stats.totalRevenue ?? 0)} total rev.</div>
+          </div>
+        </div>
+      )}
+
+      {/* Quick metrics row */}
+      {!loading && (
+        <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+          <Link href="/dashboard/sales/leads" className="bg-white rounded-2xl p-4 border border-slate-100 flex items-center gap-3 hover:shadow-md transition-all">
+            <div className="w-9 h-9 bg-blue-100 rounded-xl flex items-center justify-center flex-shrink-0"><UserPlus className="w-4 h-4 text-blue-600" /></div>
+            <div>
+              <div className="text-2xl font-black text-blue-700 leading-none">{quick.newLeads ?? 0}</div>
+              <div className="text-slate-500 text-xs font-semibold mt-0.5">New Leads</div>
+              <div className="text-slate-400 text-xs">+{quick.leadsThisMonth ?? 0} this month</div>
+            </div>
+          </Link>
+          <Link href="/dashboard/sales/quotations" className="bg-white rounded-2xl p-4 border border-slate-100 flex items-center gap-3 hover:shadow-md transition-all">
+            <div className="w-9 h-9 bg-amber-100 rounded-xl flex items-center justify-center flex-shrink-0"><FileText className="w-4 h-4 text-amber-600" /></div>
+            <div>
+              <div className="text-2xl font-black text-amber-700 leading-none">{quick.pendingQuotations ?? 0}</div>
+              <div className="text-slate-500 text-xs font-semibold mt-0.5">Pending Quotes</div>
+              <div className="text-slate-400 text-xs">+{quick.quotationsThisMonth ?? 0} this month</div>
+            </div>
+          </Link>
+          <div className="bg-white rounded-2xl p-4 border border-slate-100 flex items-center gap-3">
+            <div className="w-9 h-9 bg-green-100 rounded-xl flex items-center justify-center flex-shrink-0"><DollarSign className="w-4 h-4 text-green-600" /></div>
+            <div>
+              <div className="text-lg font-black text-green-700 leading-none">{formatCurrency(quick.revenueThisMonth ?? 0)}</div>
+              <div className="text-slate-500 text-xs font-semibold mt-0.5">Revenue This Month</div>
+            </div>
+          </div>
+          <Link href="/dashboard/sales/quotations" className="bg-white rounded-2xl p-4 border border-slate-100 flex items-center gap-3 hover:shadow-md transition-all">
+            <div className="w-9 h-9 bg-emerald-100 rounded-xl flex items-center justify-center flex-shrink-0"><Trophy className="w-4 h-4 text-emerald-600" /></div>
+            <div>
+              <div className="text-2xl font-black text-emerald-700 leading-none">{stats.approvedQuotations ?? 0}</div>
+              <div className="text-slate-500 text-xs font-semibold mt-0.5">Approved Quotes</div>
+              <div className="text-slate-400 text-xs">{formatCurrency(stats.totalRevenue ?? 0)} all time</div>
+            </div>
+          </Link>
+        </div>
+      )}
+
+      {/* ── Per-agent breakdown table ── */}
+      <div className="bg-white rounded-2xl shadow-sm border border-slate-100 overflow-hidden">
+        <div className="flex items-center justify-between px-5 py-4 border-b border-slate-100">
+          <div className="flex items-center gap-2">
+            <Users className="w-5 h-5 text-blue-600" />
+            <h2 className="font-black text-slate-900">Agent Performance Breakdown</h2>
+          </div>
+          <span className="text-xs text-slate-400">{now.toLocaleString('default', { month: 'long', year: 'numeric' })}</span>
+        </div>
+        {loading ? (
+          <div className="flex items-center justify-center h-32"><div className="w-7 h-7 border-4 border-blue-600 border-t-transparent rounded-full animate-spin" /></div>
+        ) : agentsPerformance.length === 0 ? (
+          <div className="text-center py-12 text-slate-400">
+            <Users className="w-10 h-10 mx-auto mb-2 text-slate-200" />
+            <p className="text-sm font-medium">No sales agents found</p>
+          </div>
+        ) : (
+          <div className="overflow-x-auto">
+            <table className="w-full text-sm">
+              <thead className="bg-slate-50 border-b border-slate-200">
+                <tr>
+                  {['Agent', 'Total Leads', 'Leads This Month', 'Active Clients', 'Paid Clients', 'Revenue (Approved)'].map(h => (
+                    <th key={h} className="text-left px-4 py-3 text-xs font-semibold text-slate-500 uppercase whitespace-nowrap">{h}</th>
+                  ))}
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-slate-100">
+                {agentsPerformance.sort((a, b) => b.totalLeads - a.totalLeads).map((agent: any) => {
+                  const initials = agent.name.split(' ').map((n: string) => n[0]).join('').toUpperCase().slice(0, 2)
+                  const avatarColors = ['bg-blue-500', 'bg-purple-500', 'bg-emerald-500', 'bg-orange-500', 'bg-rose-500', 'bg-teal-500']
+                  const avatarColor = avatarColors[agent.name.charCodeAt(0) % avatarColors.length]
+                  return (
+                    <tr key={agent.id} className="hover:bg-slate-50 transition-colors">
+                      <td className="px-4 py-3.5 whitespace-nowrap">
+                        <div className="flex items-center gap-2.5">
+                          <div className={`w-8 h-8 rounded-xl flex items-center justify-center text-white font-black text-xs flex-shrink-0 ${avatarColor}`}>{initials}</div>
+                          <span className="font-semibold text-slate-900 text-sm">{agent.name}</span>
+                        </div>
+                      </td>
+                      <td className="px-4 py-3.5 whitespace-nowrap">
+                        <span className="text-2xl font-black text-slate-900">{agent.totalLeads}</span>
+                      </td>
+                      <td className="px-4 py-3.5 whitespace-nowrap">
+                        <span className="text-lg font-bold text-blue-700">{agent.leadsThisMonth}</span>
+                      </td>
+                      <td className="px-4 py-3.5 whitespace-nowrap">
+                        <span className="text-lg font-bold text-purple-700">{agent.activeClients}</span>
+                      </td>
+                      <td className="px-4 py-3.5 whitespace-nowrap">
+                        <span className={`inline-flex items-center gap-1 text-sm font-bold px-2.5 py-0.5 rounded-full ${agent.paidClients > 0 ? 'bg-green-100 text-green-700' : 'bg-slate-100 text-slate-500'}`}>
+                          {agent.paidClients > 0 && <CheckSquare className="w-3 h-3" />}
+                          {agent.paidClients}
+                        </span>
+                      </td>
+                      <td className="px-4 py-3.5 whitespace-nowrap">
+                        <span className="text-sm font-bold text-emerald-700">{formatCurrency(agent.revenueTotal)}</span>
+                      </td>
+                    </tr>
+                  )
+                })}
+              </tbody>
+            </table>
+          </div>
+        )}
+      </div>
+
+      {/* ── Pipeline + Monthly trend + Sources ── */}
+      {loading ? (
+        <div className="grid lg:grid-cols-3 gap-5">
+          {[...Array(3)].map((_, i) => <div key={i} className="bg-white rounded-2xl p-6 animate-pulse border border-slate-100"><div className="h-4 bg-slate-200 rounded w-32 mb-4" />{[...Array(5)].map((_, j) => <div key={j} className="h-6 bg-slate-100 rounded mb-2" />)}</div>)}
+        </div>
+      ) : (
+        <div className="grid lg:grid-cols-3 gap-5">
+          <div className="bg-white rounded-2xl shadow-sm border border-slate-100 p-5">
+            <div className="flex items-center gap-2 mb-4"><Activity className="w-4 h-4 text-blue-600" /><h3 className="font-bold text-slate-900">Lead Pipeline</h3></div>
+            {statusBreakdown.length === 0 ? <p className="text-slate-400 text-sm text-center py-8">No data</p> : (
+              <div className="space-y-3">
+                {statusBreakdown.map(({ status, count }) => (
+                  <div key={status}>
+                    <div className="flex items-center justify-between mb-1">
+                      <span className={`text-xs font-semibold px-2 py-0.5 rounded-full border ${STATUS_COLORS[status] || 'bg-slate-100 text-slate-600 border-slate-200'}`}>{status.replace(/_/g, ' ')}</span>
+                      <span className="text-xs font-bold text-slate-900">{count}</span>
+                    </div>
+                    <div className="h-1.5 bg-slate-100 rounded-full overflow-hidden">
+                      <div className={`h-full rounded-full ${STATUS_BAR[status] || 'bg-slate-400'}`} style={{ width: `${Math.round((count / maxStatus) * 100)}%` }} />
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+          <div className="bg-white rounded-2xl shadow-sm border border-slate-100 p-5">
+            <div className="flex items-center gap-2 mb-1"><BarChart3 className="w-4 h-4 text-blue-600" /><h3 className="font-bold text-slate-900">Monthly Lead Trend</h3></div>
+            <p className="text-xs text-slate-400 mb-4">Last 6 months</p>
+            {monthlyLeads.length > 0 ? (
+              <>
+                <MiniBarChart data={monthlyLeads} />
+                <div className="mt-3 flex items-center justify-between text-xs text-slate-400">
+                  <span>Total: {monthlyLeads.reduce((s, d) => s + d.count, 0)}</span>
+                  <span>Avg: {Math.round(monthlyLeads.reduce((s, d) => s + d.count, 0) / monthlyLeads.length)}/mo</span>
+                </div>
+              </>
+            ) : <p className="text-slate-400 text-sm text-center py-8">No data</p>}
+          </div>
+          <div className="bg-white rounded-2xl shadow-sm border border-slate-100 p-5">
+            <div className="flex items-center gap-2 mb-4"><Zap className="w-4 h-4 text-blue-600" /><h3 className="font-bold text-slate-900">Lead Sources</h3></div>
+            {leadSources.length === 0 ? <p className="text-slate-400 text-sm text-center py-8">No data</p> : (
+              <div className="space-y-2.5">
+                {leadSources.map(({ source, count }) => (
+                  <div key={source} className="flex items-center gap-3">
+                    <span className="text-xs font-semibold text-slate-600 w-28 flex-shrink-0 capitalize truncate">{source.replace(/_/g, ' ')}</span>
+                    <div className="flex-1 h-5 bg-slate-100 rounded-lg overflow-hidden">
+                      <div className="h-full bg-blue-500 rounded-lg flex items-center justify-end pr-2" style={{ width: `${Math.max(12, Math.round((count / maxSource) * 100))}%` }}>
+                        <span className="text-white text-xs font-bold">{count}</span>
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        </div>
+      )}
+
+      {/* ── Recent leads (with creator) + Recent clients ── */}
+      {loading ? (
+        <div className="grid lg:grid-cols-2 gap-5">{[0,1].map(i => <div key={i} className="bg-white rounded-2xl p-6 animate-pulse border border-slate-100"><div className="h-4 bg-slate-200 rounded w-32 mb-4" />{[...Array(5)].map((_,j) => <div key={j} className="h-10 bg-slate-100 rounded-xl mb-2" />)}</div>)}</div>
+      ) : (
+        <div className="grid lg:grid-cols-2 gap-5">
+          <div className="bg-white rounded-2xl shadow-sm border border-slate-100 overflow-hidden">
+            <div className="flex items-center justify-between px-5 py-4 border-b border-slate-100">
+              <div className="flex items-center gap-2"><TrendingUp className="w-4 h-4 text-blue-600" /><h3 className="font-bold text-slate-900">Recent Leads</h3></div>
+              <Link href="/dashboard/sales/leads" className="text-sm text-blue-600 hover:underline font-semibold flex items-center gap-1">View all <ArrowRight className="w-3.5 h-3.5" /></Link>
+            </div>
+            {recentLeads.length === 0 ? (
+              <div className="text-center py-10 text-slate-400"><TrendingUp className="w-8 h-8 mx-auto mb-2 text-slate-200" /><p className="text-sm">No leads yet</p></div>
+            ) : (
+              <div className="overflow-x-auto">
+                <table className="w-full text-sm">
+                  <thead className="bg-slate-50 border-b border-slate-100">
+                    <tr>
+                      {['Lead #', 'Contact', 'Status', 'Created By', 'Date'].map(h => (
+                        <th key={h} className="text-left px-4 py-3 text-xs font-semibold text-slate-500 uppercase whitespace-nowrap">{h}</th>
+                      ))}
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-slate-50">
+                    {recentLeads.map((lead: any) => (
+                      <tr key={lead.id} className="hover:bg-slate-50 transition-colors">
+                        <td className="px-4 py-3 whitespace-nowrap">
+                          <Link href={`/dashboard/sales/leads/${lead.id}`} className="font-mono text-xs text-blue-600 font-bold">#{lead.leadNumber || lead.id?.slice(-6).toUpperCase()}</Link>
+                        </td>
+                        <td className="px-4 py-3 whitespace-nowrap">
+                          <div className="font-semibold text-slate-900 text-xs">{lead.contactPerson}</div>
+                          <div className="text-slate-400 text-xs">{lead.companyName || lead.email || '—'}</div>
+                        </td>
+                        <td className="px-4 py-3 whitespace-nowrap">
+                          <span className={`px-2 py-0.5 rounded-full text-xs font-semibold border ${STATUS_COLORS[lead.status] || ''}`}>{lead.status?.replace(/_/g, ' ')}</span>
+                        </td>
+                        <td className="px-4 py-3 whitespace-nowrap text-xs text-slate-700 font-medium">
+                          {lead.createdBy ? `${lead.createdBy.firstName} ${lead.createdBy.lastName}` : '—'}
+                        </td>
+                        <td className="px-4 py-3 whitespace-nowrap text-xs text-slate-400">{formatDate(lead.createdAt)}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            )}
+          </div>
+          <div className="bg-white rounded-2xl shadow-sm border border-slate-100 overflow-hidden">
+            <div className="flex items-center justify-between px-5 py-4 border-b border-slate-100">
+              <div className="flex items-center gap-2"><Building2 className="w-4 h-4 text-purple-600" /><h3 className="font-bold text-slate-900">Recent Clients</h3></div>
+              <Link href="/dashboard/sales/clients" className="text-sm text-blue-600 hover:underline font-semibold flex items-center gap-1">View all <ArrowRight className="w-3.5 h-3.5" /></Link>
+            </div>
+            {recentClients.length === 0 ? (
+              <div className="text-center py-10 text-slate-400"><Building2 className="w-8 h-8 mx-auto mb-2 text-slate-200" /><p className="text-sm">No clients yet</p></div>
+            ) : (
+              <div className="divide-y divide-slate-50">
+                {recentClients.map((client: any) => (
+                  <Link key={client.id} href={`/dashboard/sales/clients/${client.id}`}
+                    className="flex items-center gap-3 px-5 py-3 hover:bg-slate-50 transition-colors">
+                    <div className="w-8 h-8 bg-purple-100 rounded-xl flex items-center justify-center flex-shrink-0">
+                      <Building2 className="w-4 h-4 text-purple-600" />
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <div className="font-semibold text-slate-900 text-sm truncate">{client.companyName}</div>
+                      <div className="text-xs text-slate-400 truncate">{client.contactPerson} · {formatDate(client.createdAt)}</div>
+                    </div>
+                    <span className={`text-xs font-semibold px-2 py-0.5 rounded-full flex-shrink-0 ${CLIENT_CATEGORY_COLORS[client.category] || 'bg-slate-100 text-slate-600'}`}>{client.category}</span>
+                  </Link>
+                ))}
+              </div>
+            )}
+          </div>
+        </div>
+      )}
+    </div>
+  )
+}
+
+// ═══════════════════════════════════════════════════════════════════════════════
 // ROOT — picks the right dashboard based on role
 // ═══════════════════════════════════════════════════════════════════════════════
 export default function SalesDashboardPage() {
@@ -1020,8 +1332,9 @@ export default function SalesDashboardPage() {
 
   const role = data?.role ?? (session?.user as any)?.role ?? ''
   const isManager = role === 'SALES_MANAGER'
+  const isViewAll = ['SUPER_ADMIN', 'HR_MANAGER', 'HEAD_OF_SALES'].includes(role)
 
-  return isManager
-    ? <ManagerDashboard data={data} loading={loading} />
-    : <AgentDashboard data={data} loading={loading} />
+  if (isViewAll) return <HeadOfSalesDashboard data={data} loading={loading} />
+  if (isManager) return <ManagerDashboard data={data} loading={loading} />
+  return <AgentDashboard data={data} loading={loading} />
 }
