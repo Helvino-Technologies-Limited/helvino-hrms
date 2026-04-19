@@ -2,26 +2,22 @@ import { NextRequest, NextResponse } from 'next/server'
 import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
 import { prisma } from '@/lib/prisma'
+import { getSalesScope } from '@/lib/sales-scope'
 
 export async function GET(req: NextRequest) {
   try {
     const session = await getServerSession(authOptions)
     if (!session) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 
-    // Always fetch the current role and employeeId from the DB using the
-    // user's primary key — this is immune to stale JWT tokens.
-    const freshUser = await prisma.user.findUnique({
-      where: { id: session.user.id },
-      select: { role: true, employeeId: true },
-    })
-
-    const role: string = (freshUser?.role as string) ?? session.user.role
-    const empId: string | undefined = freshUser?.employeeId ?? (session.user as any).employeeId
+    // Use the same scope resolution as the leads/clients APIs to guarantee
+    // consistent filtering (avoids divergence from stale JWT employeeId).
+    const scope = await getSalesScope(session.user.id)
+    const role: string = scope.role
+    const empId: string | null = scope.empId
 
     const VIEW_ALL = ['SUPER_ADMIN', 'HR_MANAGER', 'HEAD_OF_SALES']
-    const IS_MANAGER = role === 'SALES_MANAGER'
-    const IS_AGENT = role === 'SALES_AGENT'
-    const IS_HEAD_OF_SALES = role === 'HEAD_OF_SALES'
+    const IS_MANAGER = scope.isManager
+    const IS_AGENT = scope.isAgent
 
     // Build scoped filters for each entity
     const leadFilter: any = {}
@@ -43,8 +39,7 @@ export async function GET(req: NextRequest) {
       teamEmpIds = [empId, ...agents.map((a) => a.id)]
 
       // If no agents are formally assigned yet, manager sees all sales data
-      // (same as SUPER_ADMIN/HR_MANAGER) so the dashboard is never empty.
-      // Once agents are linked via managerId the filter becomes team-scoped.
+      // so the dashboard is never empty.
       if (agents.length > 0) {
         leadFilter.OR = [
           { assignedToId: { in: teamEmpIds } },
@@ -70,8 +65,14 @@ export async function GET(req: NextRequest) {
       clientFilter.OR = [{ assignedToId: empId }, { createdById: empId }]
       taskFilter.assignedToId = empId
       subscriptionFilter.client = { OR: [{ assignedToId: empId }, { createdById: empId }] }
+    } else if (IS_AGENT && !empId) {
+      // Agent with no linked employee record — show nothing to avoid leaking all data
+      leadFilter.id = '__none__'
+      quotationFilter.id = '__none__'
+      clientFilter.id = '__none__'
+      taskFilter.id = '__none__'
     }
-    // SUPER_ADMIN, HR_MANAGER, FINANCE_OFFICER see everything (no filters)
+    // SUPER_ADMIN, HR_MANAGER, HEAD_OF_SALES, FINANCE_OFFICER see everything (no filters)
 
     const now = new Date()
     const today = new Date(now.getFullYear(), now.getMonth(), now.getDate())
