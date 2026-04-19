@@ -48,7 +48,8 @@ export async function GET(req: NextRequest) {
 
     const userRole = searchParams.get('userRole')
     if (userRole) {
-      where.user = { role: userRole as any }
+      const roles = userRole.split(',').map(r => r.trim()).filter(Boolean)
+      where.user = roles.length === 1 ? { role: roles[0] as any } : { role: { in: roles as any[] } }
     }
 
     const employees = await prisma.employee.findMany({

@@ -10,11 +10,23 @@ import {
 import { formatDate } from '@/lib/utils'
 import toast from 'react-hot-toast'
 
+const ROLE_LABELS: Record<string, string> = {
+  SUPER_ADMIN: 'Super Admin',
+  HR_MANAGER: 'HR Manager',
+  DEPARTMENT_HEAD: 'Department Head',
+  FINANCE_OFFICER: 'Finance Officer',
+  HEAD_OF_SALES: 'Head of Sales',
+  SALES_MANAGER: 'Sales Manager',
+  SALES_AGENT: 'Sales Agent',
+  EMPLOYEE: 'Employee',
+}
+
 const ROLE_COLORS: Record<string, string> = {
   SUPER_ADMIN: 'bg-red-100 text-red-700 border-red-200',
   HR_MANAGER: 'bg-purple-100 text-purple-700 border-purple-200',
   DEPARTMENT_HEAD: 'bg-blue-100 text-blue-700 border-blue-200',
   FINANCE_OFFICER: 'bg-green-100 text-green-700 border-green-200',
+  HEAD_OF_SALES: 'bg-rose-100 text-rose-700 border-rose-200',
   SALES_MANAGER: 'bg-orange-100 text-orange-700 border-orange-200',
   SALES_AGENT: 'bg-yellow-100 text-yellow-700 border-yellow-200',
   EMPLOYEE: 'bg-slate-100 text-slate-600 border-slate-200',
@@ -31,8 +43,8 @@ const ACTION_COLORS: Record<string, string> = {
   REJECT: 'bg-red-100 text-red-700',
 }
 
-const ROLES = ['SUPER_ADMIN','HR_MANAGER','DEPARTMENT_HEAD','FINANCE_OFFICER','SALES_MANAGER','SALES_AGENT','EMPLOYEE']
-const IDENTITY_ROLES = ['HR_MANAGER','DEPARTMENT_HEAD','FINANCE_OFFICER','SALES_MANAGER','SALES_AGENT','EMPLOYEE']
+const ROLES = ['SUPER_ADMIN','HR_MANAGER','DEPARTMENT_HEAD','FINANCE_OFFICER','HEAD_OF_SALES','SALES_MANAGER','SALES_AGENT','EMPLOYEE']
+const IDENTITY_ROLES = ['HR_MANAGER','DEPARTMENT_HEAD','FINANCE_OFFICER','HEAD_OF_SALES','SALES_MANAGER','SALES_AGENT','EMPLOYEE']
 
 export default function AdminPage() {
   const { data: session } = useSession()
@@ -130,7 +142,7 @@ function UsersPanel() {
           <select value={filterRole} onChange={e => setFilterRole(e.target.value)}
             className="px-3 py-2 text-sm border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white">
             <option value="">All Roles</option>
-            {ROLES.map(r => <option key={r} value={r}>{r.replace(/_/g, ' ')}</option>)}
+            {ROLES.map(r => <option key={r} value={r}>{ROLE_LABELS[r] ?? r}</option>)}
           </select>
           <select value={filterStatus} onChange={e => setFilterStatus(e.target.value)}
             className="px-3 py-2 text-sm border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white">
@@ -186,7 +198,7 @@ function UsersPanel() {
                     </td>
                     <td className="px-5 py-4">
                       <span className={`inline-block px-2.5 py-1 rounded-full text-xs font-semibold border ${ROLE_COLORS[u.role] || 'bg-slate-100 text-slate-600'}`}>
-                        {u.role.replace(/_/g, ' ')}
+                        {ROLE_LABELS[u.role] ?? u.role}
                       </span>
                     </td>
                     <td className="px-5 py-4">
@@ -495,7 +507,7 @@ function UserModal({ user, onClose, onSave }: any) {
             <label className="block text-xs font-semibold text-slate-500 mb-1.5">System Role <span className="text-red-500">*</span></label>
             <select value={role} onChange={e => setRole(e.target.value)} required
               className="w-full px-3 py-2.5 text-sm border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white">
-              {IDENTITY_ROLES.map(r => <option key={r} value={r}>{r.replace(/_/g, ' ')}</option>)}
+              {IDENTITY_ROLES.map(r => <option key={r} value={r}>{ROLE_LABELS[r] ?? r}</option>)}
             </select>
           </div>
 

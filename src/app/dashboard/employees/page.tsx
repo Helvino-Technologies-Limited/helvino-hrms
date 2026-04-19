@@ -1512,7 +1512,7 @@ function EmployeeFormModal({ employee, departments, employees, onClose, onSave }
 
   const [salesManagers, setSalesManagers] = useState<any[]>([])
   useEffect(() => {
-    fetch('/api/employees?userRole=SALES_MANAGER')
+    fetch('/api/employees?userRole=SALES_MANAGER,HEAD_OF_SALES')
       .then(r => r.json())
       .then(d => setSalesManagers(Array.isArray(d) ? d : []))
       .catch(() => {})
@@ -1630,7 +1630,7 @@ function EmployeeFormModal({ employee, departments, employees, onClose, onSave }
                 <FormField label="Date Hired" name="dateHired" type="date" required form={form} set={set} />
                 <FormField label="Probation End Date" name="probationEndDate" type="date" form={form} set={set} />
                 <FormField
-                  label={form.role === 'SALES_AGENT' ? 'Sales Manager' : 'Reporting Manager'}
+                  label={form.role === 'SALES_AGENT' ? 'Reporting Manager (Sales)' : 'Reporting Manager'}
                   name="managerId"
                   opts={
                     form.role === 'SALES_AGENT'
@@ -1642,6 +1642,7 @@ function EmployeeFormModal({ employee, departments, employees, onClose, onSave }
                   {value:'EMPLOYEE',label:'Employee (Self-Service)'},
                   {value:'SALES_AGENT',label:'Sales Agent'},
                   {value:'SALES_MANAGER',label:'Sales Manager'},
+                  {value:'HEAD_OF_SALES',label:'Head of Sales'},
                   {value:'DEPARTMENT_HEAD',label:'Department Head'},
                   {value:'HR_MANAGER',label:'HR Manager'},
                   {value:'FINANCE_OFFICER',label:'Finance Officer'},
