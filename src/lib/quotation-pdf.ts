@@ -90,7 +90,8 @@ export function generateQuotationHtml(q: QuotationPdfData): string {
   <title>Quotation ${q.quotationNumber}</title>
   <style>
     *{box-sizing:border-box;margin:0;padding:0}
-    body{font-family:Arial,Helvetica,sans-serif;color:#1e293b;background:#fff;font-size:13px;line-height:1.6}
+    body{font-family:Arial,Helvetica,sans-serif;color:#1e293b;background:#fff;font-size:13px;line-height:1.6;position:relative}
+    .watermark{position:fixed;top:50%;left:50%;transform:translate(-50%,-50%);width:420px;height:auto;opacity:0.06;pointer-events:none;z-index:0;user-select:none}
     .header{padding:24px 48px 0;display:flex;align-items:flex-start;justify-content:space-between;gap:20px}
     .header-logo{height:56px;width:auto;object-fit:contain;display:block}
     .header-logo-fallback{height:56px;width:80px;display:flex;align-items:center;justify-content:center;font-size:10px;font-weight:900;color:#1e3a5f;letter-spacing:0.5px;background:#e2e8f0;border-radius:8px}
@@ -146,6 +147,9 @@ export function generateQuotationHtml(q: QuotationPdfData): string {
   </style>
 </head>
 <body>
+
+  <!-- Background watermark -->
+  <img src="${LOGO_URL}" alt="" class="watermark" aria-hidden="true" />
 
   <!-- Header -->
   <div class="header">

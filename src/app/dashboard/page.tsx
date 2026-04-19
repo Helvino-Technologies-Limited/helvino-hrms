@@ -236,6 +236,59 @@ export default function DashboardPage() {
             </div>
           )}
 
+          {/* Sales Agent Target Achievement (Admin/HR view) */}
+          {isAdminHR && salesData?.agentsPerformance?.length > 0 && (() => {
+            const achieved = (salesData.agentsPerformance as any[]).filter((a) => a.targetMet)
+            const notAchieved = (salesData.agentsPerformance as any[]).filter((a) => !a.targetMet)
+            return (
+              <div className="bg-white rounded-2xl p-6 shadow-sm border border-slate-100">
+                <div className="flex items-center justify-between mb-4">
+                  <div>
+                    <h3 className="font-bold text-slate-900">Sales Agent Monthly Targets</h3>
+                    <p className="text-slate-400 text-xs mt-0.5">
+                      {new Date().toLocaleString('default', { month: 'long', year: 'numeric' })} · client acquisition
+                    </p>
+                  </div>
+                  <Link href="/dashboard/sales" className="text-blue-600 text-xs font-semibold hover:underline">Sales Dashboard →</Link>
+                </div>
+                <div className="grid md:grid-cols-2 gap-4">
+                  <div className="bg-emerald-50 rounded-xl p-4 border border-emerald-100">
+                    <div className="flex items-center gap-2 mb-2">
+                      <CheckCircle className="w-4 h-4 text-emerald-600" />
+                      <span className="font-bold text-emerald-800 text-sm">Achieved ({achieved.length})</span>
+                    </div>
+                    {achieved.length === 0 ? <p className="text-emerald-600 text-xs italic">None yet this month</p> : (
+                      <div className="space-y-1.5">
+                        {achieved.map((a: any) => (
+                          <div key={a.id} className="flex items-center justify-between">
+                            <span className="text-slate-700 text-sm font-medium">{a.name}</span>
+                            <span className="text-xs font-bold text-emerald-700">{a.clientsThisMonth}/{a.clientTarget}</span>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                  <div className="bg-red-50 rounded-xl p-4 border border-red-100">
+                    <div className="flex items-center gap-2 mb-2">
+                      <AlertCircle className="w-4 h-4 text-red-600" />
+                      <span className="font-bold text-red-800 text-sm">Not Met ({notAchieved.length})</span>
+                    </div>
+                    {notAchieved.length === 0 ? <p className="text-red-600 text-xs italic">All agents on track!</p> : (
+                      <div className="space-y-1.5">
+                        {notAchieved.map((a: any) => (
+                          <div key={a.id} className="flex items-center justify-between">
+                            <span className="text-slate-700 text-sm font-medium">{a.name}</span>
+                            <span className="text-xs font-bold text-red-700">{a.clientsThisMonth}/{a.clientTarget}</span>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                </div>
+              </div>
+            )
+          })()}
+
           {/* Bottom row: pending leaves + announcements */}
           <div className="grid lg:grid-cols-2 gap-6">
             <div className="bg-white rounded-2xl p-6 shadow-sm border border-slate-100">
@@ -360,6 +413,38 @@ export default function DashboardPage() {
               </Link>
             </div>
           </div>
+
+          {/* Payslip access — target-gated for sales agents */}
+          {role === 'SALES_AGENT' && (() => {
+            const tgt = salesData?.target
+            if (!tgt) return null
+            const met = tgt.clientsThisMonth >= tgt.clientTarget
+            if (!met) return (
+              <div className="bg-amber-50 border border-amber-200 rounded-2xl p-5 flex items-center gap-4">
+                <div className="w-10 h-10 bg-amber-200 rounded-xl flex items-center justify-center flex-shrink-0">
+                  <Banknote className="w-5 h-5 text-amber-700" />
+                </div>
+                <div>
+                  <div className="font-bold text-amber-800">Payslip Not Available</div>
+                  <div className="text-amber-700 text-sm mt-0.5">Kindly achieve your target to download your payslip</div>
+                </div>
+              </div>
+            )
+            return (
+              <Link href="/dashboard/payroll" className="bg-emerald-50 border border-emerald-200 rounded-2xl p-5 flex items-center justify-between hover:bg-emerald-100 transition-colors">
+                <div className="flex items-center gap-4">
+                  <div className="w-10 h-10 bg-emerald-200 rounded-xl flex items-center justify-center flex-shrink-0">
+                    <Banknote className="w-5 h-5 text-emerald-700" />
+                  </div>
+                  <div>
+                    <div className="font-bold text-emerald-800">Payslip Available</div>
+                    <div className="text-emerald-700 text-sm mt-0.5">Monthly target achieved — download your payslip</div>
+                  </div>
+                </div>
+                <ArrowRight className="w-4 h-4 text-emerald-600" />
+              </Link>
+            )
+          })()}
 
           {/* Monthly leads activity chart */}
           {(salesData?.monthlyLeads || []).length > 0 && (
@@ -497,6 +582,54 @@ export default function DashboardPage() {
               </div>
             </div>
           )}
+
+          {/* Monthly Target Achievement — agents split into achieved vs not achieved */}
+          {salesData?.agentsPerformance?.length > 0 && (() => {
+            const achieved = (salesData.agentsPerformance as any[]).filter((a) => a.targetMet)
+            const notAchieved = (salesData.agentsPerformance as any[]).filter((a) => !a.targetMet)
+            return (
+              <div className="grid md:grid-cols-2 gap-4">
+                {/* Achieved */}
+                <div className="bg-emerald-50 border border-emerald-200 rounded-2xl p-5">
+                  <div className="flex items-center gap-2 mb-3">
+                    <CheckCircle className="w-5 h-5 text-emerald-600" />
+                    <h3 className="font-bold text-emerald-800">Target Achieved ({achieved.length})</h3>
+                  </div>
+                  {achieved.length === 0 ? (
+                    <p className="text-emerald-600 text-sm italic">No agents have hit target this month yet.</p>
+                  ) : (
+                    <div className="space-y-2">
+                      {achieved.map((a: any) => (
+                        <div key={a.id} className="flex items-center justify-between bg-white rounded-xl px-3 py-2.5 border border-emerald-100">
+                          <span className="font-semibold text-slate-800 text-sm">{a.name}</span>
+                          <span className="text-xs font-bold text-emerald-700 bg-emerald-100 px-2 py-0.5 rounded-full">{a.clientsThisMonth}/{a.clientTarget} clients</span>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+                {/* Not Achieved */}
+                <div className="bg-red-50 border border-red-200 rounded-2xl p-5">
+                  <div className="flex items-center gap-2 mb-3">
+                    <AlertCircle className="w-5 h-5 text-red-600" />
+                    <h3 className="font-bold text-red-800">Target Not Met ({notAchieved.length})</h3>
+                  </div>
+                  {notAchieved.length === 0 ? (
+                    <p className="text-red-600 text-sm italic">All agents have met their targets!</p>
+                  ) : (
+                    <div className="space-y-2">
+                      {notAchieved.map((a: any) => (
+                        <div key={a.id} className="flex items-center justify-between bg-white rounded-xl px-3 py-2.5 border border-red-100">
+                          <span className="font-semibold text-slate-800 text-sm">{a.name}</span>
+                          <span className="text-xs font-bold text-red-700 bg-red-100 px-2 py-0.5 rounded-full">{a.clientsThisMonth}/{a.clientTarget} clients</span>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              </div>
+            )
+          })()}
 
           {/* Charts + recent */}
           <div className="grid lg:grid-cols-3 gap-6">

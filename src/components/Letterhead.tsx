@@ -34,8 +34,22 @@ export default function Letterhead({
         fontFamily: 'Arial, Helvetica, sans-serif',
         color: '#1e293b',
         width: '100%',
+        position: 'relative',
       }}
     >
+      {/* Background watermark */}
+      <div style={{ position: 'absolute', inset: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', pointerEvents: 'none', overflow: 'hidden', zIndex: 0 }}>
+        {/* eslint-disable-next-line @next/next/no-img-element */}
+        <img
+          src="https://helvino.org/images/logo.png"
+          alt=""
+          crossOrigin="anonymous"
+          aria-hidden="true"
+          style={{ width: '380px', height: 'auto', opacity: 0.06, userSelect: 'none' }}
+        />
+      </div>
+      {/* Content above watermark */}
+      <div style={{ position: 'relative', zIndex: 1 }}>
       {/* ── LETTERHEAD HEADER ────────────────────────────────────────── */}
       <div style={{ padding: '24px 40px 0', display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: '20px' }}>
         {/* Logo */}
@@ -158,6 +172,7 @@ export default function Letterhead({
           {' · '}M-Pesa Paybill: {COMPANY.paybill} A/c: {COMPANY.account}
         </div>
       </div>
+      </div>{/* end content wrapper */}
     </div>
   )
 }

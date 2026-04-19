@@ -120,6 +120,15 @@ function CardFront({
         justifyContent: 'center', padding: '24px 26px 20px',
         position: 'relative',
       }}>
+        {/* Background watermark */}
+        {/* eslint-disable-next-line @next/next/no-img-element */}
+        <img
+          src="https://helvino.org/images/logo.png"
+          alt=""
+          crossOrigin="anonymous"
+          aria-hidden="true"
+          style={{ position: 'absolute', top: '50%', left: '50%', transform: 'translate(-50%, -50%)', width: '160px', height: 'auto', opacity: 0.05, pointerEvents: 'none', userSelect: 'none' }}
+        />
         {/* Left accent bar */}
         <div style={{
           position: 'absolute', left: 0, top: '18%', bottom: '18%', width: '3px',
@@ -244,6 +253,16 @@ function CardBack({ theme }: { theme: typeof THEMES[0] }) {
       ))}
       {/* Diagonal accent stripe */}
       <div style={{ position: 'absolute', width: '3px', height: '500px', background: `linear-gradient(to bottom, transparent, rgba(255,255,255,0.12), transparent)`, transform: 'rotate(25deg)', left: '45%' }} />
+
+      {/* Large faint watermark behind center content */}
+      {/* eslint-disable-next-line @next/next/no-img-element */}
+      <img
+        src="https://helvino.org/images/logo.png"
+        alt=""
+        crossOrigin="anonymous"
+        aria-hidden="true"
+        style={{ position: 'absolute', top: '50%', left: '50%', transform: 'translate(-50%, -50%)', width: '280px', height: 'auto', opacity: 0.08, filter: 'brightness(0) invert(1)', pointerEvents: 'none', userSelect: 'none' }}
+      />
 
       {/* Center content */}
       <div style={{ textAlign: 'center', zIndex: 1, padding: '20px 40px' }}>
