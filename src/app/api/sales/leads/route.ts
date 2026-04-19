@@ -32,12 +32,18 @@ export async function GET(req: NextRequest) {
     if (source) where.source = source
     if (assignedToId) where.assignedToId = assignedToId
     if (search) {
-      where.OR = [
-        { contactPerson: { contains: search, mode: 'insensitive' } },
-        { companyName: { contains: search, mode: 'insensitive' } },
-        { email: { contains: search, mode: 'insensitive' } },
-        { phone: { contains: search, mode: 'insensitive' } },
-        { leadNumber: { contains: search, mode: 'insensitive' } },
+      // Use AND to combine scope filter with search — avoids overwriting ownerFilter.OR
+      where.AND = [
+        ...(where.AND ?? []),
+        {
+          OR: [
+            { contactPerson: { contains: search, mode: 'insensitive' } },
+            { companyName: { contains: search, mode: 'insensitive' } },
+            { email: { contains: search, mode: 'insensitive' } },
+            { phone: { contains: search, mode: 'insensitive' } },
+            { leadNumber: { contains: search, mode: 'insensitive' } },
+          ],
+        },
       ]
     }
 

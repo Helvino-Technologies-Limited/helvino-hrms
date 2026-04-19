@@ -12,11 +12,24 @@ import { prisma } from '@/lib/prisma'
 export async function getSalesScope(userId: string) {
   const user = await prisma.user.findUnique({
     where: { id: userId },
-    select: { role: true, employeeId: true },
+    select: { role: true, employeeId: true, email: true },
   })
 
   const role = (user?.role as string) ?? 'EMPLOYEE'
-  const empId = user?.employeeId ?? null
+  let empId = user?.employeeId ?? null
+
+  // Auto-repair: if employeeId is not linked on User, try to find Employee by email
+  if (!empId && user?.email) {
+    const emp = await prisma.employee.findUnique({
+      where: { email: user.email },
+      select: { id: true },
+    })
+    if (emp) {
+      empId = emp.id
+      // Persist the link so this repair only runs once
+      await prisma.user.update({ where: { id: userId }, data: { employeeId: emp.id } }).catch(() => null)
+    }
+  }
 
   if (role === 'HEAD_OF_SALES') {
     // HEAD_OF_SALES sees all sales data — no scoping needed
