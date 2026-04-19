@@ -281,9 +281,9 @@ export default function DashboardPage() {
         <>
           {/* Monthly Target Tracker */}
           {(() => {
-            const target = salesData?.clientMonthlyTarget || 5
-            const achieved = salesData?.clientsThisMonth || 0
-            const remaining = salesData?.clientsRemainingThisMonth ?? Math.max(0, target - achieved)
+            const target = salesData?.target?.clientTarget || salesData?.quick?.clientTarget || 5
+            const achieved = salesData?.quick?.clientsThisMonth || 0
+            const remaining = Math.max(0, target - achieved)
             const pct = Math.min(100, Math.round((achieved / target) * 100))
             const done = achieved >= target
             return (
@@ -319,10 +319,10 @@ export default function DashboardPage() {
           {/* KPI Cards */}
           <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
             {[
-              { label: 'My Leads', value: salesData?.totalLeads || 0, sub: `${salesData?.leadsThisMonth || 0} added this month`, icon: Target, color: 'from-blue-500 to-blue-600', href: '/dashboard/sales/leads' },
-              { label: 'My Quotations', value: salesData?.totalQuotations || 0, sub: `${salesData?.quotationsThisMonth || 0} this month`, icon: FileText, color: 'from-purple-500 to-purple-600', href: '/dashboard/sales/quotations' },
-              { label: 'My Clients', value: salesData?.totalClients || 0, sub: `${salesData?.clientsThisMonth || 0} added this month`, icon: UserCheck, color: 'from-emerald-500 to-emerald-600', href: '/dashboard/sales/clients' },
-              { label: 'My Tasks', value: salesData?.totalTasks || 0, sub: `${salesData?.overdueTasks || 0} overdue`, icon: ClipboardList, color: 'from-amber-500 to-orange-500', href: '/dashboard/sales/tasks' },
+              { label: 'My Leads', value: salesData?.stats?.totalLeads ?? 0, sub: `${salesData?.quick?.leadsThisMonth ?? 0} added this month`, icon: Target, color: 'from-blue-500 to-blue-600', href: '/dashboard/sales/leads' },
+              { label: 'My Quotations', value: salesData?.stats?.totalQuotations ?? 0, sub: `${salesData?.quick?.quotationsThisMonth ?? 0} this month`, icon: FileText, color: 'from-purple-500 to-purple-600', href: '/dashboard/sales/quotations' },
+              { label: 'My Clients', value: salesData?.stats?.activeClients ?? 0, sub: `${salesData?.quick?.clientsThisMonth ?? 0} added this month`, icon: UserCheck, color: 'from-emerald-500 to-emerald-600', href: '/dashboard/sales/clients' },
+              { label: 'My Tasks', value: salesData?.quick?.todaysTasks ?? 0, sub: `${salesData?.quick?.overdueTasks ?? 0} overdue`, icon: ClipboardList, color: 'from-amber-500 to-orange-500', href: '/dashboard/sales/tasks' },
             ].map(kpi => (
               <Link key={kpi.label} href={kpi.href}
                 className="bg-white rounded-2xl p-5 shadow-sm border border-slate-100 hover:shadow-md hover:border-blue-200 transition-all group">
@@ -453,57 +453,45 @@ export default function DashboardPage() {
             ))}
           </div>
 
-          {/* Managers Performance Table */}
-          {salesData?.managersPerformance?.length > 0 && (
+          {/* Agent Performance Table */}
+          {salesData?.agentsPerformance?.length > 0 && (
             <div className="bg-white rounded-2xl shadow-sm border border-slate-100 overflow-hidden">
               <div className="flex items-center justify-between px-6 py-4 border-b border-slate-100">
                 <div>
-                  <h3 className="font-bold text-slate-900">Sales Managers Performance</h3>
-                  <p className="text-slate-400 text-xs mt-0.5">Current month · all teams</p>
+                  <h3 className="font-bold text-slate-900">Agent Performance</h3>
+                  <p className="text-slate-400 text-xs mt-0.5">All time · total leads &amp; clients per agent</p>
                 </div>
-                <Link href="/dashboard/sales/team" className="text-blue-600 text-xs font-semibold hover:underline">Full team view →</Link>
+                <Link href="/dashboard/sales/leads" className="text-blue-600 text-xs font-semibold hover:underline">View all leads →</Link>
               </div>
               <div className="overflow-x-auto">
                 <table className="w-full text-sm">
                   <thead className="bg-slate-50">
                     <tr>
-                      {['Manager', 'Agents', 'Leads', 'Clients (Month)', 'Revenue (Month)', 'Performance'].map(h => (
+                      {['Agent', 'Total Leads', 'This Month', 'Active Clients', 'Paid Clients', 'Revenue'].map(h => (
                         <th key={h} className="text-left px-4 py-3 text-xs font-semibold text-slate-500 uppercase tracking-wide whitespace-nowrap">{h}</th>
                       ))}
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-slate-100">
-                    {salesData.managersPerformance.map((mgr: any) => {
-                      const pct = mgr.revenueThisMonth > 0 ? Math.min(100, Math.round((mgr.revenueThisMonth / 500000) * 100)) : 0
-                      return (
-                        <tr key={mgr.id} className="hover:bg-slate-50 transition-colors">
-                          <td className="px-4 py-3.5">
-                            <div className="flex items-center gap-2.5">
-                              <div className="w-8 h-8 rounded-xl bg-gradient-to-br from-amber-400 to-orange-500 flex items-center justify-center text-white font-bold text-xs flex-shrink-0">
-                                {mgr.name.split(' ').map((n: string) => n[0]).join('').slice(0, 2)}
-                              </div>
-                              <span className="font-semibold text-slate-900">{mgr.name}</span>
+                    {salesData.agentsPerformance.map((agent: any) => (
+                      <tr key={agent.id} className="hover:bg-slate-50 transition-colors">
+                        <td className="px-4 py-3.5">
+                          <div className="flex items-center gap-2.5">
+                            <div className="w-8 h-8 rounded-xl bg-gradient-to-br from-blue-500 to-blue-600 flex items-center justify-center text-white font-bold text-xs flex-shrink-0">
+                              {agent.name.split(' ').map((n: string) => n[0]).join('').slice(0, 2)}
                             </div>
-                          </td>
-                          <td className="px-4 py-3.5 text-slate-600 font-medium">{mgr.agentCount}</td>
-                          <td className="px-4 py-3.5 text-slate-600">{mgr.totalLeads}</td>
-                          <td className="px-4 py-3.5">
-                            <span className="font-bold text-slate-900">{mgr.clientsThisMonth}</span>
-                          </td>
-                          <td className="px-4 py-3.5">
-                            <span className="font-bold text-emerald-700">{formatCurrency(mgr.revenueThisMonth)}</span>
-                          </td>
-                          <td className="px-4 py-3.5 min-w-[120px]">
-                            <div className="flex items-center gap-2">
-                              <div className="flex-1 h-2 bg-slate-100 rounded-full overflow-hidden">
-                                <div className={`h-full rounded-full transition-all ${pct >= 80 ? 'bg-green-500' : pct >= 40 ? 'bg-amber-400' : 'bg-red-400'}`} style={{ width: `${pct}%` }} />
-                              </div>
-                              <span className="text-xs font-bold text-slate-600 w-9 text-right">{pct}%</span>
-                            </div>
-                          </td>
-                        </tr>
-                      )
-                    })}
+                            <span className="font-semibold text-slate-900">{agent.name}</span>
+                          </div>
+                        </td>
+                        <td className="px-4 py-3.5 font-black text-slate-900">{agent.totalLeads}</td>
+                        <td className="px-4 py-3.5 font-bold text-blue-700">{agent.leadsThisMonth}</td>
+                        <td className="px-4 py-3.5 font-bold text-purple-700">{agent.activeClients}</td>
+                        <td className="px-4 py-3.5">
+                          <span className={`inline-block font-bold px-2 py-0.5 rounded-full text-xs ${agent.paidClients > 0 ? 'bg-green-100 text-green-700' : 'bg-slate-100 text-slate-500'}`}>{agent.paidClients}</span>
+                        </td>
+                        <td className="px-4 py-3.5 font-bold text-emerald-700">{formatCurrency(agent.revenueTotal)}</td>
+                      </tr>
+                    ))}
                   </tbody>
                 </table>
               </div>
