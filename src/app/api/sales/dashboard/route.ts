@@ -307,11 +307,14 @@ export async function GET(req: NextRequest) {
 
     if (IS_MANAGER && teamAgents.length > 0) {
       const agentIds = teamAgents.map((a) => a.id)
-      const [agentLeadCounts, agentClientCounts, agentRevenueSums, agentEmpTargets] = await Promise.all([
-        prisma.lead.groupBy({
-          by: ['createdById'],
-          where: { createdById: { in: agentIds }, createdAt: { gte: monthStart, lt: monthEnd } },
-          _count: { id: true },
+      const [agentMonthLeads, agentClientCounts, agentRevenueSums, agentEmpTargets] = await Promise.all([
+        // Count leads where agent is creator OR assignee this month (deduped in JS)
+        prisma.lead.findMany({
+          where: {
+            OR: [{ assignedToId: { in: agentIds } }, { createdById: { in: agentIds } }],
+            createdAt: { gte: monthStart, lt: monthEnd },
+          },
+          select: { id: true, assignedToId: true, createdById: true },
         }),
         prisma.client.groupBy({
           by: ['createdById'],
@@ -329,7 +332,16 @@ export async function GET(req: NextRequest) {
         }),
       ])
 
-      const leadCountMap = new Map(agentLeadCounts.map((r) => [r.createdById, r._count.id]))
+      // Build per-agent unique lead sets for this month
+      const agentMonthLeadSets = new Map<string, Set<string>>()
+      for (const lead of agentMonthLeads) {
+        for (const agentId of [lead.assignedToId, lead.createdById]) {
+          if (!agentId || !agentIds.includes(agentId)) continue
+          if (!agentMonthLeadSets.has(agentId)) agentMonthLeadSets.set(agentId, new Set())
+          agentMonthLeadSets.get(agentId)!.add(lead.id)
+        }
+      }
+
       const clientCountMap = new Map(agentClientCounts.map((r) => [r.createdById, r._count.id]))
       const revenueMap = new Map(agentRevenueSums.map((r) => [r.createdById, r._sum.totalAmount ?? 0]))
       const empTargetMap = new Map(agentEmpTargets.map((t) => [t.employeeId, t]))
@@ -339,7 +351,7 @@ export async function GET(req: NextRequest) {
         return {
           id: agent.id,
           name: `${agent.firstName} ${agent.lastName}`,
-          leadsThisMonth: leadCountMap.get(agent.id) ?? 0,
+          leadsThisMonth: agentMonthLeadSets.get(agent.id)?.size ?? 0,
           clientsThisMonth: clientCountMap.get(agent.id) ?? 0,
           revenueThisMonth: Number(revenueMap.get(agent.id) ?? 0),
           leadTarget: override?.leadTarget ?? agentLeadTarget,
@@ -358,23 +370,31 @@ export async function GET(req: NextRequest) {
     }> = []
 
     if (IS_VIEW_ALL) {
+      // Include any employee who has role SALES_AGENT OR SALES_MANAGER and is active,
+      // so agents like Joseph Waithaka who may have a different role still appear.
+      // We key on the Employee record — leads are attributed via assignedToId OR createdById.
       const allAgents = await prisma.employee.findMany({
-        where: { user: { role: 'SALES_AGENT' }, employmentStatus: 'ACTIVE' },
+        where: {
+          employmentStatus: 'ACTIVE',
+          user: { role: { in: ['SALES_AGENT', 'SALES_MANAGER'] } },
+        },
         select: { id: true, firstName: true, lastName: true },
       })
       if (allAgents.length > 0) {
         const agentIds = allAgents.map((a) => a.id)
         const [
-          agentTotalLeads,
-          agentMonthLeads,
+          allAgentLeads,
           agentActiveClients,
           agentPaidClients,
           agentRevenue,
           agentMonthClients,
           agentEmpTargets,
         ] = await Promise.all([
-          prisma.lead.groupBy({ by: ['createdById'], where: { createdById: { in: agentIds } }, _count: { id: true } }),
-          prisma.lead.groupBy({ by: ['createdById'], where: { createdById: { in: agentIds }, createdAt: { gte: monthStart, lt: monthEnd } }, _count: { id: true } }),
+          // Fetch all leads where agent is creator OR assignee (to avoid missing assigned leads)
+          prisma.lead.findMany({
+            where: { OR: [{ assignedToId: { in: agentIds } }, { createdById: { in: agentIds } }] },
+            select: { id: true, assignedToId: true, createdById: true, createdAt: true },
+          }),
           prisma.client.groupBy({ by: ['createdById'], where: { createdById: { in: agentIds }, isActive: true }, _count: { id: true } }),
           prisma.client.groupBy({
             by: ['createdById'],
@@ -399,8 +419,23 @@ export async function GET(req: NextRequest) {
             select: { employeeId: true, clientTarget: true },
           }),
         ])
-        const totalLeadMap = new Map(agentTotalLeads.map((r) => [r.createdById, r._count.id]))
-        const monthLeadMap = new Map(agentMonthLeads.map((r) => [r.createdById, r._count.id]))
+
+        // Build per-agent unique lead sets (union of assignedTo + createdBy, deduped by lead ID)
+        const agentLeadSets = new Map<string, Set<string>>()
+        const agentMonthLeadSets = new Map<string, Set<string>>()
+        for (const lead of allAgentLeads) {
+          const isThisMonth = lead.createdAt >= monthStart && lead.createdAt < monthEnd
+          for (const agentId of [lead.assignedToId, lead.createdById]) {
+            if (!agentId || !agentIds.includes(agentId)) continue
+            if (!agentLeadSets.has(agentId)) agentLeadSets.set(agentId, new Set())
+            agentLeadSets.get(agentId)!.add(lead.id)
+            if (isThisMonth) {
+              if (!agentMonthLeadSets.has(agentId)) agentMonthLeadSets.set(agentId, new Set())
+              agentMonthLeadSets.get(agentId)!.add(lead.id)
+            }
+          }
+        }
+
         const activeClientMap = new Map(agentActiveClients.map((r) => [r.createdById, r._count.id]))
         const paidClientMap = new Map(agentPaidClients.map((r) => [r.createdById, r._count.id]))
         const revenueMap = new Map(agentRevenue.map((r) => [r.createdById, Number(r._sum.totalAmount ?? 0)]))
@@ -413,8 +448,8 @@ export async function GET(req: NextRequest) {
           return {
             id: a.id,
             name: `${a.firstName} ${a.lastName}`,
-            totalLeads: totalLeadMap.get(a.id) ?? 0,
-            leadsThisMonth: monthLeadMap.get(a.id) ?? 0,
+            totalLeads: agentLeadSets.get(a.id)?.size ?? 0,
+            leadsThisMonth: agentMonthLeadSets.get(a.id)?.size ?? 0,
             activeClients: activeClientMap.get(a.id) ?? 0,
             paidClients: paidClientMap.get(a.id) ?? 0,
             revenueTotal: revenueMap.get(a.id) ?? 0,
