@@ -176,7 +176,11 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
     }
   }, [pathname, role, status, router])
   const employee = session?.user?.employee
-  const filteredAdminNav = adminNavItems.filter(item => item.roles.includes(role))
+  const filteredAdminNav = adminNavItems.filter(item => {
+    if (!item.roles.includes(role)) return false
+    if (item.href === '/dashboard/admin/company-profile') return session?.user?.email === 'kevin@helvino.org'
+    return true
+  })
   const filteredHrNav = hrNavItems.filter(item => item.roles.includes(role))
   const filteredRecruitmentNav = recruitmentNavItems.filter(item => item.roles.includes(role))
   const filteredSalesNav = salesNavItems.filter(item => item.roles.includes(role))

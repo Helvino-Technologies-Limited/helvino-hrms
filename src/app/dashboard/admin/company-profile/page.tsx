@@ -681,11 +681,13 @@ export default function CompanyProfilePage() {
   const profileRef = useRef<HTMLDivElement>(null)
   const [generating, setGenerating] = useState(false)
 
-  useEffect(() => {
-    if (session && session.user.role !== 'SUPER_ADMIN') router.replace('/dashboard')
-  }, [session, router])
+  const isAuthorized = session?.user?.role === 'SUPER_ADMIN' && session?.user?.email === 'kevin@helvino.org'
 
-  if (!session || session.user.role !== 'SUPER_ADMIN') return null
+  useEffect(() => {
+    if (session && !isAuthorized) router.replace('/dashboard')
+  }, [session, isAuthorized, router])
+
+  if (!session || !isAuthorized) return null
 
   async function downloadPDF() {
     if (!profileRef.current) return
