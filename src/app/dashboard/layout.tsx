@@ -11,12 +11,14 @@ import {
   TrendingUp, Target, FileText, Users2, RotateCcw, FolderOpen, Package, ListTodo,
   Video, Database, ShieldCheck, UserCheck,
   BookOpen, CreditCard, Receipt, Truck, Landmark, Percent, PiggyBank, ScrollText, ClipboardCheck,
-  LifeBuoy, Mail, IdCard, KeyRound, HelpCircle
+  LifeBuoy, Mail, IdCard, KeyRound, HelpCircle, BookOpenCheck
 } from 'lucide-react'
 import { getInitials } from '@/lib/utils'
 
 const adminNavItems = [
   { href: '/dashboard/admin', icon: ShieldCheck, label: 'Admin Panel', exact: true,
+    roles: ['SUPER_ADMIN'] },
+  { href: '/dashboard/admin/company-profile', icon: BookOpenCheck, label: 'Company Profile PDF',
     roles: ['SUPER_ADMIN'] },
 ]
 
