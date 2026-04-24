@@ -278,11 +278,13 @@ export default function LeadsPage() {
                             className="p-1.5 text-slate-400 hover:text-amber-600 hover:bg-amber-50 rounded-lg transition-colors" title="Edit">
                             <Edit className="w-4 h-4" />
                           </button>
-                          <button
-                            onClick={() => deleteLead(lead.id)}
-                            className="p-1.5 text-slate-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors" title="Delete">
-                            <Trash2 className="w-4 h-4" />
-                          </button>
+                          {role === 'SUPER_ADMIN' && (
+                            <button
+                              onClick={() => deleteLead(lead.id)}
+                              className="p-1.5 text-slate-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors" title="Delete">
+                              <Trash2 className="w-4 h-4" />
+                            </button>
+                          )}
                         </div>
                       </td>
                     </tr>

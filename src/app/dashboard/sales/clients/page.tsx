@@ -175,7 +175,7 @@ function ClientCard({ client, role, onEdit, onDelete }: { client: any; role: str
             className="p-1.5 text-slate-400 hover:text-emerald-600 hover:bg-emerald-50 rounded-lg transition-colors" title="Edit">
             <Edit className="w-3.5 h-3.5" />
           </button>
-          {(role === 'SUPER_ADMIN' || role === 'HR_MANAGER') && (
+          {role === 'SUPER_ADMIN' && (
             <button onClick={onDelete}
               className="p-1.5 text-slate-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors" title="Delete">
               <Trash2 className="w-3.5 h-3.5" />

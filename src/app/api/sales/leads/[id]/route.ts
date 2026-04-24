@@ -118,8 +118,8 @@ export async function DELETE(req: NextRequest, { params }: { params: Promise<{ i
     const session = await getServerSession(authOptions)
     if (!session) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 
-    if (!['SUPER_ADMIN', 'SALES_MANAGER', 'HEAD_OF_SALES'].includes(session.user.role)) {
-      return NextResponse.json({ error: 'Forbidden: insufficient permissions to delete leads' }, { status: 403 })
+    if (session.user.role !== 'SUPER_ADMIN') {
+      return NextResponse.json({ error: 'Forbidden: only admins can delete leads' }, { status: 403 })
     }
 
     const { id } = await params
