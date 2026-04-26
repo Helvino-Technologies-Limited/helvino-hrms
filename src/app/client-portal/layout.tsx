@@ -93,15 +93,12 @@ export default function ClientPortalLayout({ children }: { children: React.React
         ${sidebarOpen ? 'translate-x-0' : '-translate-x-full'}
       `}>
         {/* Logo */}
-        <div className="flex items-center justify-between h-16 px-5 border-b border-slate-700/50 flex-shrink-0">
-          <div className="flex items-center gap-3">
-            <div className="w-8 h-8 bg-blue-600 rounded-lg flex items-center justify-center flex-shrink-0">
-              <Globe className="w-5 h-5 text-white" />
+        <div className="flex items-center justify-between h-16 px-4 border-b border-slate-700/50 flex-shrink-0">
+          <div className="flex items-center gap-2.5">
+            <div className="bg-white rounded-lg p-1.5 flex-shrink-0">
+              <img src="/logo.png" alt="Helvino" className="h-7 w-auto max-w-[110px] object-contain" />
             </div>
-            <div>
-              <div className="text-white font-bold text-sm leading-none">Client Portal</div>
-              <div className="text-slate-500 text-xs">Helvino Technologies</div>
-            </div>
+            <span className="text-slate-400 text-xs font-medium">Client Portal</span>
           </div>
           <button onClick={() => setSidebarOpen(false)} className="lg:hidden text-slate-400 hover:text-white p-1">
             <X className="w-5 h-5" />

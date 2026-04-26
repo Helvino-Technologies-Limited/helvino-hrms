@@ -87,8 +87,8 @@ export default function LoginPage() {
 
       <div className="relative w-full max-w-md">
         <div className="text-center mb-8">
-          <div className="inline-flex items-center justify-center w-16 h-16 bg-gradient-to-br from-blue-500 to-blue-700 rounded-2xl mb-4 shadow-2xl shadow-blue-500/40">
-            <Building2 className="w-9 h-9 text-white" />
+          <div className="inline-flex items-center justify-center bg-white rounded-2xl px-5 py-3 mb-4 shadow-2xl">
+            <img src="/logo.png" alt="Helvino" className="h-10 w-auto max-w-[160px] object-contain" />
           </div>
           <h1 className="text-2xl font-black text-white">Helvino Technologies</h1>
           <p className="text-blue-300 mt-1">Welcome — please sign in to continue</p>

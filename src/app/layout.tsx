@@ -9,7 +9,7 @@ const inter = Inter({ subsets: ['latin'] })
 export const metadata: Metadata = {
   title: 'Helvino Technologies Limited — HRMS',
   description: 'Human Resource Management System for Helvino Technologies Limited',
-  icons: { icon: '/favicon.ico' },
+  icons: { icon: '/logo.png' },
 }
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
