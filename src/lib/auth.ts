@@ -26,6 +26,9 @@ export const authOptions: NextAuthOptions = {
         })
         if (!user || !user.password) throw new Error('User not found')
         if (!user.isActive) throw new Error('Account has been deactivated. Contact your administrator.')
+        if (user.employee && ['TERMINATED', 'RESIGNED'].includes(user.employee.employmentStatus)) {
+          throw new Error('Your employment has ended. Please contact HR.')
+        }
         const isValid = await bcrypt.compare(credentials.password, user.password)
         if (!isValid) throw new Error('Invalid password')
         return {
@@ -90,6 +93,12 @@ export const authOptions: NextAuthOptions = {
           if (!employee) {
             await logAttempt('failed', 'National ID not found')
             throw new Error('Invalid credentials. Please check your details.')
+          }
+
+          // Block terminated/resigned employees
+          if (['TERMINATED', 'RESIGNED'].includes(employee.employmentStatus)) {
+            await logAttempt('failed', `Employment ended: ${employee.employmentStatus}`)
+            throw new Error('Your employment has ended. Please contact HR.')
           }
 
           // Check lockout

@@ -61,6 +61,12 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
 
     const newStatus = reason === 'RESIGNATION' ? 'RESIGNED' : 'TERMINATED'
 
+    // Find linked user to deactivate their account together
+    const employeeWithUser = await prisma.employee.findUnique({
+      where: { id },
+      select: { user: { select: { id: true } } },
+    })
+
     const [letter] = await prisma.$transaction([
       prisma.terminationLetter.upsert({
         where: { employeeId: id },
@@ -92,7 +98,13 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
         where: { id },
         data: { employmentStatus: newStatus },
       }),
-    ])
+      ...(employeeWithUser?.user
+        ? [prisma.user.update({
+            where: { id: employeeWithUser.user.id },
+            data: { isActive: false },
+          })]
+        : []),
+    ] as any)
 
     if (send) {
       const recipient = employee.personalEmail || employee.email

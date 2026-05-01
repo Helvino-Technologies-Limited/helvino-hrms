@@ -49,6 +49,7 @@ export default function EmployeeDetailPage() {
   const [termSending, setTermSending] = useState(false)
   const [termResending, setTermResending] = useState(false)
   const [termDownloading, setTermDownloading] = useState(false)
+  const [reactivating, setReactivating] = useState(false)
   const [termForm, setTermForm] = useState({
     reason: 'REDUNDANCY',
     reasonDetails: '',
@@ -319,6 +320,22 @@ export default function EmployeeDetailPage() {
       toast.error('PDF generation failed. Try printing from the preview.')
     } finally {
       setTermDownloading(false)
+    }
+  }
+
+  async function handleReactivate() {
+    if (!confirm(`Reactivate ${employee.firstName} ${employee.lastName}? This will restore their employment status to ACTIVE and re-enable their login.`)) return
+    setReactivating(true)
+    try {
+      const res = await fetch(`/api/admin/employees/${id}/reactivate`, { method: 'POST' })
+      const data = await res.json()
+      if (!res.ok) throw new Error(data.error || 'Failed')
+      setEmployee((e: any) => ({ ...e, employmentStatus: 'ACTIVE' }))
+      toast.success(data.message)
+    } catch (e: any) {
+      toast.error(e.message || 'Reactivation failed')
+    } finally {
+      setReactivating(false)
     }
   }
 
@@ -1034,6 +1051,31 @@ export default function EmployeeDetailPage() {
                 </div>
               </div>
             )}
+          </div>
+        </div>
+      )}
+
+      {/* ── Reactivation Section ── */}
+      {activeTab === 'contract' && canTerminate && !contractLoading &&
+        ['TERMINATED', 'RESIGNED'].includes(employee.employmentStatus) && (
+        <div className="bg-white rounded-2xl border border-amber-200 shadow-sm p-5">
+          <div className="flex items-start gap-3">
+            <RotateCcw className="w-5 h-5 text-amber-500 flex-shrink-0 mt-0.5" />
+            <div className="flex-1">
+              <p className="font-bold text-slate-900">Reactivate Employee</p>
+              <p className="text-sm text-slate-500 mt-0.5">
+                {employee.firstName} {employee.lastName} is currently marked as{' '}
+                <span className="font-semibold text-red-600">{employee.employmentStatus}</span>.
+                Reactivating will restore their employment status to <strong>ACTIVE</strong> and re-enable their system login.
+              </p>
+              <button
+                onClick={handleReactivate}
+                disabled={reactivating}
+                className="mt-3 flex items-center gap-2 px-4 py-2.5 bg-amber-500 hover:bg-amber-600 text-white rounded-xl text-sm font-semibold disabled:opacity-60 transition-colors">
+                {reactivating ? <Loader2 className="w-4 h-4 animate-spin" /> : <RotateCcw className="w-4 h-4" />}
+                Reactivate Employee
+              </button>
+            </div>
           </div>
         </div>
       )}
