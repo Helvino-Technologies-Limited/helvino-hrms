@@ -1,10 +1,11 @@
 'use client'
 import { useEffect, useState, useCallback, useRef } from 'react'
 import Link from 'next/link'
-import { Plus, Search, Eye, Edit, Mail, Phone, UserX, Upload, X, FileText, Image, Send, Download, ShieldOff, AlertTriangle } from 'lucide-react'
+import { Plus, Search, Eye, Edit, Mail, Phone, UserX, Upload, X, FileText, Image, Send, Download, ShieldOff, AlertTriangle, Users, Trash2, Loader2 } from 'lucide-react'
 import { formatDate } from '@/lib/utils'
 import toast from 'react-hot-toast'
 import { generateEmployeeReportHtml } from '@/lib/employee-report-pdf'
+import { useSession } from 'next-auth/react'
 
 // ─── Kenya bank branch data { branchName → code } ────────────────────────────
 type BranchInfo = { name: string; code: string }
@@ -751,6 +752,9 @@ const STATUS_COLORS: Record<string, string> = {
 type Tab = 'active' | 'past'
 
 export default function EmployeesPage() {
+  const { data: session } = useSession()
+  const isSuperAdmin = (session?.user as any)?.role === 'SUPER_ADMIN'
+
   const [tab, setTab] = useState<Tab>('active')
   const [employees, setEmployees] = useState<any[]>([])
   const [departments, setDepartments] = useState<any[]>([])
@@ -762,6 +766,10 @@ export default function EmployeesPage() {
   const [editingEmployee, setEditingEmployee] = useState<any>(null)
   const [downloadingReport, setDownloadingReport] = useState(false)
   const [terminatingEmp, setTerminatingEmp] = useState<any>(null)
+
+  // Duplicate detection
+  const [duplicateGroups, setDuplicateGroups] = useState<any[][]>([])
+  const [dissolvingId, setDissolvingId] = useState<string | null>(null)
   const [termForm, setTermForm] = useState({
     reason: 'GROSS_MISCONDUCT',
     reasonDetails: '',
@@ -937,8 +945,92 @@ export default function EmployeesPage() {
     return () => clearTimeout(t)
   }, [loadData])
 
+  useEffect(() => {
+    if (!isSuperAdmin) return
+    fetch('/api/admin/employees/duplicates')
+      .then(r => r.json())
+      .then(d => { if (d.duplicates) setDuplicateGroups(d.duplicates) })
+      .catch(() => {})
+  }, [isSuperAdmin])
+
+  async function handleDissolve(deleteId: string, keepId: string, keepName: string) {
+    if (!confirm(`Dissolve this account and transfer all records to ${keepName}? This cannot be undone.`)) return
+    setDissolvingId(deleteId)
+    try {
+      const res = await fetch(`/api/admin/employees/${deleteId}/dissolve`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ keepId }),
+      })
+      const data = await res.json()
+      if (!res.ok) throw new Error(data.error || 'Failed')
+      toast.success(data.message)
+      setDuplicateGroups(prev => prev.filter(g => !g.some((e: any) => e.id === deleteId)))
+      loadData()
+    } catch (e: any) {
+      toast.error(e.message || 'Dissolve failed')
+    } finally {
+      setDissolvingId(null)
+    }
+  }
+
   return (
     <div className="space-y-5">
+
+      {/* ── Duplicate account banner (SUPER_ADMIN only) ── */}
+      {isSuperAdmin && duplicateGroups.length > 0 && (
+        <div className="bg-amber-50 border border-amber-300 rounded-2xl p-4 space-y-3">
+          <div className="flex items-center gap-2">
+            <AlertTriangle className="w-5 h-5 text-amber-600 flex-shrink-0" />
+            <p className="font-bold text-amber-800">
+              {duplicateGroups.length} duplicate employee {duplicateGroups.length === 1 ? 'account' : 'accounts'} detected
+            </p>
+          </div>
+          {duplicateGroups.map((group, gi) => (
+            <div key={gi} className="bg-white rounded-xl border border-amber-200 divide-y divide-amber-100">
+              {group.map((emp: any) => {
+                const totalLeads = (emp._count?.leadsAssigned ?? 0) + (emp._count?.leadsCreated ?? 0)
+                const others = group.filter((e: any) => e.id !== emp.id)
+                return (
+                  <div key={emp.id} className="flex items-center justify-between px-4 py-3 gap-3 flex-wrap">
+                    <div className="flex items-center gap-3 min-w-0">
+                      <Users className="w-4 h-4 text-slate-400 flex-shrink-0" />
+                      <div className="min-w-0">
+                        <p className="font-semibold text-slate-800 text-sm truncate">
+                          {emp.firstName} {emp.lastName}
+                          <span className="ml-2 text-xs text-slate-400">{emp.employeeCode}</span>
+                        </p>
+                        <p className="text-xs text-slate-500">
+                          {emp.employmentStatus} · {emp.user?.email ?? 'no account'} ·{' '}
+                          <span className={totalLeads > 0 ? 'font-bold text-blue-600' : ''}>
+                            {totalLeads} lead{totalLeads !== 1 ? 's' : ''}
+                          </span>
+                        </p>
+                      </div>
+                    </div>
+                    {others.length === 1 && (
+                      <button
+                        onClick={() => handleDissolve(emp.id, others[0].id, `${others[0].firstName} ${others[0].lastName}`)}
+                        disabled={dissolvingId === emp.id}
+                        className="flex items-center gap-1.5 px-3 py-1.5 bg-red-600 hover:bg-red-700 text-white rounded-xl text-xs font-semibold disabled:opacity-60 transition-colors flex-shrink-0">
+                        {dissolvingId === emp.id
+                          ? <Loader2 className="w-3 h-3 animate-spin" />
+                          : <Trash2 className="w-3 h-3" />}
+                        Dissolve this account
+                      </button>
+                    )}
+                  </div>
+                )
+              })}
+            </div>
+          ))}
+          <p className="text-xs text-amber-700">
+            "Dissolve" transfers all records (leads, clients, etc.) from that account to the other, then permanently deletes it.
+            Click <strong>Dissolve</strong> on the account you want to <strong>remove</strong>.
+          </p>
+        </div>
+      )}
+
       <div className="flex items-center justify-between flex-wrap gap-3">
         <div>
           <h1 className="text-2xl font-black text-slate-900">
