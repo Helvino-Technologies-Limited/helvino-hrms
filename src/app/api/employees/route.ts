@@ -3,7 +3,6 @@ import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
 import { prisma } from '@/lib/prisma'
 import bcrypt from 'bcryptjs'
-import { generateEmployeeCode } from '@/lib/utils'
 import { sendEmail, welcomeEmailHtml, contractEmailHtml } from '@/lib/email'
 import { generateContractHtml } from '@/lib/contract'
 
@@ -99,8 +98,16 @@ export async function POST(req: NextRequest) {
 
     // Wrap employee + user creation in a transaction so partial failures leave no orphan records
     const { employee, employeeCode } = await prisma.$transaction(async (tx) => {
-      const count = await tx.employee.count()
-      const code = generateEmployeeCode(count)
+      // Derive next code from the highest existing code rather than count,
+      // so deletions don't cause collisions (count-based approach breaks when rows are deleted)
+      const lastEmp = await tx.employee.findFirst({
+        orderBy: { employeeCode: 'desc' },
+        select: { employeeCode: true },
+      })
+      const nextNum = lastEmp
+        ? parseInt(lastEmp.employeeCode.replace(/\D/g, ''), 10) + 1
+        : 1
+      const code = `HTL${String(nextNum).padStart(4, '0')}`
 
       const emp = await tx.employee.create({
         data: {
@@ -222,7 +229,13 @@ export async function POST(req: NextRequest) {
   } catch (error: any) {
     console.error(error)
     if (error.code === 'P2002') {
-      return NextResponse.json({ error: 'Email already exists in the system' }, { status: 400 })
+      const field = error.meta?.target?.[0] ?? ''
+      const msg = field === 'employeeCode'
+        ? 'Could not generate a unique employee code. Please try again.'
+        : field === 'email'
+        ? 'A user account with this email already exists in the system.'
+        : 'A duplicate value was detected. Please check your input and try again.'
+      return NextResponse.json({ error: msg }, { status: 400 })
     }
     return NextResponse.json({ error: 'Failed to create employee' }, { status: 500 })
   }
