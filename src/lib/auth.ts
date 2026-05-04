@@ -108,22 +108,21 @@ export const authOptions: NextAuthOptions = {
             throw new Error(`Account is temporarily locked. Try again after ${unlockAt}.`)
           }
 
-          // Verify Date of Birth (compare date only, ignore time)
-          if (!employee.dateOfBirth) {
-            await logAttempt('failed', 'DOB not configured')
-            throw new Error('Identity credentials not fully configured. Contact HR.')
-          }
-          const empDOB = employee.dateOfBirth.toISOString().split('T')[0]
-          const inputDOB = new Date(credentials.dateOfBirth).toISOString().split('T')[0]
-          if (empDOB !== inputDOB) {
-            await incrementFailures(employee.id, logAttempt)
-            throw new Error('Invalid credentials. Please check your details.')
+          // Verify Date of Birth only when it is recorded — if HR hasn't entered it yet,
+          // skip this factor rather than blocking the employee entirely.
+          if (employee.dateOfBirth) {
+            const empDOB = employee.dateOfBirth.toISOString().split('T')[0]
+            const inputDOB = new Date(credentials.dateOfBirth).toISOString().split('T')[0]
+            if (empDOB !== inputDOB) {
+              await incrementFailures(employee.id, logAttempt)
+              throw new Error('Invalid credentials. Please check your details.')
+            }
           }
 
           // Verify secret code
           if (!employee.secretCodeHash) {
             await logAttempt('failed', 'Secret code not set')
-            throw new Error('Identity credentials not configured. Contact HR.')
+            throw new Error('No secret code has been generated for your account. Please contact HR.')
           }
           const codeValid = await bcrypt.compare(credentials.secretCode, employee.secretCodeHash)
           if (!codeValid) {
