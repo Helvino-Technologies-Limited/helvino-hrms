@@ -80,10 +80,15 @@ export async function POST(req: NextRequest) {
 
     const body = await req.json()
 
-    // Pre-check: catch duplicates early with a clear error before any writes
+    // Normalise email to avoid false positives from whitespace or case differences
+    body.email = body.email?.trim().toLowerCase()
+
+    // Pre-check: only block if an Employee record OR a User already linked to an employee
+    // uses this email. Unlinked User records (e.g. standalone admin accounts) must not
+    // block employee creation — the transaction's unique-constraint will catch real clashes.
     const [existingEmployee, existingUser] = await Promise.all([
       prisma.employee.findUnique({ where: { email: body.email }, select: { id: true } }),
-      prisma.user.findUnique({ where: { email: body.email }, select: { id: true } }),
+      prisma.user.findFirst({ where: { email: body.email, employeeId: { not: null } }, select: { id: true } }),
     ])
     if (existingEmployee || existingUser) {
       return NextResponse.json({ error: 'An employee with this email already exists' }, { status: 400 })
