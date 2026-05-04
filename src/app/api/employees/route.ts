@@ -79,62 +79,76 @@ export async function POST(req: NextRequest) {
     if (!session) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 
     const body = await req.json()
-    const count = await prisma.employee.count()
-    const employeeCode = generateEmployeeCode(count)
 
-    const employee = await prisma.employee.create({
-      data: {
-        employeeCode,
-        firstName: body.firstName,
-        lastName: body.lastName,
-        email: body.email,
-        personalEmail: body.personalEmail || null,
-        phone: body.phone,
-        nationalId: body.nationalId || null,
-        dateOfBirth: body.dateOfBirth ? new Date(body.dateOfBirth) : null,
-        gender: body.gender || null,
-        address: body.address || null,
-        city: body.city || null,
-        departmentId: body.departmentId || null,
-        jobTitle: body.jobTitle,
-        employmentType: body.employmentType || 'FULL_TIME',
-        employmentStatus: body.employmentStatus || 'ACTIVE',
-        dateHired: new Date(body.dateHired),
-        probationEndDate: body.probationEndDate ? new Date(body.probationEndDate) : null,
-        basicSalary: body.basicSalary ? parseFloat(body.basicSalary) : null,
-        managerId: body.managerId || null,
-        bankName: body.bankName || null,
-        bankBranch: body.bankBranch || null,
-        bankCode: body.bankCode || null,
-        bankAccount: body.bankAccount || null,
-        mpesaPhone: body.mpesaPhone || null,
-        kraPin: body.kraPin || null,
-        shaNumber: body.shaNumber || null,
-        nssfNumber: body.nssfNumber || null,
-        emergencyContact: body.emergencyContact || null,
-        emergencyPhone: body.emergencyPhone || null,
-        idFrontUrl: body.idFrontUrl || null,
-        idBackUrl: body.idBackUrl || null,
-        passportPhotoUrl: body.passportPhotoUrl || null,
-        kraPinUrl: body.kraPinUrl || null,
-        nhifCardUrl: body.nhifCardUrl || null,
-        nssfCardUrl: body.nssfCardUrl || null,
-      },
-      include: { department: { select: { name: true } } },
-    })
+    // Pre-check: catch duplicates early with a clear error before any writes
+    const [existingEmployee, existingUser] = await Promise.all([
+      prisma.employee.findUnique({ where: { email: body.email }, select: { id: true } }),
+      prisma.user.findUnique({ where: { email: body.email }, select: { id: true } }),
+    ])
+    if (existingEmployee || existingUser) {
+      return NextResponse.json({ error: 'An employee with this email already exists' }, { status: 400 })
+    }
 
-    // Create user account with temp password
     const tempPassword = `Htl${Math.random().toString(36).slice(-6)}!`
     const hashed = await bcrypt.hash(tempPassword, 10)
 
-    await prisma.user.create({
-      data: {
-        email: body.email,
-        name: `${body.firstName} ${body.lastName}`,
-        password: hashed,
-        role: body.role || 'EMPLOYEE',
-        employeeId: employee.id,
-      },
+    // Wrap employee + user creation in a transaction so partial failures leave no orphan records
+    const { employee, employeeCode } = await prisma.$transaction(async (tx) => {
+      const count = await tx.employee.count()
+      const code = generateEmployeeCode(count)
+
+      const emp = await tx.employee.create({
+        data: {
+          employeeCode: code,
+          firstName: body.firstName,
+          lastName: body.lastName,
+          email: body.email,
+          personalEmail: body.personalEmail || null,
+          phone: body.phone,
+          nationalId: body.nationalId || null,
+          dateOfBirth: body.dateOfBirth ? new Date(body.dateOfBirth) : null,
+          gender: body.gender || null,
+          address: body.address || null,
+          city: body.city || null,
+          departmentId: body.departmentId || null,
+          jobTitle: body.jobTitle,
+          employmentType: body.employmentType || 'FULL_TIME',
+          employmentStatus: body.employmentStatus || 'ACTIVE',
+          dateHired: new Date(body.dateHired),
+          probationEndDate: body.probationEndDate ? new Date(body.probationEndDate) : null,
+          basicSalary: body.basicSalary ? parseFloat(body.basicSalary) : null,
+          managerId: body.managerId || null,
+          bankName: body.bankName || null,
+          bankBranch: body.bankBranch || null,
+          bankCode: body.bankCode || null,
+          bankAccount: body.bankAccount || null,
+          mpesaPhone: body.mpesaPhone || null,
+          kraPin: body.kraPin || null,
+          shaNumber: body.shaNumber || null,
+          nssfNumber: body.nssfNumber || null,
+          emergencyContact: body.emergencyContact || null,
+          emergencyPhone: body.emergencyPhone || null,
+          idFrontUrl: body.idFrontUrl || null,
+          idBackUrl: body.idBackUrl || null,
+          passportPhotoUrl: body.passportPhotoUrl || null,
+          kraPinUrl: body.kraPinUrl || null,
+          nhifCardUrl: body.nhifCardUrl || null,
+          nssfCardUrl: body.nssfCardUrl || null,
+        },
+        include: { department: { select: { name: true } } },
+      })
+
+      await tx.user.create({
+        data: {
+          email: body.email,
+          name: `${body.firstName} ${body.lastName}`,
+          password: hashed,
+          role: body.role || 'EMPLOYEE',
+          employeeId: emp.id,
+        },
+      })
+
+      return { employee: emp, employeeCode: code }
     })
 
     // Initialize leave balances for current year
