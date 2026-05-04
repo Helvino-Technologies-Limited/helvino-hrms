@@ -5,6 +5,7 @@ import { prisma } from '@/lib/prisma'
 import bcrypt from 'bcryptjs'
 import { sendEmail, welcomeEmailHtml, contractEmailHtml } from '@/lib/email'
 import { generateContractHtml } from '@/lib/contract'
+import { generateSecretCode } from '@/lib/secret-code'
 
 export async function GET(req: NextRequest) {
   try {
@@ -96,6 +97,10 @@ export async function POST(req: NextRequest) {
     const tempPassword = `Htl${Math.random().toString(36).slice(-6)}!`
     const hashed = await bcrypt.hash(tempPassword, 10)
 
+    // Generate secret code for identity login so employee can log in immediately
+    const plainSecretCode = generateSecretCode()
+    const hashedSecretCode = await bcrypt.hash(plainSecretCode, 12)
+
     // Wrap employee + user creation in a transaction so partial failures leave no orphan records
     const { employee, employeeCode } = await prisma.$transaction(async (tx) => {
       // Derive next code from the highest existing code rather than count,
@@ -146,6 +151,7 @@ export async function POST(req: NextRequest) {
           kraPinUrl: body.kraPinUrl || null,
           nhifCardUrl: body.nhifCardUrl || null,
           nssfCardUrl: body.nssfCardUrl || null,
+          secretCodeHash: hashedSecretCode,
         },
         include: { department: { select: { name: true } } },
       })
@@ -185,7 +191,7 @@ export async function POST(req: NextRequest) {
     sendEmail({
       to: body.email,
       subject: 'Welcome to Helvino Technologies Limited — Your Account Details',
-      html: welcomeEmailHtml(`${body.firstName} ${body.lastName}`, body.email, tempPassword),
+      html: welcomeEmailHtml(`${body.firstName} ${body.lastName}`, body.email, tempPassword, plainSecretCode),
     }).catch(console.error)
 
     // Generate and send employment contract

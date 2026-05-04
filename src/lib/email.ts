@@ -78,17 +78,27 @@ export function emailTemplate(title: string, body: string): string {
   `
 }
 
-export function welcomeEmailHtml(name: string, email: string, password: string): string {
+export function welcomeEmailHtml(name: string, email: string, password: string, secretCode?: string): string {
   return emailTemplate(
     `Welcome, ${name}!`,
     `
-    <p>Your Helvino HRMS account has been created. Use the credentials below to log in:</p>
-    <div style="background:#f1f5f9;padding:16px;border-radius:8px;margin:16px 0;">
+    <p>Your Helvino Technologies HRMS account has been created. Use the credentials below to sign in.</p>
+
+    <p style="font-weight:bold;margin-top:20px;">🔐 Staff Identity Login (recommended)</p>
+    <div style="background:#f1f5f9;padding:16px;border-radius:8px;margin:8px 0 16px;">
       <p style="margin:4px 0;"><strong>Portal:</strong> <a href="${process.env.NEXT_PUBLIC_APP_URL}">${process.env.NEXT_PUBLIC_APP_URL}</a></p>
+      <p style="margin:4px 0;"><strong>National ID:</strong> Your national ID number</p>
+      <p style="margin:4px 0;"><strong>Date of Birth:</strong> Your date of birth</p>
+      <p style="margin:4px 0;"><strong>Secret Code:</strong> <code style="background:#e2e8f0;padding:2px 8px;border-radius:4px;font-size:15px;letter-spacing:2px;">${secretCode ?? 'Will be sent separately by HR'}</code></p>
+    </div>
+
+    <p style="font-weight:bold;margin-top:16px;">🔑 Alternative: Email Login</p>
+    <div style="background:#f8fafc;padding:16px;border-radius:8px;margin:8px 0 16px;border:1px solid #e2e8f0;">
       <p style="margin:4px 0;"><strong>Email:</strong> ${email}</p>
       <p style="margin:4px 0;"><strong>Temporary Password:</strong> <code style="background:#e2e8f0;padding:2px 6px;border-radius:4px;">${password}</code></p>
     </div>
-    <p style="color:#ef4444;"><strong>⚠ Please change your password immediately after first login.</strong></p>
+
+    <p style="color:#ef4444;font-size:13px;"><strong>⚠ Keep your Secret Code private. Do not share it with anyone.</strong></p>
     `
   )
 }
